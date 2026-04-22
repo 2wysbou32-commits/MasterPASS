@@ -64,7 +64,11 @@ app.use(session({
   resave: false, saveUninitialized: false,
   cookie: { maxAge: 8 * 60 * 60 * 1000 },
 }));
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files from public/ if it exists, otherwise from root
+const publicDir = fs.existsSync(path.join(__dirname, 'public'))
+  ? path.join(__dirname, 'public')
+  : __dirname;
+app.use(express.static(publicDir));
 
 // ── Auth guards ───────────────────────────────────────────────────────────────
 function requireAuth(req, res, next) {
@@ -257,7 +261,12 @@ function getFileType(ext) {
   return 'other';
 }
 
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('*', (req, res) => {
+  const indexPath = fs.existsSync(path.join(__dirname, 'public', 'index.html'))
+    ? path.join(__dirname, 'public', 'index.html')
+    : path.join(__dirname, 'index.html');
+  res.sendFile(indexPath);
+});
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n✅  MasterPASS → http://0.0.0.0:${PORT}`);
