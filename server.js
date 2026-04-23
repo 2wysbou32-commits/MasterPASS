@@ -59,10 +59,19 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Railway runs behind a proxy (HTTPS), so we need to trust it
+app.set('trust proxy', 1);
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'masterpass-secret-2024',
-  resave: false, saveUninitialized: false,
-  cookie: { maxAge: 8 * 60 * 60 * 1000 },
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 8 * 60 * 60 * 1000, // 8 heures
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  },
 }));
 // Serve static files from public/ if it exists, otherwise from root
 const publicDir = fs.existsSync(path.join(__dirname, 'public'))
@@ -172,7 +181,7 @@ app.delete('/api/folders/:id', requireAdmin, async (req, res) => {
 app.get('/api/folders/:id/files', requireAuth, (req, res) => {
   const folder = loadDB().folders.find(f => f.id === parseInt(req.params.id));
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
-  res.json((folder.files||[]).map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt })));
+  res.json((folder.files||[]).map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false })));
 });
 
 app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (req, res) => {
@@ -193,11 +202,11 @@ app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (r
       const safeBase = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
       const r2Key = `files/${folderId}/${fileId}-${safeBase}`;
       await uploadToR2(r2Key, file.buffer, file.mimetype);
-      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], r2Key };
+      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], r2Key, downloadable: true };
     } else {
       const filename = `${fileId}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
       fs.writeFileSync(path.join(UPLOADS_DIR, filename), file.buffer);
-      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], filename };
+      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], filename, downloadable: true };
     }
     folder.files.push(record);
     added.push({ id: record.id, name: record.name, size: record.size, type: record.type, addedAt: record.addedAt });
@@ -212,6 +221,11 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
   const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  // Block download for students if not allowed
+  const requestingUser = db.users.find(u => u.id === req.session.userId);
+  if (requestingUser?.role !== 'admin' && file.downloadable === false) {
+    return res.status(403).json({ error: 'Téléchargement non autorisé par l'administrateur' });
+  }
 
   if (r2Enabled && file.r2Key) {
     const url = await getDownloadUrl(file.r2Key, file.name);
@@ -222,6 +236,18 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
     return res.download(p, file.name);
   }
   res.status(500).json({ error: 'Erreur de configuration stockage' });
+});
+
+// Toggle downloadable permission (admin only)
+app.patch('/api/folders/:folderId/files/:fileId/downloadable', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.downloadable = !file.downloadable;
+  saveDB(db);
+  res.json({ id: file.id, downloadable: file.downloadable });
 });
 
 app.delete('/api/folders/:folderId/files/:fileId', requireAdmin, async (req, res) => {
