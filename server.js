@@ -5,26 +5,26 @@ const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
- 
+
 // R2 via API HTTP directe (pas de SDK — évite les problèmes SSL)
 const crypto = require('crypto');
 const https = require('https');
 const { Resend } = require('resend');
- 
+
 // Email (Resend) — optionnel, fonctionne sans si RESEND_API_KEY non défini
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@masterpass.app';
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
- 
+
 const app = express();
 const PORT = process.env.PORT || 3000;
- 
+
 // ── Cloudflare R2 config (variables d'environnement) ─────────────────────────
 const R2_ACCOUNT_ID    = process.env.R2_ACCOUNT_ID;
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_KEY    = process.env.R2_SECRET_KEY;
 const R2_BUCKET_NAME   = process.env.R2_BUCKET_NAME || 'masterpass';
- 
+
 let r2Enabled = false;
 if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_KEY) {
   r2Enabled = true;
@@ -32,7 +32,7 @@ if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_KEY) {
 } else {
   console.log('⚠️  R2 non configuré → stockage local (dev uniquement)');
 }
- 
+
 // ── Signature AWS v4 manuelle ─────────────────────────────────────────────────
 function hmac(key, data, encoding) {
   return crypto.createHmac('sha256', key).update(data).digest(encoding || undefined);
@@ -40,35 +40,35 @@ function hmac(key, data, encoding) {
 function hashSHA256(data) {
   return crypto.createHash('sha256').update(data).digest('hex');
 }
- 
+
 function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const datetime = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
   const dateShort = datetime.slice(0, 8);
   const scope = `${dateShort}/${region}/s3/aws4_request`;
- 
+
   const canonicalHeaders = `content-type:${contentType}\nhost:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-date:${datetime}\n`;
   const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
   const canonicalRequest = [method, `/${R2_BUCKET_NAME}/${key}`, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
- 
+
   const stringToSign = ['AWS4-HMAC-SHA256', datetime, scope, hashSHA256(canonicalRequest)].join('\n');
- 
+
   const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateShort), region), 's3'), 'aws4_request');
   const signature = hmac(signingKey, stringToSign, 'hex');
- 
+
   return {
     authorization: `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
     datetime,
     host,
   };
 }
- 
+
 // ── Paths ─────────────────────────────────────────────────────────────────────
 const DATA_FILE   = path.join(__dirname, 'data', 'db.json');
 const UPLOADS_DIR = path.join(__dirname, 'data', 'uploads');
 if (!fs.existsSync(path.join(__dirname, 'data'))) fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
- 
+
 // ── DB ────────────────────────────────────────────────────────────────────────
 function loadDB() {
   if (!fs.existsSync(DATA_FILE)) return initDB();
@@ -83,27 +83,27 @@ function initDB() {
   };
   saveDB(db); return db;
 }
- 
+
 // ── Reset tokens (en mémoire, valides 15 min) ────────────────────────────────
 const resetTokens = {}; // { token: { userId, expires } }
- 
+
 function generateToken() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
- 
+
 // ── Multer → mémoire (puis R2 ou disque) ─────────────────────────────────────
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
- 
+
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Railway runs behind a proxy (HTTPS), so we need to trust it
 app.set('trust proxy', 1);
- 
+
 // Sessions stockées sur disque (persistent même si le serveur redémarre)
 const sessionsDir = path.join(__dirname, 'data', 'sessions');
 if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
- 
+
 app.use(session({
   store: new FileStore({
     path: sessionsDir,
@@ -126,19 +126,27 @@ const publicDir = fs.existsSync(path.join(__dirname, 'public'))
   ? path.join(__dirname, 'public')
   : __dirname;
 app.use(express.static(publicDir));
- 
+
 // ── Auth guards ───────────────────────────────────────────────────────────────
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
   next();
 }
 function requireAdmin(req, res, next) {
-  if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
+  console.log('[AUTH] requireAdmin — sessionID:', req.sessionID, '— userId:', req.session.userId, '— cookie:', JSON.stringify(req.headers.cookie));
+  if (!req.session.userId) {
+    console.log('[AUTH] REFUSÉ — pas de userId en session');
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
   const user = loadDB().users.find(u => u.id === req.session.userId);
-  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé' });
+  if (!user || user.role !== 'admin') {
+    console.log('[AUTH] REFUSÉ — user non trouvé ou pas admin');
+    return res.status(403).json({ error: 'Accès refusé' });
+  }
+  console.log('[AUTH] OK — user:', user.login);
   next();
 }
- 
+
 // ── R2 helpers ────────────────────────────────────────────────────────────────
 async function uploadToR2(key, buffer, contentType) {
   const ct = contentType || 'application/octet-stream';
@@ -146,7 +154,7 @@ async function uploadToR2(key, buffer, contentType) {
   const date = new Date();
   const region = 'auto';
   const { authorization, datetime, host } = buildAuthHeader('PUT', key, ct, bodyHash, date, region);
- 
+
   return new Promise((resolve, reject) => {
     const req = https.request({
       hostname: host,
@@ -204,29 +212,42 @@ async function getDownloadUrl(key, filename) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const date = new Date();
-  const datetime = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
-  const dateShort = datetime.slice(0, 8);
-  const scope = `${dateShort}/${region}/s3/aws4_request`;
+  const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
   const expires = 3600;
-  const disposition = encodeURIComponent(`attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
- 
-  const canonicalQueryString = [
-    `X-Amz-Algorithm=AWS4-HMAC-SHA256`,
-    `X-Amz-Credential=${encodeURIComponent(`${R2_ACCESS_KEY_ID}/${scope}`)}`,
-    `X-Amz-Date=${datetime}`,
-    `X-Amz-Expires=${expires}`,
-    `X-Amz-SignedHeaders=host`,
-    `response-content-disposition=${disposition}`,
-  ].sort().join('&');
- 
-  const canonicalRequest = ['GET', `/${R2_BUCKET_NAME}/${key}`, canonicalQueryString, `host:${host}\n`, 'host', 'UNSIGNED-PAYLOAD'].join('\n');
-  const stringToSign = ['AWS4-HMAC-SHA256', datetime, scope, hashSHA256(canonicalRequest)].join('\n');
-  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateShort), region), 's3'), 'aws4_request');
+  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
+
+  // All query params sorted alphabetically (required for valid signature)
+  const qs = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expires)],
+    ['X-Amz-SignedHeaders', 'host'],
+  ].sort((a, b) => a[0].localeCompare(b[0]));
+
+  const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+
+  const canonicalRequest = [
+    'GET',
+    '/' + R2_BUCKET_NAME + '/' + key,
+    canonicalQS,
+    'host:' + host + '\n',
+    'host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
   const signature = hmac(signingKey, stringToSign, 'hex');
- 
-  return `https://${host}/${R2_BUCKET_NAME}/${key}?${canonicalQueryString}&X-Amz-Signature=${signature}`;
+
+  const safeFilename = encodeURIComponent(filename);
+  const finalQS = canonicalQS + '&X-Amz-Signature=' + signature + '&response-content-disposition=' + encodeURIComponent('attachment; filename="' + filename + '"');
+  return `https://${host}/${R2_BUCKET_NAME}/${key}?${finalQS}`;
 }
- 
+
+
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 app.post('/api/login', (req, res) => {
   const { login, password } = req.body;
@@ -234,6 +255,10 @@ app.post('/api/login', (req, res) => {
   if (!user || !bcrypt.compareSync(password, user.password))
     return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });
   req.session.userId = user.id;
+  req.session.save((err) => {
+    if (err) console.log('[SESSION] Save error:', err);
+    else console.log('[SESSION] Saved — sessionID:', req.sessionID, '— userId:', user.id);
+  });
   res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '' });
 });
 app.post('/api/logout', (req, res) => req.session.destroy(() => res.json({ ok: true })));
@@ -242,7 +267,7 @@ app.get('/api/me', requireAuth, (req, res) => {
   if (!user) return res.status(401).json({ error: 'Session invalide' });
   res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '' });
 });
- 
+
 // ── USERS ─────────────────────────────────────────────────────────────────────
 app.get('/api/users', requireAdmin, (req, res) => {
   res.json(loadDB().users.map(u => ({ id: u.id, name: u.name, login: u.login, role: u.role })));
@@ -264,7 +289,7 @@ app.delete('/api/users/:id', requireAdmin, (req, res) => {
   const db = loadDB(); db.users = db.users.filter(u => u.id !== id); saveDB(db);
   res.json({ ok: true });
 });
- 
+
 // ── FOLDERS ───────────────────────────────────────────────────────────────────
 app.get('/api/folders', requireAuth, (req, res) => {
   const db = loadDB();
@@ -293,28 +318,28 @@ app.delete('/api/folders/:id', requireAdmin, async (req, res) => {
   db.folders = db.folders.filter(f => f.id !== parseInt(req.params.id)); saveDB(db);
   res.json({ ok: true });
 });
- 
+
 // ── FILES ─────────────────────────────────────────────────────────────────────
 app.get('/api/folders/:id/files', requireAuth, (req, res) => {
   const folder = loadDB().folders.find(f => f.id === parseInt(req.params.id));
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
   res.json((folder.files||[]).map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false })));
 });
- 
+
 app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (req, res) => {
   const folderId = parseInt(req.params.id);
   const db = loadDB();
   const folder = db.folders.find(f => f.id === folderId);
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
   if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
- 
+
   const added = [];
   for (const file of req.files) {
     const ext = path.extname(file.originalname).replace('.','').toLowerCase();
     const type = getFileType(ext);
     const fileId = db.nextId++;
     let record;
- 
+
     if (r2Enabled) {
       const safeBase = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
       const r2Key = `files/${folderId}/${fileId}-${safeBase}`;
@@ -331,7 +356,7 @@ app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (r
   saveDB(db);
   res.json(added);
 });
- 
+
 app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req, res) => {
   const db = loadDB();
   const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
@@ -343,7 +368,7 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
   if (requestingUser?.role !== 'admin' && file.downloadable === false) {
     return res.status(403).json({ error: "Téléchargement non autorisé par l'administrateur" });
   }
- 
+
   if (r2Enabled && file.r2Key) {
     const url = await getDownloadUrl(file.r2Key, file.name);
     return res.redirect(url);
@@ -354,7 +379,7 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
   }
   res.status(500).json({ error: 'Erreur de configuration stockage' });
 });
- 
+
 // Toggle downloadable permission (admin only)
 app.patch('/api/folders/:folderId/files/:fileId/downloadable', requireAdmin, (req, res) => {
   const db = loadDB();
@@ -366,7 +391,7 @@ app.patch('/api/folders/:folderId/files/:fileId/downloadable', requireAdmin, (re
   saveDB(db);
   res.json({ id: file.id, downloadable: file.downloadable });
 });
- 
+
 app.delete('/api/folders/:folderId/files/:fileId', requireAdmin, async (req, res) => {
   const db = loadDB();
   const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
@@ -378,9 +403,9 @@ app.delete('/api/folders/:folderId/files/:fileId', requireAdmin, async (req, res
   folder.files = folder.files.filter(f => f.id !== parseInt(req.params.fileId));
   saveDB(db); res.json({ ok: true });
 });
- 
+
 // ── MOT DE PASSE OUBLIÉ ──────────────────────────────────────────────────────
- 
+
 // Demande de réinitialisation
 app.post('/api/forgot-password', async (req, res) => {
   const { login } = req.body;
@@ -425,7 +450,7 @@ app.post('/api/forgot-password', async (req, res) => {
   }
   res.json({ ok: true });
 });
- 
+
 // Valider un token de reset
 app.get('/api/reset-token/:token', (req, res) => {
   const entry = resetTokens[req.params.token];
@@ -435,7 +460,7 @@ app.get('/api/reset-token/:token', (req, res) => {
   const user = loadDB().users.find(u => u.id === entry.userId);
   res.json({ valid: true, name: user?.name || '' });
 });
- 
+
 // Réinitialiser le mot de passe avec token
 app.post('/api/reset-password', (req, res) => {
   const { token, password } = req.body;
@@ -454,9 +479,9 @@ app.post('/api/reset-password', (req, res) => {
   delete resetTokens[token];
   res.json({ ok: true });
 });
- 
+
 // ── RÉGLAGES UTILISATEUR ──────────────────────────────────────────────────────
- 
+
 // Ajouter/mettre à jour l'email d'un utilisateur (lui-même ou admin)
 app.patch('/api/users/:id/email', requireAuth, (req, res) => {
   const id = parseInt(req.params.id);
@@ -472,7 +497,7 @@ app.patch('/api/users/:id/email', requireAuth, (req, res) => {
   saveDB(db);
   res.json({ ok: true });
 });
- 
+
 // Changer son propre mot de passe (étudiant connecté)
 app.post('/api/users/change-password', requireAuth, (req, res) => {
   const { currentPassword, newPassword } = req.body;
@@ -488,7 +513,7 @@ app.post('/api/users/change-password', requireAuth, (req, res) => {
   saveDB(db);
   res.json({ ok: true });
 });
- 
+
 // ── STATS ─────────────────────────────────────────────────────────────────────
 app.get('/api/stats', requireAdmin, (req, res) => {
   const db = loadDB();
@@ -500,7 +525,7 @@ app.get('/api/stats', requireAdmin, (req, res) => {
     storageMode: r2Enabled ? 'Cloudflare R2' : 'Local',
   });
 });
- 
+
 // ── Helper ────────────────────────────────────────────────────────────────────
 function getFileType(ext) {
   if (['pdf'].includes(ext)) return 'pdf';
@@ -513,14 +538,14 @@ function getFileType(ext) {
   if (['zip','rar','7z','tar'].includes(ext)) return 'zip';
   return 'other';
 }
- 
+
 app.get('*', (req, res) => {
   const indexPath = fs.existsSync(path.join(__dirname, 'public', 'index.html'))
     ? path.join(__dirname, 'public', 'index.html')
     : path.join(__dirname, 'index.html');
   res.sendFile(indexPath);
 });
- 
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n✅  MasterPASS → http://0.0.0.0:${PORT}`);
   console.log(`    Stockage : ${r2Enabled ? `R2 bucket «${R2_BUCKET_NAME}»` : 'Local'}\n`);
