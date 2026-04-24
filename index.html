@@ -908,6 +908,14 @@ function renderFiles(files){
   tbody.innerHTML=files.map(f=>{
     const dlAllowed = f.downloadable !== false;
     // Download button: always shown for admin, shown/hidden for student based on permission
+    // Bouton prévisualiser (toujours visible si le type le permet)
+    const previewTypes = ['pdf','img','video','audio'];
+    const canPreview = previewTypes.includes(f.type);
+    const previewBtn = canPreview
+      ? `<a class="btn-preview" onclick="openPreview(${f.id}, '${f.name.replace(/'/g,"\\'").replace(/"/g,'\\"')}', '${f.type}')">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          Visualiser</a>`
+      : '';
     const downloadBtn = dlAllowed
       ? `<a class="btn-download" href="/api/folders/${currentFolder.id}/files/${f.id}/download">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
@@ -936,7 +944,7 @@ function renderFiles(files){
       </div></td>
       <td><span class="file-size">${formatSize(f.size)}</span></td>
       <td><span class="file-date">${f.addedAt}</span></td>
-      <td style="white-space:nowrap">${downloadBtn}${toggleBtn}${deleteBtn}</td>
+      <td style="white-space:nowrap">${previewBtn}${downloadBtn}${toggleBtn}${deleteBtn}</td>
     </tr>`;
   }).join('');
 }
@@ -965,6 +973,48 @@ async function deleteFile(id){
   try{await api('DELETE',`/folders/${currentFolder.id}/files/${id}`);await loadFiles();loadStats();toast('Fichier supprimé');}
   catch(e){toast(e.message,'error');}
 }
+
+function openPreview(fileId, filename, type) {
+  if (!currentFolder) return;
+  const previewUrl = `/api/folders/${currentFolder.id}/files/${fileId}/preview`;
+  const downloadUrl = `/api/folders/${currentFolder.id}/files/${fileId}/download`;
+  const body = document.getElementById('preview-body');
+  const title = document.getElementById('preview-title');
+  const dlBtn = document.getElementById('preview-download-btn');
+  title.textContent = filename;
+  dlBtn.href = downloadUrl;
+  dlBtn.download = filename;
+  body.innerHTML = '';
+
+  if (type === 'pdf') {
+    body.innerHTML = `<iframe src="${previewUrl}" title="${filename}"></iframe>`;
+  } else if (type === 'video') {
+    body.innerHTML = `<video controls autoplay>
+      <source src="${previewUrl}">
+      Votre navigateur ne supporte pas la lecture vidéo.
+    </video>`;
+  } else if (type === 'img') {
+    body.innerHTML = `<img src="${previewUrl}" alt="${filename}">`;
+  } else if (type === 'audio') {
+    body.innerHTML = `<audio controls autoplay><source src="${previewUrl}"></audio>`;
+  } else {
+    body.innerHTML = `<div class="preview-unsupported">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
+      <div>Ce type de fichier ne peut pas être prévisualisé</div>
+    </div>`;
+  }
+  document.getElementById('preview-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePreview() {
+  document.getElementById('preview-overlay').classList.remove('open');
+  document.getElementById('preview-body').innerHTML = '';
+  document.body.style.overflow = '';
+}
+
+// Fermer avec Échap
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closePreview(); });
 
 async function toggleDownload(fileId){
   if(!currentFolder)return;
@@ -1029,6 +1079,21 @@ function openModal(id){$(id).classList.add('open');}
 function closeModal(id){$(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 </script>
+
+<!-- MODAL PRÉVISUALISATION -->
+<div class="preview-overlay" id="preview-overlay">
+  <div class="preview-topbar">
+    <div class="preview-title" id="preview-title">Fichier</div>
+    <a id="preview-download-btn" class="btn-action" style="color:white;border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);padding:7px 14px;font-size:12px" download>
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Télécharger
+    </a>
+    <button class="preview-close" onclick="closePreview()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+  </div>
+  <div class="preview-body" id="preview-body"></div>
+</div>
 
 <!-- TUTORIEL PREMIÈRE CONNEXION -->
 <div class="tutorial-overlay" id="tutorial-overlay" style="display:none">
