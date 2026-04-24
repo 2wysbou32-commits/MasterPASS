@@ -208,74 +208,55 @@ async function deleteFromR2(key) {
     });
   } catch(e) { console.error('R2 delete error:', e.message); }
 }
-async function getDownloadUrl(key, filename) {
+// Proxy fichier depuis R2 directement (pas d'URL signée — évite les problèmes de signature)
+async function proxyFileFromR2(key, res, inline) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const date = new Date();
   const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
-  const expires = 3600;
-  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
-
-  // All query params sorted alphabetically (required for valid signature)
-  const qs = [
-    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
-    ['X-Amz-Credential', credential],
-    ['X-Amz-Date', amzDate],
-    ['X-Amz-Expires', String(expires)],
-    ['X-Amz-SignedHeaders', 'host'],
-  ].sort((a, b) => a[0].localeCompare(b[0]));
-
-  const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-
-  const canonicalRequest = [
-    'GET',
-    '/' + R2_BUCKET_NAME + '/' + key,
-    canonicalQS,
-    'host:' + host + '\n',
-    'host',
-    'UNSIGNED-PAYLOAD',
-  ].join('\n');
-
+  const bodyHash = hashSHA256('');
+  const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-date:${amzDate}\n`;
+  const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+  const canonicalRequest = ['GET', '/' + R2_BUCKET_NAME + '/' + key, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
   const scope = `${dateStamp}/${region}/s3/aws4_request`;
   const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
   const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
   const signature = hmac(signingKey, stringToSign, 'hex');
 
-  const safeFilename = encodeURIComponent(filename);
-  const finalQS = canonicalQS + '&X-Amz-Signature=' + signature + '&response-content-disposition=' + encodeURIComponent('attachment; filename="' + filename + '"');
-  return `https://${host}/${R2_BUCKET_NAME}/${key}?${finalQS}`;
-}
-
-
-// URL signée pour prévisualisation (inline, pas attachment)
-async function getPreviewUrl(key, filename) {
-  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-  const region = 'auto';
-  const date = new Date();
-  const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
-  const dateStamp = amzDate.slice(0, 8);
-  const expires = 7200; // 2h pour les vidéos longues
-  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
-
-  const qs = [
-    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
-    ['X-Amz-Credential', credential],
-    ['X-Amz-Date', amzDate],
-    ['X-Amz-Expires', String(expires)],
-    ['X-Amz-SignedHeaders', 'host'],
-  ].sort((a, b) => a[0].localeCompare(b[0]));
-
-  const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-  const canonicalRequest = ['GET', '/' + R2_BUCKET_NAME + '/' + key, canonicalQS, 'host:' + host + '\n', 'host', 'UNSIGNED-PAYLOAD'].join('\n');
-  const scope = `${dateStamp}/${region}/s3/aws4_request`;
-  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
-  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
-  const signature = hmac(signingKey, stringToSign, 'hex');
-
-  // inline = affiche dans le navigateur au lieu de forcer le téléchargement
-  const finalQS = canonicalQS + '&X-Amz-Signature=' + signature + '&response-content-disposition=inline';
-  return `https://${host}/${R2_BUCKET_NAME}/${key}?${finalQS}`;
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: host,
+      port: 443,
+      path: '/' + R2_BUCKET_NAME + '/' + key,
+      method: 'GET',
+      rejectUnauthorized: false,
+      headers: {
+        'host': host,
+        'x-amz-content-sha256': bodyHash,
+        'x-amz-date': amzDate,
+        'Authorization': `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+      },
+    }, (r2res) => {
+      if (r2res.statusCode >= 400) {
+        let errData = '';
+        r2res.on('data', c => errData += c);
+        r2res.on('end', () => reject(new Error(`R2 fetch failed: ${r2res.statusCode} ${errData}`)));
+        return;
+      }
+      // Forward headers
+      const ct = r2res.headers['content-type'] || 'application/octet-stream';
+      const cl = r2res.headers['content-length'];
+      res.setHeader('Content-Type', ct);
+      if (cl) res.setHeader('Content-Length', cl);
+      res.setHeader('Content-Disposition', inline ? 'inline' : 'attachment');
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      r2res.pipe(res);
+      r2res.on('end', resolve);
+    });
+    req.on('error', reject);
+    req.end();
+  });
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
@@ -396,8 +377,8 @@ app.get('/api/folders/:folderId/files/:fileId/preview', requireAuth, async (req,
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
 
   if (r2Enabled && file.r2Key) {
-    const url = await getPreviewUrl(file.r2Key, file.name);
-    return res.redirect(url);
+    await proxyFileFromR2(file.r2Key, res, true);
+    return;
   } else if (file.filename) {
     const p = path.join(UPLOADS_DIR, file.filename);
     if (!fs.existsSync(p)) return res.status(404).json({ error: 'Fichier manquant' });
@@ -419,8 +400,8 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
   }
 
   if (r2Enabled && file.r2Key) {
-    const url = await getDownloadUrl(file.r2Key, file.name);
-    return res.redirect(url);
+    await proxyFileFromR2(file.r2Key, res, false);
+    return;
   } else if (file.filename) {
     const p = path.join(UPLOADS_DIR, file.filename);
     if (!fs.existsSync(p)) return res.status(404).json({ error: 'Fichier manquant' });
