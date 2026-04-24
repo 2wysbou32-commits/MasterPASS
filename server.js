@@ -92,7 +92,7 @@ function generateToken() {
 }
 
 // ── Multer → mémoire (puis R2 ou disque) ─────────────────────────────────────
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 * 1024 } }); // 5 Go max
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json());
@@ -248,6 +248,36 @@ async function getDownloadUrl(key, filename) {
 }
 
 
+// URL signée pour prévisualisation (inline, pas attachment)
+async function getPreviewUrl(key, filename) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const date = new Date();
+  const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const expires = 7200; // 2h pour les vidéos longues
+  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
+
+  const qs = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expires)],
+    ['X-Amz-SignedHeaders', 'host'],
+  ].sort((a, b) => a[0].localeCompare(b[0]));
+
+  const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const canonicalRequest = ['GET', '/' + R2_BUCKET_NAME + '/' + key, canonicalQS, 'host:' + host + '\n', 'host', 'UNSIGNED-PAYLOAD'].join('\n');
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
+  const signature = hmac(signingKey, stringToSign, 'hex');
+
+  // inline = affiche dans le navigateur au lieu de forcer le téléchargement
+  const finalQS = canonicalQS + '&X-Amz-Signature=' + signature + '&response-content-disposition=inline';
+  return `https://${host}/${R2_BUCKET_NAME}/${key}?${finalQS}`;
+}
+
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 app.post('/api/login', (req, res) => {
   const { login, password } = req.body;
@@ -355,6 +385,25 @@ app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (r
   }
   saveDB(db);
   res.json(added);
+});
+
+// Prévisualisation inline (PDF, vidéo, image) — sans forcer le téléchargement
+app.get('/api/folders/:folderId/files/:fileId/preview', requireAuth, async (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+
+  if (r2Enabled && file.r2Key) {
+    const url = await getPreviewUrl(file.r2Key, file.name);
+    return res.redirect(url);
+  } else if (file.filename) {
+    const p = path.join(UPLOADS_DIR, file.filename);
+    if (!fs.existsSync(p)) return res.status(404).json({ error: 'Fichier manquant' });
+    return res.sendFile(p);
+  }
+  res.status(500).json({ error: 'Erreur stockage' });
 });
 
 app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req, res) => {
