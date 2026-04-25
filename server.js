@@ -13,7 +13,7 @@ const { Resend } = require('resend');
 
 // Email (Resend) — optionnel, fonctionne sans si RESEND_API_KEY non défini
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@masterpass.app';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
 
 const app = express();
@@ -601,7 +601,8 @@ app.post('/api/forgot-password', async (req, res) => {
   // Envoyer email si Resend configuré
   if (resend) {
     try {
-      await resend.emails.send({
+      console.log('[EMAIL] Envoi à:', user.email, '— depuis:', FROM_EMAIL);
+      const emailResult = await resend.emails.send({
         from: FROM_EMAIL,
         to: user.email,
         subject: 'MasterPASS — Réinitialisation de mot de passe',
@@ -621,7 +622,8 @@ app.post('/api/forgot-password', async (req, res) => {
             </p>
           </div>`,
       });
-    } catch(e) { console.error('Email error:', e.message); }
+      console.log('[EMAIL] Envoyé avec succès, id:', emailResult?.id);
+    } catch(e) { console.error('[EMAIL] Erreur:', e.message, e); }
   } else {
     // Sans Resend : afficher le lien dans les logs (dev)
     console.log('RESET LINK (dev):', resetLink);
