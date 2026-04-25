@@ -536,10 +536,15 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
   const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
-  // Block download for students if not allowed
+  // Restrictions téléchargement pour les étudiants
   const requestingUser = db.users.find(u => u.id === req.session.userId);
-  if (requestingUser?.role !== 'admin' && file.downloadable === false) {
-    return res.status(403).json({ error: "Téléchargement non autorisé par l'administrateur" });
+  if (requestingUser?.role !== 'admin') {
+    if (file.type === 'video') {
+      return res.status(403).json({ error: 'Les vidéos ne peuvent pas être téléchargées' });
+    }
+    if (file.downloadable === false) {
+      return res.status(403).json({ error: "Téléchargement non autorisé par l'administrateur" });
+    }
   }
 
   if (r2Enabled && file.r2Key) {
