@@ -330,6 +330,145 @@ app.delete('/api/folders/:id', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── SOUS-DOSSIERS ────────────────────────────────────────────────────────────
+
+// Créer un sous-dossier dans un dossier
+app.post('/api/folders/:id/subfolders', requireAdmin, (req, res) => {
+  const parentId = parseInt(req.params.id);
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parentId);
+  if (!parent) return res.status(404).json({ error: 'Dossier parent introuvable' });
+  if (!parent.subfolders) parent.subfolders = [];
+  const sub = { id: db.nextId++, name: name.trim(), createdAt: new Date().toISOString().split('T')[0], files: [] };
+  parent.subfolders.push(sub);
+  saveDB(db);
+  res.json({ id: sub.id, name: sub.name, createdAt: sub.createdAt, fileCount: 0, totalSize: 0 });
+});
+
+// Lister les sous-dossiers
+app.get('/api/folders/:id/subfolders', requireAuth, (req, res) => {
+  const parentId = parseInt(req.params.id);
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parentId);
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const subs = (parent.subfolders || []).map(s => ({
+    id: s.id, name: s.name, createdAt: s.createdAt,
+    fileCount: (s.files || []).length,
+    totalSize: (s.files || []).reduce((a, f) => a + f.size, 0),
+  }));
+  res.json(subs);
+});
+
+// Supprimer un sous-dossier
+app.delete('/api/folders/:parentId/subfolders/:subId', requireAdmin, async (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub = (parent.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+  for (const file of (sub.files || [])) {
+    if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
+  }
+  parent.subfolders = parent.subfolders.filter(s => s.id !== parseInt(req.params.subId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Fichiers d'un sous-dossier
+app.get('/api/folders/:parentId/subfolders/:subId/files', requireAuth, (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub = (parent.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+  const requestingUser = db.users.find(u => u.id === req.session.userId);
+  const isAdmin = requestingUser?.role === 'admin';
+  res.json((sub.files || []).filter(f => isAdmin || !f.pending)
+    .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false })));
+});
+
+// Upload fichier dans sous-dossier
+app.post('/api/folders/:parentId/subfolders/:subId/files', requireAdmin, upload.array('files'), async (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub = (parent.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier' });
+  const added = [];
+  for (const file of req.files) {
+    const ext = path.extname(file.originalname).replace('.', '').toLowerCase();
+    const type = getFileType(ext);
+    const fileId = db.nextId++;
+    let record;
+    if (r2Enabled) {
+      const r2Key = `files/${req.params.parentId}/sub${req.params.subId}/${fileId}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      await uploadToR2(r2Key, file.buffer, file.mimetype);
+      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], r2Key, downloadable: true };
+    } else {
+      const filename = `${fileId}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      fs.writeFileSync(path.join(UPLOADS_DIR, filename), file.buffer);
+      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], filename, downloadable: true };
+    }
+    sub.files.push(record);
+    added.push({ id: record.id, name: record.name, size: record.size, type: record.type, addedAt: record.addedAt });
+  }
+  saveDB(db);
+  res.json(added);
+});
+
+// Download/preview fichier sous-dossier
+app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/download', requireAuth, async (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (parent?.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (user?.role !== 'admin' && file.downloadable === false) return res.status(403).json({ error: 'Téléchargement non autorisé' });
+  if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, false); return; }
+  if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.download(p, file.name); }
+  res.status(500).json({ error: 'Erreur stockage' });
+});
+
+app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/preview', requireAuth, async (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (parent?.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, true); return; }
+  if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.sendFile(p); }
+  res.status(500).json({ error: 'Erreur stockage' });
+});
+
+// Delete fichier sous-dossier
+app.delete('/api/folders/:parentId/subfolders/:subId/files/:fileId', requireAdmin, async (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (parent?.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
+  sub.files = sub.files.filter(f => f.id !== parseInt(req.params.fileId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Toggle downloadable sous-dossier
+app.patch('/api/folders/:parentId/subfolders/:subId/files/:fileId/downloadable', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (parent?.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.downloadable = !file.downloadable;
+  saveDB(db);
+  res.json({ id: file.id, downloadable: file.downloadable });
+});
+
 // ── FILES ─────────────────────────────────────────────────────────────────────
 app.get('/api/folders/:id/files', requireAuth, (req, res) => {
   const folder = loadDB().folders.find(f => f.id === parseInt(req.params.id));
