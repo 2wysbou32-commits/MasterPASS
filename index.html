@@ -869,8 +869,24 @@ function renderFolders(folders){
 function backToRoot(){currentFolder=null;$('view-folders').style.display='';$('view-files').style.display='none';updateBreadcrumb();loadFolders();updateTopbar();}
 
 async function openFolder(id,name){
-  currentFolder={id,name};$('view-folders').style.display='none';$('view-files').style.display='';
-  $('current-folder-name').textContent=name;updateBreadcrumb();updateTopbar();await loadFiles();
+  currentSubfolder = null;
+  currentFolder={id,name};
+  $('view-folders').style.display='none';
+  $('view-files').style.display='';
+  $('current-folder-name').textContent=name;
+  updateBreadcrumb();updateTopbar();
+  // Load subfolders and files
+  const [subs] = await Promise.all([loadSubfolders(id), loadFiles()]);
+  // Inject subfolders above the file table
+  const subHtml = renderSubfolders(subs, id, name);
+  const container = $('view-files');
+  let subContainer = document.getElementById('subfolders-container');
+  if (!subContainer) {
+    subContainer = document.createElement('div');
+    subContainer.id = 'subfolders-container';
+    container.insertBefore(subContainer, container.firstChild);
+  }
+  subContainer.innerHTML = subHtml;
 }
 
 async function createFolder(){
@@ -1024,34 +1040,9 @@ function openPreview(fileId, filename, type) {
   if (!currentFolder) return;
   const previewUrl = `/api/folders/${currentFolder.id}/files/${fileId}/preview`;
   const downloadUrl = `/api/folders/${currentFolder.id}/files/${fileId}/download`;
-  const body = document.getElementById('preview-body');
-  const title = document.getElementById('preview-title');
-  const dlBtn = document.getElementById('preview-download-btn');
-  title.textContent = filename;
-  dlBtn.href = downloadUrl;
-  dlBtn.download = filename;
-  body.innerHTML = '';
-
-  if (type === 'pdf') {
-    body.innerHTML = `<iframe src="${previewUrl}" title="${filename}"></iframe>`;
-  } else if (type === 'video') {
-    body.innerHTML = `<video controls autoplay>
-      <source src="${previewUrl}">
-      Votre navigateur ne supporte pas la lecture vidéo.
-    </video>`;
-  } else if (type === 'img') {
-    body.innerHTML = `<img src="${previewUrl}" alt="${filename}">`;
-  } else if (type === 'audio') {
-    body.innerHTML = `<audio controls autoplay><source src="${previewUrl}"></audio>`;
-  } else {
-    body.innerHTML = `<div class="preview-unsupported">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
-      <div>Ce type de fichier ne peut pas être prévisualisé</div>
-    </div>`;
-  }
-  document.getElementById('preview-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  openPreviewWithUrls(filename, type, previewUrl, downloadUrl);
 }
+
 
 function closePreview() {
   document.getElementById('preview-overlay').classList.remove('open');
@@ -1124,6 +1115,361 @@ function updateBreadcrumb(){
 function openModal(id){$(id).classList.add('open');}
 function closeModal(id){$(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+
+// ── RÉGLAGES ──────────────────────────────────────────────────────────────────
+async function doChangePassword() {
+  const currentPw = document.getElementById('settings-current-pw').value;
+  const newPw = document.getElementById('settings-new-pw').value;
+  const confirmPw = document.getElementById('settings-confirm-pw').value;
+  const errEl = document.getElementById('settings-pw-error');
+  const okEl = document.getElementById('settings-pw-success');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  if (!currentPw || !newPw) { errEl.textContent = 'Remplis tous les champs.'; errEl.style.display = 'block'; return; }
+  if (newPw.length < 6) { errEl.textContent = 'Minimum 6 caractères.'; errEl.style.display = 'block'; return; }
+  if (newPw !== confirmPw) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; errEl.style.display = 'block'; return; }
+  try {
+    await api('POST', '/users/change-password', { currentPassword: currentPw, newPassword: newPw });
+    okEl.textContent = 'Mot de passe modifié avec succès !';
+    okEl.style.display = 'block';
+    document.getElementById('settings-current-pw').value = '';
+    document.getElementById('settings-new-pw').value = '';
+    document.getElementById('settings-confirm-pw').value = '';
+    toast('Mot de passe modifié ✅');
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function doSaveEmail() {
+  const email = document.getElementById('settings-email').value.trim();
+  const okEl = document.getElementById('settings-email-success');
+  okEl.style.display = 'none';
+  if (!email || !email.includes('@')) { toast('Entre une adresse email valide.', 'error'); return; }
+  try {
+    await api('PATCH', '/users/' + currentUser.id + '/email', { email });
+    currentUser.email = email;
+    okEl.textContent = 'Email enregistré !';
+    okEl.style.display = 'block';
+    toast('Email enregistré ✅');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function loadSettingsPanel() {
+  if (currentUser && currentUser.email) {
+    document.getElementById('settings-email').value = currentUser.email;
+  }
+  document.getElementById('settings-pw-error').style.display = 'none';
+  document.getElementById('settings-pw-success').style.display = 'none';
+  document.getElementById('settings-email-success').style.display = 'none';
+}
+
+// ── AUTH FORMS ────────────────────────────────────────────────────────────────
+function showLoginForm() {
+  document.getElementById('forgot-form').style.display = 'none';
+  document.getElementById('reset-form').style.display = 'none';
+  document.querySelector('.auth-card-body').style.display = '';
+}
+function showForgotForm() {
+  document.querySelector('.auth-card-body').style.display = 'none';
+  document.getElementById('reset-form').style.display = 'none';
+  document.getElementById('forgot-form').style.display = '';
+  document.getElementById('forgot-error').style.display = 'none';
+  document.getElementById('forgot-success').style.display = 'none';
+}
+async function doForgotPassword() {
+  const login = document.getElementById('forgot-login-input').value.trim();
+  const btn = document.getElementById('forgot-btn');
+  const errEl = document.getElementById('forgot-error');
+  const okEl = document.getElementById('forgot-success');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  if (!login) { errEl.textContent = 'Entre ton identifiant.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Envoi...';
+  try {
+    await api('POST', '/forgot-password', { login });
+    okEl.textContent = 'Si un email est associé à ce compte, tu vas recevoir un lien.';
+    okEl.style.display = 'block';
+  } catch(e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+  finally { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
+}
+async function doResetPassword() {
+  const token = new URLSearchParams(window.location.search).get('reset');
+  const pw = document.getElementById('reset-password-input').value;
+  const pw2 = document.getElementById('reset-password-confirm').value;
+  const errEl = document.getElementById('reset-error');
+  const okEl = document.getElementById('reset-success');
+  const btn = document.getElementById('reset-btn');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  if (pw.length < 6) { errEl.textContent = 'Minimum 6 caractères.'; errEl.style.display = 'block'; return; }
+  if (pw !== pw2) { errEl.textContent = 'Les mots de passe ne correspondent pas.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Enregistrement...';
+  try {
+    await api('POST', '/reset-password', { token, password: pw });
+    okEl.textContent = 'Mot de passe mis à jour ! Retour à la connexion dans 3s...';
+    okEl.style.display = 'block';
+    setTimeout(() => { history.replaceState({}, '', '/'); document.getElementById('reset-form').style.display = 'none'; document.querySelector('.auth-card-body').style.display = ''; }, 3000);
+  } catch(e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+  finally { btn.disabled = false; btn.textContent = 'Enregistrer'; }
+}
+
+
+
+// ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
+let currentSubfolder = null; // { id, name, parentId }
+
+async function loadSubfolders(parentId) {
+  try {
+    return await api('GET', `/folders/${parentId}/subfolders`);
+  } catch(e) { return []; }
+}
+
+function renderSubfolders(subs, parentId, parentName) {
+  const isAdmin = currentUser?.role === 'admin';
+  if (!subs.length && !isAdmin) return '';
+  let html = '';
+  if (subs.length > 0) {
+    html += `<div class="section-header" style="margin-top:8px;margin-bottom:12px">
+      <div><div class="section-title" style="font-size:13px">Sous-dossiers</div></div>
+      ${isAdmin ? `<button class="btn-action" onclick="openCreateSubfolder(${parentId},'${parentName.replace(/'/g,"\\'")}')">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3v-3h2v3h3v2z"/></svg>
+        Nouveau sous-dossier</button>` : ''}
+    </div>
+    <div class="folders-grid" style="margin-bottom:20px">`;
+    subs.forEach(s => {
+      html += `<div class="folder-card" onclick="openSubfolder(${s.id},'${s.name.replace(/'/g,"\\'")}',${parentId},'${parentName.replace(/'/g,"\\'")}')">
+        ${isAdmin ? `<div class="folder-actions">
+          <button class="icon-btn" onclick="event.stopPropagation();deleteSubfolder(${parentId},${s.id})" title="Supprimer">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          </button></div>` : ''}
+        <div class="folder-icon" style="background:linear-gradient(135deg,rgba(126,200,227,0.15),rgba(0,151,167,0.08))">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="color:#0288D1"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+        </div>
+        <div class="folder-name">${s.name}</div>
+        <div class="folder-meta">${s.fileCount} fichier${s.fileCount!==1?'s':''}</div>
+      </div>`;
+    });
+    html += '</div>';
+  } else if (isAdmin) {
+    html += `<div style="margin-bottom:16px">
+      <button class="btn-action" onclick="openCreateSubfolder(${parentId},'${parentName.replace(/'/g,"\\'")}')">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3v-3h2v3h3v2z"/></svg>
+        Ajouter un sous-dossier
+      </button>
+    </div>`;
+  }
+  return html;
+}
+
+function openCreateSubfolder(parentId, parentName) {
+  document.getElementById('subfolder-parent-name').textContent = 'Dans : ' + parentName;
+  document.getElementById('subfolder-name-input').value = '';
+  document.getElementById('subfolder-name-input').setAttribute('data-parent', parentId);
+  openModal('modal-subfolder');
+}
+
+async function createSubfolder() {
+  const name = document.getElementById('subfolder-name-input').value.trim();
+  const parentId = parseInt(document.getElementById('subfolder-name-input').getAttribute('data-parent'));
+  if (!name) return;
+  const btn = document.getElementById('btn-create-subfolder');
+  btn.disabled = true; btn.textContent = 'Création...';
+  try {
+    await api('POST', `/folders/${parentId}/subfolders`, { name });
+    closeModal('modal-subfolder');
+    // Refresh current view
+    if (currentFolder && currentFolder.id === parentId) {
+      await openFolder(parentId, currentFolder.name);
+    }
+    toast('Sous-dossier créé ✅');
+  } catch(e) { toast(e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Créer'; }
+}
+
+async function deleteSubfolder(parentId, subId) {
+  if (!confirm('Supprimer ce sous-dossier et tous ses fichiers ?')) return;
+  try {
+    await api('DELETE', `/folders/${parentId}/subfolders/${subId}`);
+    await openFolder(parentId, currentFolder.name);
+    toast('Sous-dossier supprimé');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function openSubfolder(subId, subName, parentId, parentName) {
+  currentSubfolder = { id: subId, name: subName, parentId, parentName };
+  // Update breadcrumb
+  const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = `
+    <span class="breadcrumb-item" onclick="backToRoot()">
+      <svg style="width:13px;height:13px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+      Tous les dossiers</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-item" onclick="openFolder(${parentId},'${parentName.replace(/'/g,"\\'")}')"> ${parentName}</span>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-item active">${subName}</span>`;
+
+  document.getElementById('current-folder-name').textContent = subName;
+  document.getElementById('view-folders').style.display = 'none';
+  document.getElementById('view-files').style.display = '';
+
+  // Update upload zone for subfolder
+  if (document.getElementById('upload-zone-container')) {
+    const isAdmin = currentUser?.role === 'admin';
+    document.getElementById('upload-zone-container').style.display = isAdmin ? 'block' : 'none';
+  }
+
+  updateTopbarForSubfolder(subId, parentId);
+  await loadSubfolderFiles(subId, parentId);
+}
+
+function updateTopbarForSubfolder(subId, parentId) {
+  const isAdmin = currentUser?.role === 'admin';
+  const el = document.getElementById('topbar-actions');
+  el.innerHTML = isAdmin ? `<button class="btn-action" onclick="document.getElementById('file-input-sub').click()">
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+    Déposer un fichier</button>` : '';
+  // Add hidden file input for subfolder
+  if (!document.getElementById('file-input-sub')) {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.id = 'file-input-sub'; inp.multiple = true;
+    inp.style.display = 'none';
+    inp.onchange = (e) => { uploadSubfolderFiles(Array.from(e.target.files), subId, parentId); e.target.value = ''; };
+    document.body.appendChild(inp);
+  } else {
+    document.getElementById('file-input-sub').onchange = (e) => {
+      uploadSubfolderFiles(Array.from(e.target.files), subId, parentId); e.target.value = '';
+    };
+  }
+}
+
+async function loadSubfolderFiles(subId, parentId) {
+  const tbody = document.getElementById('files-tbody');
+  tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-title">Chargement...</div></div></td></tr>';
+  try {
+    const files = await api('GET', `/folders/${parentId}/subfolders/${subId}/files`);
+    renderSubfolderFiles(files, subId, parentId);
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-title">Erreur</div></div></td></tr>';
+  }
+}
+
+function renderSubfolderFiles(files, subId, parentId) {
+  const isAdmin = currentUser?.role === 'admin';
+  const tbody = document.getElementById('files-tbody');
+  document.getElementById('files-count-sub').textContent = `${files.length} fichier${files.length!==1?'s':''}`;
+  document.getElementById('files-count-tag').textContent = files.length;
+  currentFiles = files;
+
+  if (!files.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
+      <div class="empty-state-title">Aucun fichier</div>
+      <div class="empty-state-sub">${isAdmin ? 'Déposez des fichiers dans ce sous-dossier.' : 'Aucun fichier disponible.'}</div>
+    </div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = files.map(f => {
+    const dlAllowed = f.downloadable !== false;
+    const canPreview = ['pdf','img','video','audio'].includes(f.type);
+    const previewBtn = canPreview ? `<button class="btn-preview" data-fileid="${f.id}" data-type="${f.type}" data-subid="${subId}" data-parentid="${parentId}" onclick="openSubPreviewById(this)">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;flex-shrink:0"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+      Visualiser</button>` : '';
+    const downloadBtn = dlAllowed ? `<a class="btn-download" href="/api/folders/${parentId}/subfolders/${subId}/files/${f.id}/download">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Télécharger</a>`
+      : (!isAdmin ? `<span class="dl-locked"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Non disponible</span>` : '');
+    const toggleBtn = isAdmin ? `<button class="btn-toggle-dl ${dlAllowed?'allowed':'blocked'}" onclick="toggleSubDownload(${f.id},${subId},${parentId})" title="${dlAllowed?'Bloquer':'Autoriser'}">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px">${dlAllowed?'<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>':'<path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>'}
+      </svg>${dlAllowed?'✅ Autorisé':'🔒 Bloqué'}</button>` : '';
+    const deleteBtn = isAdmin ? `<button class="btn-delete" onclick="deleteSubFile(${f.id},${subId},${parentId})">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer</button>` : '';
+    return `<tr>
+      <td><div class="file-name-cell">
+        <div class="file-type-icon type-${f.type}">${f.type==='video'?getVideoIcon():f.type.toUpperCase()}</div>
+        <span>${f.name}</span></div></td>
+      <td><span class="file-size">${formatSize(f.size)}</span></td>
+      <td><span class="file-date">${f.addedAt}</span></td>
+      <td><div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${previewBtn}${downloadBtn}${toggleBtn}${deleteBtn}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+function openSubPreviewById(btn) {
+  const fileId = parseInt(btn.getAttribute('data-fileid'));
+  const type = btn.getAttribute('data-type');
+  const subId = btn.getAttribute('data-subid');
+  const parentId = btn.getAttribute('data-parentid');
+  const file = currentFiles.find(f => f.id === fileId);
+  const filename = file ? file.name : 'Fichier';
+  const previewUrl = `/api/folders/${parentId}/subfolders/${subId}/files/${fileId}/preview`;
+  const downloadUrl = `/api/folders/${parentId}/subfolders/${subId}/files/${fileId}/download`;
+  openPreviewWithUrls(filename, type, previewUrl, downloadUrl);
+}
+
+async function toggleSubDownload(fileId, subId, parentId) {
+  try {
+    const result = await api('PATCH', `/folders/${parentId}/subfolders/${subId}/files/${fileId}/downloadable`);
+    await loadSubfolderFiles(subId, parentId);
+    toast(result.downloadable ? 'Téléchargement autorisé ✅' : 'Téléchargement bloqué 🔒');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteSubFile(fileId, subId, parentId) {
+  if (!confirm('Supprimer ce fichier ?')) return;
+  try {
+    await api('DELETE', `/folders/${parentId}/subfolders/${subId}/files/${fileId}`);
+    await loadSubfolderFiles(subId, parentId);
+    toast('Fichier supprimé');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function uploadSubfolderFiles(files, subId, parentId) {
+  if (!files.length) return;
+  const prog = document.getElementById('upload-progress');
+  const bar = document.getElementById('progress-bar');
+  const label = document.getElementById('progress-label');
+  prog.style.display = 'block'; bar.style.width = '5%';
+  let uploaded = 0;
+  for (const file of files) {
+    label.textContent = `Envoi de "${file.name}"...`;
+    try {
+      const form = new FormData();
+      form.append('files', file);
+      await api('POST', `/folders/${parentId}/subfolders/${subId}/files`, form);
+      uploaded++;
+      bar.style.width = Math.round((uploaded/files.length)*100) + '%';
+    } catch(e) { toast(`Erreur "${file.name}": ${e.message}`, 'error'); }
+  }
+  bar.style.width = '100%';
+  await loadSubfolderFiles(subId, parentId);
+  if (uploaded > 0) toast(`${uploaded} fichier${uploaded>1?'s':''} ajouté${uploaded>1?'s':''}`);
+  setTimeout(() => { prog.style.display = 'none'; bar.style.width = '0%'; }, 600);
+}
+
+// Update openPreview to work with explicit URLs
+function openPreviewWithUrls(filename, type, previewUrl, downloadUrl) {
+  const body = document.getElementById('preview-body');
+  const title = document.getElementById('preview-title');
+  const dlBtn = document.getElementById('preview-download-btn');
+  title.textContent = filename;
+  dlBtn.href = downloadUrl;
+  dlBtn.download = filename;
+  body.innerHTML = '';
+  if (type === 'pdf') {
+    body.innerHTML = `<iframe src="${previewUrl}" title="${filename}"></iframe>`;
+  } else if (type === 'video') {
+    body.innerHTML = `<video controls autoplay style="max-width:100%;max-height:100%;border-radius:8px"><source src="${previewUrl}">Votre navigateur ne supporte pas la lecture vidéo.</video>`;
+  } else if (type === 'img') {
+    body.innerHTML = `<img src="${previewUrl}" alt="${filename}" style="max-width:100%;max-height:100%;border-radius:8px;object-fit:contain">`;
+  } else if (type === 'audio') {
+    body.innerHTML = `<audio controls autoplay style="width:80%;max-width:400px"><source src="${previewUrl}"></audio>`;
+  } else {
+    body.innerHTML = `<div class="preview-unsupported"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg><div>Ce type de fichier ne peut pas être prévisualisé</div></div>`;
+  }
+  document.getElementById('preview-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
 </script>
 
 <!-- MODAL PRÉVISUALISATION -->
