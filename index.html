@@ -426,8 +426,8 @@ input[type="file"]{display:none;}
 .preview-close { width:36px; height:36px; border-radius:8px; border:none; background:rgba(255,255,255,0.1); color:white; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .preview-close:hover { background:rgba(255,255,255,0.2); }
 .preview-close svg { width:18px; height:18px; }
-.preview-body { flex:1; display:flex; align-items:center; justify-content:center; overflow:auto; padding:16px; background:#111; }
-.preview-body iframe { width:100%; height:100%; border:none; border-radius:8px; background:white; min-height:500px; }
+.preview-body { flex:1; display:flex; align-items:stretch; justify-content:center; overflow:hidden; padding:0; background:#111; }
+.preview-body iframe { width:100%; height:100%; min-height:calc(100vh - 56px); border:none; border-radius:0; background:white; display:block; }
 .preview-body video { max-width:100%; max-height:80vh; border-radius:8px; }
 .preview-body img { max-width:100%; max-height:80vh; border-radius:8px; object-fit:contain; }
 .preview-body audio { width:80%; max-width:400px; }
