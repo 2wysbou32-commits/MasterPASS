@@ -334,7 +334,11 @@ app.delete('/api/folders/:id', requireAdmin, async (req, res) => {
 app.get('/api/folders/:id/files', requireAuth, (req, res) => {
   const folder = loadDB().folders.find(f => f.id === parseInt(req.params.id));
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
-  res.json((folder.files||[]).map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false })));
+  const requestingUser = loadDB().users.find(u => u.id === req.session.userId);
+  const isAdmin = requestingUser?.role === 'admin';
+  res.json((folder.files||[])
+    .filter(f => isAdmin || !f.pending) // Cacher les fichiers en cours d'upload aux étudiants
+    .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false })));
 });
 
 app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (req, res) => {
@@ -542,6 +546,78 @@ app.post('/api/users/change-password', requireAuth, (req, res) => {
   user.password = bcrypt.hashSync(newPassword, 10);
   saveDB(db);
   res.json({ ok: true });
+});
+
+// URL signée pour upload direct depuis le navigateur vers R2 (contourne la limite Railway)
+app.post('/api/folders/:id/presign', requireAdmin, (req, res) => {
+  const folderId = parseInt(req.params.id);
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === folderId);
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+
+  const { filename, contentType, size } = req.body;
+  if (!filename || !contentType) return res.status(400).json({ error: 'Données manquantes' });
+
+  const fileId = db.nextId++;
+  const ext = filename.split('.').pop().toLowerCase();
+  const safeBase = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const r2Key = `files/${folderId}/${fileId}-${safeBase}`;
+
+  // Generate presigned PUT URL
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const date = new Date();
+  const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const expires = 7200; // 2h pour les grosses vidéos
+  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
+
+  const qs = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expires)],
+    ['X-Amz-SignedHeaders', 'content-type;host'],
+  ].sort((a, b) => a[0].localeCompare(b[0]));
+
+  const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const canonicalRequest = [
+    'PUT',
+    '/' + R2_BUCKET_NAME + '/' + r2Key,
+    canonicalQS,
+    `content-type:${contentType}\nhost:${host}\n`,
+    'content-type;host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
+  const signature = hmac(signingKey, stringToSign, 'hex');
+  const putUrl = `https://${host}/${R2_BUCKET_NAME}/${r2Key}?${canonicalQS}&X-Amz-Signature=${signature}`;
+
+  // Pre-register the file in DB (will be confirmed after upload)
+  const type = getFileType(ext);
+  const today = new Date().toISOString().split('T')[0];
+  const record = { id: fileId, name: filename, size: size || 0, type, addedAt: today, r2Key, downloadable: true, pending: true };
+  folder.files.push(record);
+  db.nextId = fileId + 1;
+  saveDB(db);
+
+  res.json({ putUrl, fileId, r2Key });
+});
+
+// Confirmer qu'un upload direct a réussi
+app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = folder.files.find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.pending = false;
+  if (req.body.size) file.size = req.body.size;
+  saveDB(db);
+  res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
 });
 
 // ── STATS ─────────────────────────────────────────────────────────────────────
