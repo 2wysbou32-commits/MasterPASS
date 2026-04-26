@@ -167,32 +167,143 @@ select.field-input{cursor:pointer;}
 .stat-label{font-size:11px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;}
 .storage-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,151,167,0.08);border:1px solid rgba(0,151,167,0.15);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--teal);font-weight:600;margin-top:8px;}
 
-/* ── FOLDERS ── */
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+/* ── FOLDERS NEW DA ── */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
 .section-title{font-family:'Sora',sans-serif;font-size:15px;font-weight:700;color:var(--text);}
 .section-sub{font-size:12px;color:var(--text3);margin-top:2px;}
-.folders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:16px;margin-bottom:28px;}
+
+.folders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:28px;}
+
 .folder-card{
-  background:white;border-radius:16px;padding:20px 16px;
-  border:1.5px solid var(--border);cursor:pointer;
-  transition:all 0.2s;box-shadow:0 2px 8px var(--shadow2);position:relative;
+  background:white;
+  border-radius:18px;
+  padding:0;
+  border:1.5px solid var(--border);
+  cursor:pointer;
+  transition:all 0.22s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 1px 4px var(--shadow2);
+  position:relative;
+  overflow:hidden;
 }
-.folder-card:hover{border-color:var(--teal);box-shadow:0 8px 24px var(--shadow);transform:translateY(-2px);}
-.folder-icon{
-  width:48px;height:44px;
-  background:linear-gradient(135deg,rgba(0,151,167,0.12),rgba(0,188,212,0.08));
-  border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;
+.folder-card::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--teal),#00BCD4);
+  opacity:0;transition:opacity 0.22s;
 }
-.folder-icon svg{width:24px;height:24px;color:var(--teal);}
-.folder-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:5px;word-break:break-word;line-height:1.3;}
-.folder-meta{font-size:11px;color:var(--text3);}
+.folder-card:hover{
+  border-color:var(--teal);
+  box-shadow:0 8px 28px rgba(0,151,167,0.18);
+  transform:translateY(-3px);
+}
+.folder-card:hover::before{opacity:1;}
+
+.folder-card-inner{padding:20px 18px 16px;}
+
+.folder-icon-wrap{
+  width:52px;height:52px;border-radius:14px;
+  background:linear-gradient(135deg,#E0F7FA,#B2EBF2);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:14px;position:relative;
+}
+.folder-icon-wrap svg{width:26px;height:26px;color:var(--teal-dark);}
+
+.folder-name{
+  font-family:'Sora',sans-serif;font-size:13.5px;font-weight:700;
+  color:var(--text);margin-bottom:6px;
+  word-break:break-word;line-height:1.35;
+}
+.folder-meta{
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;color:var(--text3);font-weight:500;
+}
+.folder-meta svg{width:11px;height:11px;color:var(--teal-light);}
+
 .folder-actions{position:absolute;top:10px;right:10px;display:none;gap:4px;}
 .folder-card:hover .folder-actions{display:flex;}
-.icon-btn{width:28px;height:28px;border-radius:8px;border:none;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text3);transition:all 0.15s;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
+.icon-btn{width:28px;height:28px;border-radius:8px;border:none;background:rgba(255,255,255,0.9);backdrop-filter:blur(4px);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text3);transition:all 0.15s;box-shadow:0 1px 4px rgba(0,0,0,0.12);}
 .icon-btn:hover{color:var(--danger);background:var(--danger-bg);}
 .icon-btn svg{width:13px;height:13px;}
 
-/* ── FILES TABLE ── */
+/* ── FILES NEW DA ── */
+.files-list-wrap{
+  background:white;
+  border-radius:18px;
+  border:1.5px solid var(--border);
+  overflow:hidden;
+  box-shadow:0 2px 12px var(--shadow2);
+  margin-bottom:24px;
+}
+
+.files-list-header{
+  padding:14px 20px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,#FAFFFE,#F0FAFA);
+}
+.files-list-header-title{
+  font-family:'Sora',sans-serif;font-size:13.5px;font-weight:700;color:var(--text);flex:1;
+}
+.files-count-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(0,151,167,0.1);border:1px solid rgba(0,151,167,0.18);
+  border-radius:20px;padding:3px 10px;font-size:11px;color:var(--teal-dark);font-weight:600;
+}
+
+.file-row{
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  align-items:center;
+  padding:12px 20px;
+  border-bottom:1px solid rgba(178,223,219,0.35);
+  gap:16px;
+  transition:background 0.15s;
+}
+.file-row:last-child{border-bottom:none;}
+.file-row:hover{background:rgba(0,151,167,0.025);}
+
+.file-left{display:flex;align-items:center;gap:14px;min-width:0;}
+
+.file-type-badge{
+  width:42px;height:42px;border-radius:12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:8px;font-weight:800;letter-spacing:0.4px;gap:3px;
+  position:relative;overflow:hidden;
+}
+.file-type-badge::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.25),transparent);
+  border-radius:inherit;
+}
+.file-type-badge svg{width:18px;height:18px;position:relative;z-index:1;}
+.file-type-badge span{position:relative;z-index:1;}
+
+.badge-pdf  {background:linear-gradient(135deg,#FFCDD2,#EF9A9A);color:#B71C1C;}
+.badge-doc  {background:linear-gradient(135deg,#BBDEFB,#90CAF9);color:#0D47A1;}
+.badge-xls  {background:linear-gradient(135deg,#C8E6C9,#A5D6A7);color:#1B5E20;}
+.badge-ppt  {background:linear-gradient(135deg,#FFE0B2,#FFCC80);color:#BF360C;}
+.badge-img  {background:linear-gradient(135deg,#E1BEE7,#CE93D8);color:#4A148C;}
+.badge-video{background:linear-gradient(135deg,#B2EBF2,#80DEEA);color:#006064;}
+.badge-audio{background:linear-gradient(135deg,#FFF9C4,#FFF176);color:#F57F17;}
+.badge-zip  {background:linear-gradient(135deg,#CFD8DC,#B0BEC5);color:#263238;}
+.badge-other{background:linear-gradient(135deg,#ECEFF1,#CFD8DC);color:#455A64;}
+
+.file-info{min-width:0;flex:1;}
+.file-name{
+  font-size:13.5px;font-weight:600;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  margin-bottom:3px;
+}
+.file-meta-row{display:flex;align-items:center;gap:8px;}
+.file-meta-pill{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:10.5px;color:var(--text3);font-weight:500;
+}
+.file-meta-pill svg{width:10px;height:10px;}
+
+.file-actions-cell{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+
+/* Keep existing button styles compatible */
 .table-container{background:white;border-radius:16px;border:1px solid var(--border);overflow:hidden;box-shadow:0 2px 8px var(--shadow2);margin-bottom:24px;}
 .table-header{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
 .table-header-title{font-family:'Sora',sans-serif;font-size:14px;font-weight:700;color:var(--text);flex:1;}
@@ -612,15 +723,14 @@ input[type="file"]{display:none;}
           <div class="section-header">
             <div><div class="section-title" id="current-folder-name">Dossier</div><div class="section-sub" id="files-count-sub">—</div></div>
           </div>
-          <div class="table-container">
-            <div class="table-header">
-              <span class="table-header-title">Fichiers</span>
-              <span class="tag tag-count" id="files-count-tag">0</span>
+          <div class="files-list-wrap">
+            <div class="files-list-header">
+              <span class="files-list-header-title">Fichiers</span>
+              <span class="files-count-badge" id="files-count-tag">0</span>
             </div>
-            <table class="files-table">
-              <thead><tr><th>Nom du fichier</th><th>Taille</th><th>Date d'ajout</th><th>Actions</th></tr></thead>
-              <tbody id="files-tbody"></tbody>
-            </table>
+            <div id="files-list-body"></div>
+            <!-- Legacy tbody kept hidden for JS compat -->
+            <table style="display:none"><tbody id="files-tbody"></tbody></table>
           </div>
           <div id="upload-zone-container" style="display:none">
             <div class="upload-progress" id="upload-progress">
@@ -896,9 +1006,16 @@ function renderFolders(folders){
   grid.innerHTML=folders.map(f=>`
     <div class="folder-card" onclick="openFolder(${f.id},'${f.name.replace(/'/g,"\\'")}')">
       ${isAdmin?`<div class="folder-actions"><button class="icon-btn" onclick="event.stopPropagation();deleteFolder(${f.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></div>`:''}
-      <div class="folder-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>
-      <div class="folder-name">${f.name}</div>
-      <div class="folder-meta">${f.fileCount} fichier${f.fileCount!==1?'s':''} · ${formatSize(f.totalSize)}</div>
+      <div class="folder-card-inner">
+        <div class="folder-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+        </div>
+        <div class="folder-name">${f.name}</div>
+        <div class="folder-meta">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
+          ${f.fileCount} fichier${f.fileCount!==1?'s':''}${f.totalSize>0?' · '+formatSize(f.totalSize):''}
+        </div>
+      </div>
     </div>`).join('');
 }
 
@@ -938,75 +1055,102 @@ async function deleteFolder(id){
 }
 
 async function loadFiles(){
-  const tbody=$('files-tbody');
-  tbody.innerHTML='<tr><td colspan="4"><div class="empty-state"><div class="empty-state-title">Chargement…</div></div></td></tr>';
+  const container=document.getElementById('files-list-body');
+  if(container) container.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-state-title">Chargement…</div></div>';
   try{const files=await api('GET',`/folders/${currentFolder.id}/files`);renderFiles(files);}
-  catch(e){tbody.innerHTML='<tr><td colspan="4"><div class="empty-state"><div class="empty-state-title">Erreur</div></div></td></tr>';}
+  catch(e){if(container) container.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-state-title">Erreur de chargement</div></div>';}
 }
 
 function getVideoIcon(){return '<svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M8 5v14l11-7z"/></svg>';}
 
+function getFileTypeBadge(type){
+  const icons={
+    pdf:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg><span>PDF</span>`,
+    doc:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg><span>DOC</span>`,
+    xls:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg><span>XLS</span>`,
+    ppt:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 6h-2v2h2v2h-2v2H10v-2H8v-2h2v-2H8V7h2V5h2v2h2v2z"/></svg><span>PPT</span>`,
+    img:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg><span>IMG</span>`,
+    video:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg><span>VID</span>`,
+    audio:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg><span>SON</span>`,
+    zip:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.07-.33.18-.65.18-1 0-2.21-1.79-4-4-4s-4 1.79-4 4c0 .35.11.67.18 1H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg><span>ZIP</span>`,
+    other:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg><span>FIC</span>`,
+  };
+  return `<div class="file-type-badge badge-${type}">${icons[type]||icons.other}</div>`;
+}
+
+function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteFn){
+  const dlAllowed = f.downloadable !== false;
+  const canPreview = ['pdf','img','video','audio'].includes(f.type);
+  const isVideo = f.type === 'video';
+  const canDownload = isAdmin ? true : (!isVideo && dlAllowed);
+
+  const previewBtn = canPreview
+    ? `<button class="btn-preview" onclick="${previewFn}">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;flex-shrink:0"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+        Visualiser</button>` : '';
+
+  const downloadBtn = canDownload
+    ? `<a class="btn-download" href="${downloadBasePath}/download">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Télécharger</a>`
+    : (!isAdmin
+        ? isVideo
+          ? `<span class="dl-locked"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>Visionnage uniquement</span>`
+          : `<span class="dl-locked"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Non disponible</span>`
+        : '');
+
+  const toggleBtn = isAdmin
+    ? `<button class="btn-toggle-dl ${dlAllowed?'allowed':'blocked'}" onclick="${toggleFn}" title="${dlAllowed?'Bloquer':'Autoriser'}">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px">${dlAllowed?'<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>':'<path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>'}
+        </svg>${dlAllowed?'✅ Autorisé':'🔒 Bloqué'}</button>` : '';
+
+  const deleteBtn = isAdmin
+    ? `<button class="btn-delete" onclick="${deleteFn}">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer</button>` : '';
+
+  return `<div class="file-row">
+    <div class="file-left">
+      ${getFileTypeBadge(f.type)}
+      <div class="file-info">
+        <div class="file-name" title="${f.name}">${f.name}</div>
+        <div class="file-meta-row">
+          <span class="file-meta-pill"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.07-.33.18-.65.18-1a2 2 0 0 0-4 0c0 .35.11.67.18 1H4v2h.18l2 9.91C6.37 18.79 7.2 19.5 8 19.5c.53 0 1-.39 1-.89V19h6v.61c0 .5.47.89 1 .89.8 0 1.63-.71 1.82-1.59L19.82 8H20V6zM12 2a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1z"/></svg>${formatSize(f.size)}</span>
+          <span class="file-meta-pill" style="color:var(--teal-light)">·</span>
+          <span class="file-meta-pill"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>${f.addedAt}</span>
+        </div>
+      </div>
+    </div>
+    <div class="file-actions-cell">${previewBtn}${downloadBtn}${toggleBtn}${deleteBtn}</div>
+  </div>`;
+}
+
 function renderFiles(files){
-  currentFiles = files; // Store for preview lookup
-  const isAdmin=currentUser?.role==='admin',tbody=$('files-tbody');
+  currentFiles = files;
+  const isAdmin=currentUser?.role==='admin';
+  const container = document.getElementById('files-list-body');
   $('files-count-sub').textContent=`${files.length} fichier${files.length!==1?'s':''}`;
   $('files-count-tag').textContent=files.length;
   if(!files.length){
-    tbody.innerHTML=`<tr><td colspan="4"><div class="empty-state">
+    if(container) container.innerHTML=`<div class="empty-state" style="padding:40px">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
       <div class="empty-state-title">Aucun fichier</div>
       <div class="empty-state-sub">${isAdmin?'Déposez des fichiers dans ce dossier.':'Aucun fichier disponible pour le moment.'}</div>
-    </div></td></tr>`;return;
+    </div>`;
+    // Also clear legacy tbody if present
+    const tbody=$('files-tbody');
+    if(tbody) tbody.innerHTML='';
+    return;
   }
-  tbody.innerHTML=files.map(f=>{
-    const dlAllowed = f.downloadable !== false;
-    // Download button: always shown for admin, shown/hidden for student based on permission
-    // Bouton prévisualiser (toujours visible si le type le permet)
-    const previewTypes = ['pdf','img','video','audio'];
-    const canPreview = previewTypes.includes(f.type);
-    const previewBtn = canPreview
-      ? `<button class="btn-preview" data-fileid="${f.id}" data-type="${f.type}" onclick="openPreviewById(this)">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;flex-shrink:0"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-          Visualiser</button>`
-      : '';
-    // Vidéos : jamais téléchargeables par les étudiants
-    const isVideo = f.type === 'video';
-    const canDownload = isAdmin ? true : (!isVideo && dlAllowed);
-    const downloadBtn = canDownload
-      ? `<a class="btn-download" href="/api/folders/${currentFolder.id}/files/${f.id}/download">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-          Télécharger</a>`
-      : (isAdmin ? ''
-          : isVideo
-            ? `<span class="dl-locked">
-                <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                Visionnage uniquement</span>`
-            : `<span class="dl-locked">
-                <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                Non disponible</span>`);
-    // Toggle button only for admin
-    const toggleBtn = isAdmin
-      ? `<button class="btn-toggle-dl ${dlAllowed?'allowed':'blocked'}" onclick="toggleDownload(${f.id})" title="${dlAllowed?'Cliquer pour bloquer le téléchargement':'Cliquer pour autoriser le téléchargement'}">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px">${dlAllowed
-            ?'<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>'
-            :'<path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>'}
-          </svg>
-          ${dlAllowed?'✅ Téléch. autorisé':'🔒 Téléch. bloqué'}</button>`
-      : '';
-    const deleteBtn = isAdmin
-      ? `<button class="btn-delete" onclick="deleteFile(${f.id})">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer</button>`
-      : '';
-    return `<tr>
-      <td><div class="file-name-cell">
-        <div class="file-type-icon type-${f.type}">${f.type==='video'?getVideoIcon():f.type.toUpperCase()}</div>
-        <span>${f.name}</span>
-      </div></td>
-      <td><span class="file-size">${formatSize(f.size)}</span></td>
-      <td><span class="file-date">${f.addedAt}</span></td>
-      <td><div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${previewBtn}${downloadBtn}${toggleBtn}${deleteBtn}</div></td>
-    </tr>`;
-  }).join('');
+  const html = files.map(f=>buildFileRow(
+    f, isAdmin,
+    `openPreviewById(this)" data-fileid="${f.id}" data-type="${f.type}`,
+    `/api/folders/${currentFolder.id}/files/${f.id}`,
+    `toggleDownload(${f.id})`,
+    `deleteFile(${f.id})`
+  )).join('');
+  if(container) container.innerHTML = html;
+  // Keep legacy tbody empty (hidden)
+  const tbody=$('files-tbody');
+  if(tbody) tbody.innerHTML='';
 }
 
 function handleFileSelect(e){
@@ -1306,11 +1450,16 @@ function renderSubfolders(subs, parentId, parentName) {
           <button class="icon-btn" onclick="event.stopPropagation();deleteSubfolder(${parentId},${s.id})" title="Supprimer">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
           </button></div>` : ''}
-        <div class="folder-icon" style="background:linear-gradient(135deg,rgba(126,200,227,0.15),rgba(0,151,167,0.08))">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="color:#0288D1"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+        <div class="folder-card-inner">
+          <div class="folder-icon-wrap" style="background:linear-gradient(135deg,#DBEEFF,#B3D9FF)">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="color:#0277BD"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+          </div>
+          <div class="folder-name">${s.name}</div>
+          <div class="folder-meta">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
+            ${s.fileCount} fichier${s.fileCount!==1?'s':''}
+          </div>
         </div>
-        <div class="folder-name">${s.name}</div>
-        <div class="folder-meta">${s.fileCount} fichier${s.fileCount!==1?'s':''}</div>
       </div>`;
     });
     html += '</div>';
@@ -1407,65 +1556,44 @@ function updateTopbarForSubfolder(subId, parentId) {
 }
 
 async function loadSubfolderFiles(subId, parentId) {
-  const tbody = document.getElementById('files-tbody');
-  tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-title">Chargement...</div></div></td></tr>';
+  const container = document.getElementById('files-list-body');
+  if(container) container.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-state-title">Chargement...</div></div>';
   try {
     const files = await api('GET', `/folders/${parentId}/subfolders/${subId}/files`);
     renderSubfolderFiles(files, subId, parentId);
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-state-title">Erreur</div></div></td></tr>';
+    if(container) container.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-state-title">Erreur</div></div>';
   }
 }
 
 function renderSubfolderFiles(files, subId, parentId) {
   const isAdmin = currentUser?.role === 'admin';
-  const tbody = document.getElementById('files-tbody');
+  const container = document.getElementById('files-list-body');
   document.getElementById('files-count-sub').textContent = `${files.length} fichier${files.length!==1?'s':''}`;
   document.getElementById('files-count-tag').textContent = files.length;
   currentFiles = files;
 
   if (!files.length) {
-    tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">
+    if(container) container.innerHTML = `<div class="empty-state" style="padding:40px">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
       <div class="empty-state-title">Aucun fichier</div>
       <div class="empty-state-sub">${isAdmin ? 'Déposez des fichiers dans ce sous-dossier.' : 'Aucun fichier disponible.'}</div>
-    </div></td></tr>`;
+    </div>`;
+    const tbody = document.getElementById('files-tbody');
+    if(tbody) tbody.innerHTML='';
     return;
   }
 
-  tbody.innerHTML = files.map(f => {
-    const dlAllowed = f.downloadable !== false;
-    const canPreview = ['pdf','img','video','audio'].includes(f.type);
-    const previewBtn = canPreview ? `<button class="btn-preview" data-fileid="${f.id}" data-type="${f.type}" data-subid="${subId}" data-parentid="${parentId}" onclick="openSubPreviewById(this)">
-      <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;flex-shrink:0"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-      Visualiser</button>` : '';
-    // Vidéos : jamais téléchargeables par les étudiants (même règle que les dossiers normaux)
-    const isVideo = f.type === 'video';
-    const canDownload = isAdmin ? true : (!isVideo && dlAllowed);
-    const downloadBtn = canDownload
-      ? `<a class="btn-download" href="/api/folders/${parentId}/subfolders/${subId}/files/${f.id}/download">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Télécharger</a>`
-      : (!isAdmin
-          ? isVideo
-            ? `<span class="dl-locked">
-                <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                Visionnage uniquement</span>`
-            : `<span class="dl-locked"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Non disponible</span>`
-          : '');
-    const toggleBtn = isAdmin ? `<button class="btn-toggle-dl ${dlAllowed?'allowed':'blocked'}" onclick="toggleSubDownload(${f.id},${subId},${parentId})" title="${dlAllowed?'Bloquer':'Autoriser'}">
-      <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px">${dlAllowed?'<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>':'<path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>'}
-      </svg>${dlAllowed?'✅ Autorisé':'🔒 Bloqué'}</button>` : '';
-    const deleteBtn = isAdmin ? `<button class="btn-delete" onclick="deleteSubFile(${f.id},${subId},${parentId})">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer</button>` : '';
-    return `<tr>
-      <td><div class="file-name-cell">
-        <div class="file-type-icon type-${f.type}">${f.type==='video'?getVideoIcon():f.type.toUpperCase()}</div>
-        <span>${f.name}</span></div></td>
-      <td><span class="file-size">${formatSize(f.size)}</span></td>
-      <td><span class="file-date">${f.addedAt}</span></td>
-      <td><div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${previewBtn}${downloadBtn}${toggleBtn}${deleteBtn}</div></td>
-    </tr>`;
-  }).join('');
+  const html = files.map(f=>buildFileRow(
+    f, isAdmin,
+    `openSubPreviewById(this)" data-fileid="${f.id}" data-type="${f.type}" data-subid="${subId}" data-parentid="${parentId}`,
+    `/api/folders/${parentId}/subfolders/${subId}/files/${f.id}`,
+    `toggleSubDownload(${f.id},${subId},${parentId})`,
+    `deleteSubFile(${f.id},${subId},${parentId})`
+  )).join('');
+  if(container) container.innerHTML = html;
+  const tbody = document.getElementById('files-tbody');
+  if(tbody) tbody.innerHTML='';
 }
 
 function openSubPreviewById(btn) {
@@ -1507,11 +1635,39 @@ async function uploadSubfolderFiles(files, subId, parentId) {
   for (const file of files) {
     label.textContent = `Envoi de "${file.name}"...`;
     try {
-      const form = new FormData();
-      form.append('files', file);
-      await api('POST', `/folders/${parentId}/subfolders/${subId}/files`, form);
+      if (file.size > 40 * 1024 * 1024) {
+        // Gros fichier : upload direct navigateur -> R2 (via presign sous-dossier)
+        const presign = await api('POST', `/folders/${parentId}/subfolders/${subId}/presign`, {
+          filename: file.name, contentType: file.type || 'application/octet-stream', size: file.size
+        });
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('PUT', presign.putUrl);
+          xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 85) + 5;
+              bar.style.width = pct + '%';
+              label.textContent = `"${file.name}" — ${formatSize(e.loaded)} / ${formatSize(e.total)}`;
+            }
+          };
+          xhr.onload = async () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try { await api('POST', `/folders/${parentId}/subfolders/${subId}/files/${presign.fileId}/confirm`, { size: file.size }); } catch(e) { console.log('confirm err:', e.message); }
+              resolve();
+            } else { reject(new Error('Erreur R2: ' + xhr.status)); }
+          };
+          xhr.onerror = () => reject(new Error('Erreur réseau'));
+          xhr.send(file);
+        });
+      } else {
+        // Petit fichier : upload via serveur
+        const form = new FormData();
+        form.append('files', file);
+        await api('POST', `/folders/${parentId}/subfolders/${subId}/files`, form);
+      }
       uploaded++;
-      bar.style.width = Math.round((uploaded/files.length)*100) + '%';
+      bar.style.width = Math.round((uploaded / files.length) * 100) + '%';
     } catch(e) { toast(`Erreur "${file.name}": ${e.message}`, 'error'); }
   }
   bar.style.width = '100%';
@@ -1540,9 +1696,21 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl) {
     body.style.display = 'flex';
     body.style.alignItems = 'center';
     body.style.justifyContent = 'center';
+    body.style.background = '#000';
     // controlsList="nodownload" empêche le téléchargement depuis le lecteur
     // oncontextmenu="return false" bloque le clic droit
-    body.innerHTML = `<video controls autoplay controlsList="nodownload" oncontextmenu="return false" style="max-width:100%;max-height:calc(100vh - 56px)"><source src="${previewUrl}">Votre navigateur ne supporte pas la lecture vidéo.</video>`;
+    const vid = document.createElement('video');
+    vid.controls = true;
+    vid.autoplay = true;
+    vid.setAttribute('controlsList', 'nodownload');
+    vid.setAttribute('oncontextmenu', 'return false');
+    vid.style.cssText = 'max-width:100%;max-height:calc(100vh - 56px);display:block;background:#000;';
+    const src = document.createElement('source');
+    src.src = previewUrl;
+    vid.appendChild(src);
+    const fallback = document.createTextNode('Votre navigateur ne supporte pas la lecture vidéo.');
+    vid.appendChild(fallback);
+    body.appendChild(vid);
   } else if (type === 'img') {
     body.style.display = 'flex';
     body.style.alignItems = 'center';
