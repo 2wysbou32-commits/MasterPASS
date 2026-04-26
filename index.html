@@ -1237,14 +1237,19 @@ function openPreviewById(btn) {
   const type = btn.getAttribute('data-type');
   const file = currentFiles.find(f => f.id === fileId);
   const filename = file ? file.name : 'Fichier';
-  openPreview(fileId, filename, type);
+  if (!currentSubfolder) {
+    openPreview(fileId, filename, type);
+  } else {
+    openSubPreviewById(btn);
+  }
 }
 
 function openPreview(fileId, filename, type) {
   if (!currentFolder) return;
   const previewUrl = `/api/folders/${currentFolder.id}/files/${fileId}/preview`;
   const downloadUrl = `/api/folders/${currentFolder.id}/files/${fileId}/download`;
-  openPreviewWithUrls(filename, type, previewUrl, downloadUrl);
+  const streamUrl = `/api/folders/${currentFolder.id}/files/${fileId}/stream`;
+  openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl);
 }
 
 
@@ -1677,7 +1682,8 @@ async function uploadSubfolderFiles(files, subId, parentId) {
 }
 
 // Update openPreview to work with explicit URLs
-function openPreviewWithUrls(filename, type, previewUrl, downloadUrl) {
+function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl) {
+  streamUrl = streamUrl || previewUrl.replace('/preview', '/stream');
   const body = document.getElementById('preview-body');
   const title = document.getElementById('preview-title');
   const dlBtn = document.getElementById('preview-download-btn');
@@ -1697,20 +1703,26 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl) {
     body.style.alignItems = 'center';
     body.style.justifyContent = 'center';
     body.style.background = '#000';
-    // controlsList="nodownload" empêche le téléchargement depuis le lecteur
-    // oncontextmenu="return false" bloque le clic droit
-    const vid = document.createElement('video');
-    vid.controls = true;
-    vid.autoplay = true;
-    vid.setAttribute('controlsList', 'nodownload');
-    vid.setAttribute('oncontextmenu', 'return false');
-    vid.style.cssText = 'max-width:100%;max-height:calc(100vh - 56px);display:block;background:#000;';
-    const src = document.createElement('source');
-    src.src = previewUrl;
-    vid.appendChild(src);
-    const fallback = document.createTextNode('Votre navigateur ne supporte pas la lecture vidéo.');
-    vid.appendChild(fallback);
-    body.appendChild(vid);
+    body.innerHTML = '<div style="color:rgba(255,255,255,0.6);font-size:14px">Chargement de la vidéo...</div>';
+    // Récupérer une URL signée R2 pour un streaming natif sans proxy
+    fetch(streamUrl)
+      .then(r => r.ok ? r.json() : Promise.reject('Erreur'))
+      .then(data => {
+        if (!data.url) throw new Error('URL manquante');
+        body.innerHTML = '';
+        const vid = document.createElement('video');
+        vid.controls = true;
+        vid.autoplay = true;
+        vid.setAttribute('controlsList', 'nodownload nofullscreen');
+        vid.setAttribute('oncontextmenu', 'return false');
+        vid.style.cssText = 'max-width:100%;max-height:calc(100vh - 56px);display:block;';
+        vid.src = data.url;
+        vid.onerror = () => { body.innerHTML = '<div style="color:#ef9a9a;padding:20px">Impossible de lire la vidéo. Vérifiez votre connexion.</div>'; };
+        body.appendChild(vid);
+      })
+      .catch(() => {
+        body.innerHTML = '<div style="color:#ef9a9a;padding:20px">Erreur de chargement vidéo.</div>';
+      });
   } else if (type === 'img') {
     body.style.display = 'flex';
     body.style.alignItems = 'center';
