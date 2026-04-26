@@ -68,8 +68,9 @@ function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
 function getSignedVideoUrl(r2Key) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
-  const date = new Date();
-  const amzDate = date.toISOString().replace(/[:-]|\.d{3}/g, '').replace(/\.\d{3}/, '').replace(/[:-]/g, '').slice(0, 15) + 'Z';
+  const now = new Date();
+  // Format: YYYYMMDDTHHMMSSZ
+  const amzDate = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
   const expires = 7200;
   const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
@@ -84,6 +85,7 @@ function getSignedVideoUrl(r2Key) {
 
   const qs = params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
   const encodedKey = r2Key.split('/').map(encodeURIComponent).join('/');
+
   const canonicalReq = [
     'GET',
     '/' + R2_BUCKET_NAME + '/' + encodedKey,
