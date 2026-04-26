@@ -426,8 +426,8 @@ input[type="file"]{display:none;}
 .preview-close { width:36px; height:36px; border-radius:8px; border:none; background:rgba(255,255,255,0.1); color:white; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .preview-close:hover { background:rgba(255,255,255,0.2); }
 .preview-close svg { width:18px; height:18px; }
-.preview-body { flex:1; display:flex; align-items:stretch; justify-content:center; overflow:hidden; padding:0; background:#111; }
-.preview-body iframe { width:100%; height:100%; min-height:calc(100vh - 56px); border:none; border-radius:0; background:white; display:block; }
+.preview-body { flex:1; overflow:hidden; padding:0; background:#111; position:relative; }
+.preview-body iframe { width:100%; height:100%; border:none; background:white; display:block; }
 .preview-body video { max-width:100%; max-height:80vh; border-radius:8px; }
 .preview-body img { max-width:100%; max-height:80vh; border-radius:8px; object-fit:contain; }
 .preview-body audio { width:80%; max-width:400px; }
@@ -737,6 +737,21 @@ input[type="file"]{display:none;}
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-subfolder">
+  <div class="modal">
+    <div class="modal-title">Nouveau sous-dossier</div>
+    <div class="modal-sub" id="subfolder-parent-name">Dans : —</div>
+    <div class="field-group">
+      <label class="field-label">Nom du sous-dossier</label>
+      <input type="text" class="field-input" id="subfolder-name-input" placeholder="Ex : Cours 1, TP, Correction…">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-subfolder')">Annuler</button>
+      <button class="btn-confirm" id="btn-create-subfolder" onclick="createSubfolder()">Créer</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">
   <div class="toast-icon success" id="toast-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
   <div class="toast-text" id="toast-text">Action réussie</div>
@@ -1024,7 +1039,7 @@ async function uploadFiles(files){
           };
           xhr.onload=async()=>{
             if(xhr.status>=200&&xhr.status<300){
-              await api('POST',`/folders/${currentFolder.id}/files/${presign.fileId}/confirm`,{size:file.size});
+              try{ await api('POST',`/folders/${currentFolder.id}/files/${presign.fileId}/confirm`,{size:file.size}); }catch(e){ console.log('confirm err:',e.message); }
               resolve();
             }else{reject(new Error('Erreur R2: '+xhr.status));}
           };
@@ -1215,8 +1230,12 @@ async function doForgotPassword() {
   if (!login) { errEl.textContent = 'Entre ton identifiant.'; errEl.style.display = 'block'; return; }
   btn.disabled = true; btn.textContent = 'Envoi...';
   try {
-    await api('POST', '/forgot-password', { login });
-    okEl.textContent = 'Si un email est associé à ce compte, tu vas recevoir un lien.';
+    const data = await api('POST', '/forgot-password', { login });
+    if (data.resetLink) {
+      okEl.innerHTML = '<strong>Lien généré !</strong><br><a href="' + data.resetLink + '" style="color:var(--teal-dark);word-break:break-all;font-size:12px">' + data.resetLink + '</a><br><small style="color:#888;font-size:11px">Partage ce lien directement si tu ne reçois pas d\'email.</small>';
+    } else {
+      okEl.textContent = 'Un lien de réinitialisation a été envoyé à ton adresse email.';
+    }
     okEl.style.display = 'block';
   } catch(e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
   finally { btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
@@ -1484,15 +1503,32 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl) {
   dlBtn.download = filename;
   body.innerHTML = '';
   if (type === 'pdf') {
-    body.innerHTML = `<iframe src="${previewUrl}" title="${filename}"></iframe>`;
+    // Use embed for better PDF with full scroll support
+    body.style.display = 'block';
+    body.innerHTML = `<embed src="${previewUrl}" type="application/pdf" style="width:100%;height:100%;position:absolute;top:0;left:0;border:none;">`;
   } else if (type === 'video') {
-    body.innerHTML = `<video controls autoplay style="max-width:100%;max-height:100%;border-radius:8px"><source src="${previewUrl}">Votre navigateur ne supporte pas la lecture vidéo.</video>`;
+    body.style.display = 'flex';
+    body.style.alignItems = 'center';
+    body.style.justifyContent = 'center';
+    body.innerHTML = `<video controls autoplay style="max-width:100%;max-height:calc(100vh - 56px)"><source src="${previewUrl}">Votre navigateur ne supporte pas la lecture vidéo.</video>`;
   } else if (type === 'img') {
-    body.innerHTML = `<img src="${previewUrl}" alt="${filename}" style="max-width:100%;max-height:100%;border-radius:8px;object-fit:contain">`;
+    body.style.display = 'flex';
+    body.style.alignItems = 'center';
+    body.style.justifyContent = 'center';
+    body.innerHTML = `<img src="${previewUrl}" alt="${filename}" style="max-width:100%;max-height:calc(100vh - 56px);object-fit:contain">`;
   } else if (type === 'audio') {
+    body.style.display = 'flex';
+    body.style.alignItems = 'center';
+    body.style.justifyContent = 'center';
     body.innerHTML = `<audio controls autoplay style="width:80%;max-width:400px"><source src="${previewUrl}"></audio>`;
   } else {
-    body.innerHTML = `<div class="preview-unsupported"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg><div>Ce type de fichier ne peut pas être prévisualisé</div></div>`;
+    body.style.display = 'flex';
+    body.style.alignItems = 'center';
+    body.style.justifyContent = 'center';
+    body.innerHTML = `<div style="text-align:center;color:rgba(255,255,255,0.5);padding:40px">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:48px;height:48px;margin-bottom:12px;opacity:0.4;display:block;margin-left:auto;margin-right:auto"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
+      <div>Ce type de fichier ne peut pas être prévisualisé</div>
+    </div>`;
   }
   document.getElementById('preview-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
