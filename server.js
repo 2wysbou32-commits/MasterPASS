@@ -64,9 +64,10 @@ function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
 }
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
-const DATA_FILE   = path.join(__dirname, 'data', 'db.json');
-const UPLOADS_DIR = path.join(__dirname, 'data', 'uploads');
-if (!fs.existsSync(path.join(__dirname, 'data'))) fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
+const DATA_DIR    = process.env.DATA_DIR || DATA_DIR;
+const DATA_FILE   = path.join(DATA_DIR, 'db.json');
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // ── DB ────────────────────────────────────────────────────────────────────────
