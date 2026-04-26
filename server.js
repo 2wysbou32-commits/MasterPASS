@@ -63,8 +63,46 @@ function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
   };
 }
 
+
+// ── URL signée pour streaming vidéo (navigateur -> R2 direct) ────────────────
+function getSignedVideoUrl(r2Key) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const date = new Date();
+  const amzDate = date.toISOString().replace(/[:-]|\.d{3}/g, '').replace(/\.\d{3}/, '').replace(/[:-]/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const expires = 7200;
+  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
+
+  const params = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expires)],
+    ['X-Amz-SignedHeaders', 'host'],
+  ].sort((a, b) => a[0].localeCompare(b[0]));
+
+  const qs = params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const encodedKey = r2Key.split('/').map(encodeURIComponent).join('/');
+  const canonicalReq = [
+    'GET',
+    '/' + R2_BUCKET_NAME + '/' + encodedKey,
+    qs,
+    'host:' + host + '\n',
+    'host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const toSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalReq)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
+  const sig = hmac(signingKey, toSign, 'hex');
+
+  return `https://${host}/${R2_BUCKET_NAME}/${encodedKey}?${qs}&X-Amz-Signature=${sig}`;
+}
+
 // ── Paths ─────────────────────────────────────────────────────────────────────
-const DATA_DIR    = process.env.DATA_DIR || DATA_DIR;
+const DATA_DIR    = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE   = path.join(DATA_DIR, 'db.json');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -401,7 +439,16 @@ app.get('/api/folders/:parentId/subfolders/:subId/files', requireAuth, (req, res
   if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
   const requestingUser = db.users.find(u => u.id === req.session.userId);
   const isAdmin = requestingUser?.role === 'admin';
-  res.json((sub.files || []).filter(f => isAdmin || !f.pending)
+  const now = Date.now();
+  res.json((sub.files || [])
+    .filter(f => {
+      if (f.pending) {
+        // Auto-confirmer après 2 minutes
+        const addedTime = new Date(f.addedAt).getTime();
+        if (now - addedTime > 2 * 60 * 1000) { f.pending = false; saveDB(db); }
+      }
+      return isAdmin || !f.pending;
+    })
     .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false })));
 });
 
@@ -475,6 +522,28 @@ app.delete('/api/folders/:parentId/subfolders/:subId/files/:fileId', requireAdmi
   sub.files = sub.files.filter(f => f.id !== parseInt(req.params.fileId));
   saveDB(db);
   res.json({ ok: true });
+});
+
+
+// ── STREAM VIDÉO (URL signée directe R2, gère le Range natif du navigateur) ──
+app.get('/api/folders/:folderId/files/:fileId/stream', requireAuth, (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file || file.type !== 'video') return res.status(404).json({ error: 'Fichier introuvable' });
+  if (!r2Enabled || !file.r2Key) return res.status(400).json({ error: 'R2 non disponible' });
+  res.json({ url: getSignedVideoUrl(file.r2Key) });
+});
+
+app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/stream', requireAuth, (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (parent?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file || file.type !== 'video') return res.status(404).json({ error: 'Fichier introuvable' });
+  if (!r2Enabled || !file.r2Key) return res.status(400).json({ error: 'R2 non disponible' });
+  res.json({ url: getSignedVideoUrl(file.r2Key) });
 });
 
 // Toggle downloadable sous-dossier
