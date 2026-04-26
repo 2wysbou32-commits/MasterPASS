@@ -209,37 +209,40 @@ async function deleteFromR2(key) {
   } catch(e) { console.error('R2 delete error:', e.message); }
 }
 // Proxy fichier depuis R2 directement (pas d'URL signée — évite les problèmes de signature)
-async function proxyFileFromR2(key, res, inline, originalRes) {
+async function proxyFileFromR2(key, res, inline, originalReq) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const date = new Date();
   const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
   const bodyHash = hashSHA256('');
+  // Encoder chaque segment de la clé pour la signature et l'URL
+  const encodedKey = key.split('/').map(s => encodeURIComponent(s)).join('/');
+  const canonicalPath = '/' + R2_BUCKET_NAME + '/' + encodedKey;
   const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-date:${amzDate}\n`;
   const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
-  const canonicalRequest = ['GET', '/' + R2_BUCKET_NAME + '/' + key, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
+  const canonicalRequest = ['GET', canonicalPath, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
   const scope = `${dateStamp}/${region}/s3/aws4_request`;
   const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
   const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
   const signature = hmac(signingKey, stringToSign, 'hex');
 
   return new Promise((resolve, reject) => {
-    // Forward Range header for video streaming support
+    // Transmettre le header Range pour le streaming vidéo (lecture partielle)
     const reqHeaders = {
       'host': host,
       'x-amz-content-sha256': bodyHash,
       'x-amz-date': amzDate,
       'Authorization': `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
     };
-    if (originalRes && originalRes.headers && originalRes.headers.range) {
-      reqHeaders['Range'] = originalRes.headers.range;
+    if (originalReq && originalReq.headers && originalReq.headers.range) {
+      reqHeaders['Range'] = originalReq.headers.range;
     }
 
     const req = https.request({
       hostname: host,
       port: 443,
-      path: '/' + R2_BUCKET_NAME + '/' + key,
+      path: canonicalPath,
       method: 'GET',
       rejectUnauthorized: false,
       headers: reqHeaders,
@@ -250,7 +253,7 @@ async function proxyFileFromR2(key, res, inline, originalRes) {
         r2res.on('end', () => reject(new Error(`R2 fetch failed: ${r2res.statusCode} ${errData}`)));
         return;
       }
-      // Forward all relevant headers
+      // Transmettre tous les headers nécessaires au navigateur
       const ct = r2res.headers['content-type'] || 'application/octet-stream';
       const cl = r2res.headers['content-length'];
       const cr = r2res.headers['content-range'];
@@ -260,6 +263,7 @@ async function proxyFileFromR2(key, res, inline, originalRes) {
       if (cl) res.setHeader('Content-Length', cl);
       if (cr) res.setHeader('Content-Range', cr);
       if (al) res.setHeader('Accept-Ranges', al);
+      else res.setHeader('Accept-Ranges', 'bytes'); // toujours activer le range pour les vidéos
       res.setHeader('Content-Disposition', inline ? 'inline' : 'attachment');
       res.setHeader('Cache-Control', 'private, max-age=3600');
       r2res.pipe(res);
@@ -438,8 +442,12 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/download', requi
   const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
   const user = db.users.find(u => u.id === req.session.userId);
-  if (user?.role !== 'admin' && file.downloadable === false) return res.status(403).json({ error: 'Téléchargement non autorisé' });
-  if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, false); return; }
+  // Bloquer le téléchargement des vidéos pour les étudiants (peu importe où elles sont)
+  if (user?.role !== 'admin') {
+    if (file.type === 'video') return res.status(403).json({ error: 'Les vidéos ne peuvent pas être téléchargées' });
+    if (file.downloadable === false) return res.status(403).json({ error: 'Téléchargement non autorisé' });
+  }
+  if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, false, req); return; }
   if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.download(p, file.name); }
   res.status(500).json({ error: 'Erreur stockage' });
 });
@@ -450,7 +458,7 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/preview', requir
   const sub = (parent?.subfolders || []).find(s => s.id === parseInt(req.params.subId));
   const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
-  if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, true); return; }
+  if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, true, req); return; }
   if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.sendFile(p); }
   res.status(500).json({ error: 'Erreur stockage' });
 });
