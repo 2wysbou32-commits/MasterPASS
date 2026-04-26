@@ -783,6 +783,80 @@ app.post('/api/folders/:id/presign', requireAdmin, (req, res) => {
   res.json({ putUrl, fileId, r2Key });
 });
 
+// URL signée pour upload direct dans un SOUS-DOSSIER
+app.post('/api/folders/:parentId/subfolders/:subId/presign', requireAdmin, (req, res) => {
+  const parentId = parseInt(req.params.parentId);
+  const subId    = parseInt(req.params.subId);
+  const db       = loadDB();
+  const parent   = db.folders.find(f => f.id === parentId);
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub = (parent.subfolders || []).find(s => s.id === subId);
+  if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+
+  const { filename, contentType, size } = req.body;
+  if (!filename || !contentType) return res.status(400).json({ error: 'Données manquantes' });
+
+  const fileId    = db.nextId++;
+  const safeBase  = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const r2Key     = `files/${parentId}/sub${subId}/${fileId}-${safeBase}`;
+  const ext       = filename.split('.').pop().toLowerCase();
+  const host      = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region    = 'auto';
+  const date      = new Date();
+  const amzDate   = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const expires   = 7200;
+  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
+
+  const qs = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expires)],
+    ['X-Amz-SignedHeaders', 'content-type;host'],
+  ].sort((a, b) => a[0].localeCompare(b[0]));
+
+  const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const canonicalRequest = [
+    'PUT',
+    '/' + R2_BUCKET_NAME + '/' + r2Key,
+    canonicalQS,
+    `content-type:${contentType}\nhost:${host}\n`,
+    'content-type;host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const scope      = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
+  const signature  = hmac(signingKey, stringToSign, 'hex');
+  const putUrl     = `https://${host}/${R2_BUCKET_NAME}/${r2Key}?${canonicalQS}&X-Amz-Signature=${signature}`;
+
+  const type   = getFileType(ext);
+  const today  = new Date().toISOString().split('T')[0];
+  const record = { id: fileId, name: filename, size: size || 0, type, addedAt: today, r2Key, downloadable: true, pending: true };
+  sub.files.push(record);
+  db.nextId = fileId + 1;
+  saveDB(db);
+
+  res.json({ putUrl, fileId, r2Key });
+});
+
+// Confirmer un upload direct dans un sous-dossier
+app.post('/api/folders/:parentId/subfolders/:subId/files/:fileId/confirm', requireAdmin, (req, res) => {
+  const db     = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub  = (parent.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  if (!sub)  return res.status(404).json({ error: 'Sous-dossier introuvable' });
+  const file = (sub.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.pending = false;
+  if (req.body.size) file.size = req.body.size;
+  saveDB(db);
+  res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
+});
+
 // Confirmer qu'un upload direct a réussi
 app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res) => {
   const db = loadDB();
