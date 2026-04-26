@@ -1439,9 +1439,19 @@ function renderSubfolderFiles(files, subId, parentId) {
     const previewBtn = canPreview ? `<button class="btn-preview" data-fileid="${f.id}" data-type="${f.type}" data-subid="${subId}" data-parentid="${parentId}" onclick="openSubPreviewById(this)">
       <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;flex-shrink:0"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
       Visualiser</button>` : '';
-    const downloadBtn = dlAllowed ? `<a class="btn-download" href="/api/folders/${parentId}/subfolders/${subId}/files/${f.id}/download">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Télécharger</a>`
-      : (!isAdmin ? `<span class="dl-locked"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Non disponible</span>` : '');
+    // Vidéos : jamais téléchargeables par les étudiants (même règle que les dossiers normaux)
+    const isVideo = f.type === 'video';
+    const canDownload = isAdmin ? true : (!isVideo && dlAllowed);
+    const downloadBtn = canDownload
+      ? `<a class="btn-download" href="/api/folders/${parentId}/subfolders/${subId}/files/${f.id}/download">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Télécharger</a>`
+      : (!isAdmin
+          ? isVideo
+            ? `<span class="dl-locked">
+                <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                Visionnage uniquement</span>`
+            : `<span class="dl-locked"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Non disponible</span>`
+          : '');
     const toggleBtn = isAdmin ? `<button class="btn-toggle-dl ${dlAllowed?'allowed':'blocked'}" onclick="toggleSubDownload(${f.id},${subId},${parentId})" title="${dlAllowed?'Bloquer':'Autoriser'}">
       <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px">${dlAllowed?'<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>':'<path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>'}
       </svg>${dlAllowed?'✅ Autorisé':'🔒 Bloqué'}</button>` : '';
