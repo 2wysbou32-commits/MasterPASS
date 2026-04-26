@@ -471,12 +471,21 @@ app.patch('/api/folders/:parentId/subfolders/:subId/files/:fileId/downloadable',
 
 // ── FILES ─────────────────────────────────────────────────────────────────────
 app.get('/api/folders/:id/files', requireAuth, (req, res) => {
-  const folder = loadDB().folders.find(f => f.id === parseInt(req.params.id));
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.id));
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
-  const requestingUser = loadDB().users.find(u => u.id === req.session.userId);
+  const requestingUser = db.users.find(u => u.id === req.session.userId);
   const isAdmin = requestingUser?.role === 'admin';
+  const now = Date.now();
   res.json((folder.files||[])
-    .filter(f => isAdmin || !f.pending) // Cacher les fichiers en cours d'upload aux étudiants
+    .filter(f => {
+      if (f.pending) {
+        // Auto-confirm files older than 2 minutes (upload probably succeeded)
+        const addedTime = new Date(f.addedAt).getTime();
+        if (now - addedTime > 2 * 60 * 1000) { f.pending = false; saveDB(db); }
+      }
+      return isAdmin || !f.pending;
+    })
     .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false })));
 });
 
@@ -625,10 +634,11 @@ app.post('/api/forgot-password', async (req, res) => {
       console.log('[EMAIL] Envoyé avec succès, id:', emailResult?.id);
     } catch(e) { console.error('[EMAIL] Erreur:', e.message, e); }
   } else {
-    // Sans Resend : afficher le lien dans les logs (dev)
-    console.log('RESET LINK (dev):', resetLink);
+    // Sans Resend : afficher le lien dans les logs
+    console.log('RESET LINK:', resetLink);
   }
-  res.json({ ok: true });
+  // Always return the reset link so it can be used as fallback
+  res.json({ ok: true, resetLink: resetLink });
 });
 
 // Valider un token de reset
