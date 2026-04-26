@@ -1009,10 +1009,27 @@ function renderFiles(files){
   }).join('');
 }
 
-function handleFileSelect(e){uploadFiles(Array.from(e.target.files));e.target.value='';}
+function handleFileSelect(e){
+  const files = Array.from(e.target.files);
+  if (currentSubfolder) {
+    uploadSubfolderFiles(files, currentSubfolder.id, currentSubfolder.parentId);
+  } else {
+    uploadFiles(files);
+  }
+  e.target.value='';
+}
 function onDragOver(e){e.preventDefault();e.currentTarget.classList.add('dragover');}
 function onDragLeave(e){e.currentTarget.classList.remove('dragover');}
-function onDrop(e){e.preventDefault();e.currentTarget.classList.remove('dragover');uploadFiles(Array.from(e.dataTransfer.files));}
+function onDrop(e){
+  e.preventDefault();
+  e.currentTarget.classList.remove('dragover');
+  const files = Array.from(e.dataTransfer.files);
+  if (currentSubfolder) {
+    uploadSubfolderFiles(files, currentSubfolder.id, currentSubfolder.parentId);
+  } else {
+    uploadFiles(files);
+  }
+}
 
 async function uploadFiles(files){
   if(!currentFolder||!files.length)return;
