@@ -209,7 +209,7 @@ async function deleteFromR2(key) {
   } catch(e) { console.error('R2 delete error:', e.message); }
 }
 // Proxy fichier depuis R2 directement (pas d'URL signée — évite les problèmes de signature)
-async function proxyFileFromR2(key, res, inline) {
+async function proxyFileFromR2(key, res, inline, originalRes) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const date = new Date();
@@ -225,18 +225,24 @@ async function proxyFileFromR2(key, res, inline) {
   const signature = hmac(signingKey, stringToSign, 'hex');
 
   return new Promise((resolve, reject) => {
+    // Forward Range header for video streaming support
+    const reqHeaders = {
+      'host': host,
+      'x-amz-content-sha256': bodyHash,
+      'x-amz-date': amzDate,
+      'Authorization': `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+    };
+    if (originalRes && originalRes.headers && originalRes.headers.range) {
+      reqHeaders['Range'] = originalRes.headers.range;
+    }
+
     const req = https.request({
       hostname: host,
       port: 443,
       path: '/' + R2_BUCKET_NAME + '/' + key,
       method: 'GET',
       rejectUnauthorized: false,
-      headers: {
-        'host': host,
-        'x-amz-content-sha256': bodyHash,
-        'x-amz-date': amzDate,
-        'Authorization': `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
-      },
+      headers: reqHeaders,
     }, (r2res) => {
       if (r2res.statusCode >= 400) {
         let errData = '';
@@ -244,11 +250,16 @@ async function proxyFileFromR2(key, res, inline) {
         r2res.on('end', () => reject(new Error(`R2 fetch failed: ${r2res.statusCode} ${errData}`)));
         return;
       }
-      // Forward headers
+      // Forward all relevant headers
       const ct = r2res.headers['content-type'] || 'application/octet-stream';
       const cl = r2res.headers['content-length'];
+      const cr = r2res.headers['content-range'];
+      const al = r2res.headers['accept-ranges'];
+      res.status(r2res.statusCode);
       res.setHeader('Content-Type', ct);
       if (cl) res.setHeader('Content-Length', cl);
+      if (cr) res.setHeader('Content-Range', cr);
+      if (al) res.setHeader('Accept-Ranges', al);
       res.setHeader('Content-Disposition', inline ? 'inline' : 'attachment');
       res.setHeader('Cache-Control', 'private, max-age=3600');
       r2res.pipe(res);
@@ -529,7 +540,7 @@ app.get('/api/folders/:folderId/files/:fileId/preview', requireAuth, async (req,
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
 
   if (r2Enabled && file.r2Key) {
-    await proxyFileFromR2(file.r2Key, res, true);
+    await proxyFileFromR2(file.r2Key, res, true, req);
     return;
   } else if (file.filename) {
     const p = path.join(UPLOADS_DIR, file.filename);
@@ -557,7 +568,7 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
   }
 
   if (r2Enabled && file.r2Key) {
-    await proxyFileFromR2(file.r2Key, res, false);
+    await proxyFileFromR2(file.r2Key, res, false, req);
     return;
   } else if (file.filename) {
     const p = path.join(UPLOADS_DIR, file.filename);
