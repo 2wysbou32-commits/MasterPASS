@@ -33,7 +33,7 @@ if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_KEY) {
   console.log('⚠️  R2 non configuré → stockage local (dev uniquement)');
 }
 
-// ── Signature AWS v4 manuelle ─────────────────────────────────────────────────
+// ── Helpers crypto ────────────────────────────────────────────────────────────
 function hmac(key, data, encoding) {
   return crypto.createHmac('sha256', key).update(data).digest(encoding || undefined);
 }
@@ -41,18 +41,27 @@ function hashSHA256(data) {
   return crypto.createHash('sha256').update(data).digest('hex');
 }
 
+// Encode chaque segment du path R2 séparément (conserve les /)
+// C'est la SEULE méthode d'encodage utilisée partout dans ce fichier
+function encodeR2Key(key) {
+  return key.split('/').map(s => encodeURIComponent(s)).join('/');
+}
+
+// ── Signature AWS v4 — header Authorization (pour PUT/DELETE via serveur) ─────
 function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const datetime = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
   const dateShort = datetime.slice(0, 8);
   const scope = `${dateShort}/${region}/s3/aws4_request`;
 
+  // Le canonical path doit utiliser les segments encodés séparément
+  const canonicalPath = `/${R2_BUCKET_NAME}/${encodeR2Key(key)}`;
+
   const canonicalHeaders = `content-type:${contentType}\nhost:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-date:${datetime}\n`;
   const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
-  const canonicalRequest = [method, `/${R2_BUCKET_NAME}/${key}`, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
+  const canonicalRequest = [method, canonicalPath, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
 
   const stringToSign = ['AWS4-HMAC-SHA256', datetime, scope, hashSHA256(canonicalRequest)].join('\n');
-
   const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateShort), region), 's3'), 'aws4_request');
   const signature = hmac(signingKey, stringToSign, 'hex');
 
@@ -60,44 +69,39 @@ function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
     authorization: `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
     datetime,
     host,
+    canonicalPath,
   };
 }
-
 
 // ── URL signée pour streaming vidéo (navigateur -> R2 direct) ────────────────
 function getSignedVideoUrl(r2Key) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const now = new Date();
-  const amzDate = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '').slice(0, 15) + 'Z';
+  const amzDate = now.toISOString().replace(/[:-]/g, '').replace(/\.\d{3}/, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
   const expires = 7200;
   const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
 
-  // Encoder le path : chaque segment séparément, slashes conservés
-  const encodedPath = '/' + R2_BUCKET_NAME + '/' + r2Key.split('/').map(s => encodeURIComponent(s)).join('/');
+  // Même encodage que partout : segments séparés
+  const encodedPath = `/${R2_BUCKET_NAME}/${encodeR2Key(r2Key)}`;
 
-  // Paramètres triés lexicographiquement par nom encodé (requis par AWS v4)
+  // Paramètres triés par nom encodé (requis AWS v4)
   const params = [
     ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
     ['X-Amz-Credential', credential],
     ['X-Amz-Date', amzDate],
     ['X-Amz-Expires', String(expires)],
     ['X-Amz-SignedHeaders', 'host'],
-  ].sort((a, b) => {
-    const ka = encodeURIComponent(a[0]);
-    const kb = encodeURIComponent(b[0]);
-    return ka < kb ? -1 : ka > kb ? 1 : 0;
-  });
+  ].sort((a, b) => encodeURIComponent(a[0]) < encodeURIComponent(b[0]) ? -1 : 1);
 
   const qs = params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
 
-  // Canonical request pour presigned URL GET
   const canonicalReq = [
     'GET',
     encodedPath,
     qs,
-    'host:' + host + '\n',
+    `host:${host}\n`,
     'host',
     'UNSIGNED-PAYLOAD',
   ].join('\n');
@@ -133,43 +137,41 @@ function initDB() {
 }
 
 // ── Reset tokens (en mémoire, valides 15 min) ────────────────────────────────
-const resetTokens = {}; // { token: { userId, expires } }
+const resetTokens = {};
 
 function generateToken() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
 
 // ── Multer → mémoire (puis R2 ou disque) ─────────────────────────────────────
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 * 1024 } }); // 5 Go max
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 * 1024 } });
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// Railway runs behind a proxy (HTTPS), so we need to trust it
 app.set('trust proxy', 1);
 
-// Sessions stockées sur disque (persistent même si le serveur redémarre)
 const sessionsDir = path.join(__dirname, 'data', 'sessions');
 if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
 
 app.use(session({
   store: new FileStore({
     path: sessionsDir,
-    ttl: 28800, // 8 heures en secondes
+    ttl: 28800,
     retries: 1,
-    logFn: () => {}, // Silence les logs de session
+    logFn: () => {},
   }),
   secret: process.env.SESSION_SECRET || 'masterpass-secret-2024',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 8 * 60 * 60 * 1000, // 8 heures
+    maxAge: 8 * 60 * 60 * 1000,
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   },
 }));
-// Serve static files from public/ if it exists, otherwise from root
+
 const publicDir = fs.existsSync(path.join(__dirname, 'public'))
   ? path.join(__dirname, 'public')
   : __dirname;
@@ -181,14 +183,12 @@ function requireAuth(req, res, next) {
   next();
 }
 function requireAdmin(req, res, next) {
-  console.log('[AUTH] requireAdmin — sessionID:', req.sessionID, '— userId:', req.session.userId, '— cookie:', JSON.stringify(req.headers.cookie));
+  console.log('[AUTH] requireAdmin — sessionID:', req.sessionID, '— userId:', req.session.userId);
   if (!req.session.userId) {
-    console.log('[AUTH] REFUSÉ — pas de userId en session');
     return res.status(401).json({ error: 'Non authentifié' });
   }
   const user = loadDB().users.find(u => u.id === req.session.userId);
   if (!user || user.role !== 'admin') {
-    console.log('[AUTH] REFUSÉ — user non trouvé ou pas admin');
     return res.status(403).json({ error: 'Accès refusé' });
   }
   console.log('[AUTH] OK — user:', user.login);
@@ -201,13 +201,14 @@ async function uploadToR2(key, buffer, contentType) {
   const bodyHash = hashSHA256(buffer);
   const date = new Date();
   const region = 'auto';
-  const { authorization, datetime, host } = buildAuthHeader('PUT', key, ct, bodyHash, date, region);
+  const { authorization, datetime, host, canonicalPath } = buildAuthHeader('PUT', key, ct, bodyHash, date, region);
 
   return new Promise((resolve, reject) => {
     const req = https.request({
       hostname: host,
       port: 443,
-      path: `/${R2_BUCKET_NAME}/${encodeURIComponent(key)}`,
+      // Utiliser le même canonicalPath que la signature (segments encodés séparément)
+      path: canonicalPath,
       method: 'PUT',
       rejectUnauthorized: false,
       secureProtocol: 'TLSv1_2_method',
@@ -231,16 +232,17 @@ async function uploadToR2(key, buffer, contentType) {
     req.end();
   });
 }
+
 async function deleteFromR2(key) {
   try {
     const bodyHash = hashSHA256('');
     const date = new Date();
-    const { authorization, datetime, host } = buildAuthHeader('DELETE', key, 'application/octet-stream', bodyHash, date, 'auto');
+    const { authorization, datetime, host, canonicalPath } = buildAuthHeader('DELETE', key, 'application/octet-stream', bodyHash, date, 'auto');
     await new Promise((resolve, reject) => {
       const req = https.request({
         hostname: host,
         port: 443,
-        path: `/${R2_BUCKET_NAME}/${encodeURIComponent(key)}`,
+        path: canonicalPath,
         method: 'DELETE',
         rejectUnauthorized: false,
         secureProtocol: 'TLSv1_2_method',
@@ -256,7 +258,8 @@ async function deleteFromR2(key) {
     });
   } catch(e) { console.error('R2 delete error:', e.message); }
 }
-// Proxy fichier depuis R2 directement (pas d'URL signée — évite les problèmes de signature)
+
+// Proxy fichier depuis R2 directement (streaming avec support Range)
 async function proxyFileFromR2(key, res, inline, originalReq) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
@@ -264,9 +267,9 @@ async function proxyFileFromR2(key, res, inline, originalReq) {
   const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
   const bodyHash = hashSHA256('');
-  // Encoder chaque segment de la clé pour la signature et l'URL
-  const encodedKey = key.split('/').map(s => encodeURIComponent(s)).join('/');
-  const canonicalPath = '/' + R2_BUCKET_NAME + '/' + encodedKey;
+
+  // Même encodage partout : segments séparés
+  const canonicalPath = `/${R2_BUCKET_NAME}/${encodeR2Key(key)}`;
   const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-date:${amzDate}\n`;
   const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
   const canonicalRequest = ['GET', canonicalPath, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
@@ -276,7 +279,6 @@ async function proxyFileFromR2(key, res, inline, originalReq) {
   const signature = hmac(signingKey, stringToSign, 'hex');
 
   return new Promise((resolve, reject) => {
-    // Transmettre le header Range pour le streaming vidéo (lecture partielle)
     const reqHeaders = {
       'host': host,
       'x-amz-content-sha256': bodyHash,
@@ -301,7 +303,6 @@ async function proxyFileFromR2(key, res, inline, originalReq) {
         r2res.on('end', () => reject(new Error(`R2 fetch failed: ${r2res.statusCode} ${errData}`)));
         return;
       }
-      // Transmettre tous les headers nécessaires au navigateur
       const ct = r2res.headers['content-type'] || 'application/octet-stream';
       const cl = r2res.headers['content-length'];
       const cr = r2res.headers['content-range'];
@@ -311,7 +312,7 @@ async function proxyFileFromR2(key, res, inline, originalReq) {
       if (cl) res.setHeader('Content-Length', cl);
       if (cr) res.setHeader('Content-Range', cr);
       if (al) res.setHeader('Accept-Ranges', al);
-      else res.setHeader('Accept-Ranges', 'bytes'); // toujours activer le range pour les vidéos
+      else res.setHeader('Accept-Ranges', 'bytes');
       res.setHeader('Content-Disposition', inline ? 'inline' : 'attachment');
       res.setHeader('Cache-Control', 'private, max-age=3600');
       r2res.pipe(res);
@@ -393,9 +394,7 @@ app.delete('/api/folders/:id', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── SOUS-DOSSIERS ────────────────────────────────────────────────────────────
-
-// Créer un sous-dossier dans un dossier
+// ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
 app.post('/api/folders/:id/subfolders', requireAdmin, (req, res) => {
   const parentId = parseInt(req.params.id);
   const { name } = req.body;
@@ -410,7 +409,6 @@ app.post('/api/folders/:id/subfolders', requireAdmin, (req, res) => {
   res.json({ id: sub.id, name: sub.name, createdAt: sub.createdAt, fileCount: 0, totalSize: 0 });
 });
 
-// Lister les sous-dossiers
 app.get('/api/folders/:id/subfolders', requireAuth, (req, res) => {
   const parentId = parseInt(req.params.id);
   const db = loadDB();
@@ -424,7 +422,6 @@ app.get('/api/folders/:id/subfolders', requireAuth, (req, res) => {
   res.json(subs);
 });
 
-// Supprimer un sous-dossier
 app.delete('/api/folders/:parentId/subfolders/:subId', requireAdmin, async (req, res) => {
   const db = loadDB();
   const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
@@ -439,7 +436,6 @@ app.delete('/api/folders/:parentId/subfolders/:subId', requireAdmin, async (req,
   res.json({ ok: true });
 });
 
-// Fichiers d'un sous-dossier
 app.get('/api/folders/:parentId/subfolders/:subId/files', requireAuth, (req, res) => {
   const db = loadDB();
   const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
@@ -452,7 +448,6 @@ app.get('/api/folders/:parentId/subfolders/:subId/files', requireAuth, (req, res
   res.json((sub.files || [])
     .filter(f => {
       if (f.pending) {
-        // Auto-confirmer après 2 minutes
         const addedTime = new Date(f.addedAt).getTime();
         if (now - addedTime > 2 * 60 * 1000) { f.pending = false; saveDB(db); }
       }
@@ -461,7 +456,6 @@ app.get('/api/folders/:parentId/subfolders/:subId/files', requireAuth, (req, res
     .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false })));
 });
 
-// Upload fichier dans sous-dossier
 app.post('/api/folders/:parentId/subfolders/:subId/files', requireAdmin, upload.array('files'), async (req, res) => {
   const db = loadDB();
   const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
@@ -491,7 +485,6 @@ app.post('/api/folders/:parentId/subfolders/:subId/files', requireAdmin, upload.
   res.json(added);
 });
 
-// Download/preview fichier sous-dossier
 app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/download', requireAuth, async (req, res) => {
   const db = loadDB();
   const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
@@ -499,7 +492,6 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/download', requi
   const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
   const user = db.users.find(u => u.id === req.session.userId);
-  // Bloquer le téléchargement des vidéos pour les étudiants (peu importe où elles sont)
   if (user?.role !== 'admin') {
     if (file.type === 'video') return res.status(403).json({ error: 'Les vidéos ne peuvent pas être téléchargées' });
     if (file.downloadable === false) return res.status(403).json({ error: 'Téléchargement non autorisé' });
@@ -520,7 +512,6 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/preview', requir
   res.status(500).json({ error: 'Erreur stockage' });
 });
 
-// Delete fichier sous-dossier
 app.delete('/api/folders/:parentId/subfolders/:subId/files/:fileId', requireAdmin, async (req, res) => {
   const db = loadDB();
   const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
@@ -533,8 +524,7 @@ app.delete('/api/folders/:parentId/subfolders/:subId/files/:fileId', requireAdmi
   res.json({ ok: true });
 });
 
-
-// ── STREAM VIDÉO (URL signée directe R2, gère le Range natif du navigateur) ──
+// ── STREAM VIDÉO ──────────────────────────────────────────────────────────────
 app.get('/api/folders/:folderId/files/:fileId/stream', requireAuth, (req, res) => {
   const db = loadDB();
   const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
@@ -542,16 +532,15 @@ app.get('/api/folders/:folderId/files/:fileId/stream', requireAuth, (req, res) =
   const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
   if (!file || file.type !== 'video') return res.status(404).json({ error: 'Fichier introuvable' });
   if (!r2Enabled || !file.r2Key) {
-    // Fallback : retourner l'URL de preview proxy
     return res.json({ url: null, fallback: `/api/folders/${req.params.folderId}/files/${req.params.fileId}/preview` });
   }
   try {
     const signedUrl = getSignedVideoUrl(file.r2Key);
-    console.log('[STREAM] Signed URL générée pour:', file.r2Key);
+    console.log('[STREAM] URL générée pour:', file.r2Key);
     res.json({ url: signedUrl });
   } catch(e) {
-    console.error('[STREAM] Erreur génération URL:', e.message);
-    res.status(500).json({ error: 'Erreur génération URL signée' });
+    console.error('[STREAM] Erreur:', e.message);
+    res.status(500).json({ error: 'Erreur génération URL' });
   }
 });
 
@@ -566,15 +555,14 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/stream', require
   }
   try {
     const signedUrl = getSignedVideoUrl(file.r2Key);
-    console.log('[STREAM] Signed URL générée pour:', file.r2Key);
+    console.log('[STREAM] URL générée pour:', file.r2Key);
     res.json({ url: signedUrl });
   } catch(e) {
-    console.error('[STREAM] Erreur génération URL:', e.message);
-    res.status(500).json({ error: 'Erreur génération URL signée' });
+    console.error('[STREAM] Erreur:', e.message);
+    res.status(500).json({ error: 'Erreur génération URL' });
   }
 });
 
-// Toggle downloadable sous-dossier
 app.patch('/api/folders/:parentId/subfolders/:subId/files/:fileId/downloadable', requireAdmin, (req, res) => {
   const db = loadDB();
   const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
@@ -597,7 +585,6 @@ app.get('/api/folders/:id/files', requireAuth, (req, res) => {
   res.json((folder.files||[])
     .filter(f => {
       if (f.pending) {
-        // Auto-confirm files older than 2 minutes (upload probably succeeded)
         const addedTime = new Date(f.addedAt).getTime();
         if (now - addedTime > 2 * 60 * 1000) { f.pending = false; saveDB(db); }
       }
@@ -637,7 +624,6 @@ app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (r
   res.json(added);
 });
 
-// Prévisualisation inline (PDF, vidéo, image) — sans forcer le téléchargement
 app.get('/api/folders/:folderId/files/:fileId/preview', requireAuth, async (req, res) => {
   const db = loadDB();
   const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
@@ -662,15 +648,10 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
   const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
-  // Restrictions téléchargement pour les étudiants
   const requestingUser = db.users.find(u => u.id === req.session.userId);
   if (requestingUser?.role !== 'admin') {
-    if (file.type === 'video') {
-      return res.status(403).json({ error: 'Les vidéos ne peuvent pas être téléchargées' });
-    }
-    if (file.downloadable === false) {
-      return res.status(403).json({ error: "Téléchargement non autorisé par l'administrateur" });
-    }
+    if (file.type === 'video') return res.status(403).json({ error: 'Les vidéos ne peuvent pas être téléchargées' });
+    if (file.downloadable === false) return res.status(403).json({ error: "Téléchargement non autorisé par l'administrateur" });
   }
 
   if (r2Enabled && file.r2Key) {
@@ -684,7 +665,6 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
   res.status(500).json({ error: 'Erreur de configuration stockage' });
 });
 
-// Toggle downloadable permission (admin only)
 app.patch('/api/folders/:folderId/files/:fileId/downloadable', requireAdmin, (req, res) => {
   const db = loadDB();
   const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
@@ -708,33 +688,26 @@ app.delete('/api/folders/:folderId/files/:fileId', requireAdmin, async (req, res
   saveDB(db); res.json({ ok: true });
 });
 
-// ── MOT DE PASSE OUBLIÉ ──────────────────────────────────────────────────────
-
-// Demande de réinitialisation
+// ── MOT DE PASSE OUBLIÉ ───────────────────────────────────────────────────────
 app.post('/api/forgot-password', async (req, res) => {
   const { login } = req.body;
   if (!login) return res.status(400).json({ error: 'Identifiant requis' });
   const db = loadDB();
   const user = db.users.find(u => u.login === login);
-  // Toujours répondre OK pour ne pas divulguer si le compte existe
   if (!user || !user.email) {
     return res.json({ ok: true, message: 'Si ce compte existe et a un email, un lien a été envoyé.' });
   }
-  // Générer token
   const token = generateToken();
   resetTokens[token] = { userId: user.id, expires: Date.now() + 15 * 60 * 1000 };
   const resetLink = `${SITE_URL}?reset=${token}`;
-  // Envoyer email si Resend configuré
   if (resend) {
     try {
-      console.log('[EMAIL] Envoi à:', user.email, '— depuis:', FROM_EMAIL);
       const emailResult = await resend.emails.send({
         from: FROM_EMAIL,
         to: user.email,
         subject: 'MasterPASS — Réinitialisation de mot de passe',
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
-            <img src="${SITE_URL}/logo.png" style="width:60px;border-radius:12px;margin-bottom:20px" />
             <h2 style="color:#004D61;margin-bottom:8px">Réinitialisation de mot de passe</h2>
             <p style="color:#3D6B6F;margin-bottom:24px">Bonjour ${user.name},<br><br>
             Tu as demandé à réinitialiser ton mot de passe MasterPASS.<br>
@@ -748,17 +721,14 @@ app.post('/api/forgot-password', async (req, res) => {
             </p>
           </div>`,
       });
-      console.log('[EMAIL] Envoyé avec succès, id:', emailResult?.id);
-    } catch(e) { console.error('[EMAIL] Erreur:', e.message, e); }
+      console.log('[EMAIL] Envoyé, id:', emailResult?.id);
+    } catch(e) { console.error('[EMAIL] Erreur:', e.message); }
   } else {
-    // Sans Resend : afficher le lien dans les logs
     console.log('RESET LINK:', resetLink);
   }
-  // Always return the reset link so it can be used as fallback
   res.json({ ok: true, resetLink: resetLink });
 });
 
-// Valider un token de reset
 app.get('/api/reset-token/:token', (req, res) => {
   const entry = resetTokens[req.params.token];
   if (!entry || Date.now() > entry.expires) {
@@ -768,7 +738,6 @@ app.get('/api/reset-token/:token', (req, res) => {
   res.json({ valid: true, name: user?.name || '' });
 });
 
-// Réinitialiser le mot de passe avec token
 app.post('/api/reset-password', (req, res) => {
   const { token, password } = req.body;
   if (!token || !password || password.length < 6) {
@@ -788,8 +757,6 @@ app.post('/api/reset-password', (req, res) => {
 });
 
 // ── RÉGLAGES UTILISATEUR ──────────────────────────────────────────────────────
-
-// Ajouter/mettre à jour l'email d'un utilisateur (lui-même ou admin)
 app.patch('/api/users/:id/email', requireAuth, (req, res) => {
   const id = parseInt(req.params.id);
   const requestingUser = loadDB().users.find(u => u.id === req.session.userId);
@@ -805,7 +772,6 @@ app.patch('/api/users/:id/email', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// Changer son propre mot de passe (étudiant connecté)
 app.post('/api/users/change-password', requireAuth, (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword || newPassword.length < 6) {
@@ -821,7 +787,7 @@ app.post('/api/users/change-password', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// URL signée pour upload direct depuis le navigateur vers R2 (contourne la limite Railway)
+// ── PRESIGN — upload direct navigateur → R2 ───────────────────────────────────
 app.post('/api/folders/:id/presign', requireAdmin, (req, res) => {
   const folderId = parseInt(req.params.id);
   const db = loadDB();
@@ -836,13 +802,12 @@ app.post('/api/folders/:id/presign', requireAdmin, (req, res) => {
   const safeBase = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
   const r2Key = `files/${folderId}/${fileId}-${safeBase}`;
 
-  // Generate presigned PUT URL
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const date = new Date();
   const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
-  const expires = 7200; // 2h pour les grosses vidéos
+  const expires = 7200;
   const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
 
   const qs = [
@@ -854,9 +819,10 @@ app.post('/api/folders/:id/presign', requireAdmin, (req, res) => {
   ].sort((a, b) => a[0].localeCompare(b[0]));
 
   const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const encodedR2Path = `/${R2_BUCKET_NAME}/${encodeR2Key(r2Key)}`;
   const canonicalRequest = [
     'PUT',
-    '/' + R2_BUCKET_NAME + '/' + r2Key,
+    encodedR2Path,
     canonicalQS,
     `content-type:${contentType}\nhost:${host}\n`,
     'content-type;host',
@@ -867,9 +833,8 @@ app.post('/api/folders/:id/presign', requireAdmin, (req, res) => {
   const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
   const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
   const signature = hmac(signingKey, stringToSign, 'hex');
-  const putUrl = `https://${host}/${R2_BUCKET_NAME}/${r2Key}?${canonicalQS}&X-Amz-Signature=${signature}`;
+  const putUrl = `https://${host}${encodedR2Path}?${canonicalQS}&X-Amz-Signature=${signature}`;
 
-  // Pre-register the file in DB (will be confirmed after upload)
   const type = getFileType(ext);
   const today = new Date().toISOString().split('T')[0];
   const record = { id: fileId, name: filename, size: size || 0, type, addedAt: today, r2Key, downloadable: true, pending: true };
@@ -880,7 +845,6 @@ app.post('/api/folders/:id/presign', requireAdmin, (req, res) => {
   res.json({ putUrl, fileId, r2Key });
 });
 
-// URL signée pour upload direct dans un SOUS-DOSSIER
 app.post('/api/folders/:parentId/subfolders/:subId/presign', requireAdmin, (req, res) => {
   const parentId = parseInt(req.params.parentId);
   const subId    = parseInt(req.params.subId);
@@ -914,9 +878,10 @@ app.post('/api/folders/:parentId/subfolders/:subId/presign', requireAdmin, (req,
   ].sort((a, b) => a[0].localeCompare(b[0]));
 
   const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const encodedR2Path = `/${R2_BUCKET_NAME}/${encodeR2Key(r2Key)}`;
   const canonicalRequest = [
     'PUT',
-    '/' + R2_BUCKET_NAME + '/' + r2Key,
+    encodedR2Path,
     canonicalQS,
     `content-type:${contentType}\nhost:${host}\n`,
     'content-type;host',
@@ -927,7 +892,7 @@ app.post('/api/folders/:parentId/subfolders/:subId/presign', requireAdmin, (req,
   const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
   const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
   const signature  = hmac(signingKey, stringToSign, 'hex');
-  const putUrl     = `https://${host}/${R2_BUCKET_NAME}/${r2Key}?${canonicalQS}&X-Amz-Signature=${signature}`;
+  const putUrl     = `https://${host}${encodedR2Path}?${canonicalQS}&X-Amz-Signature=${signature}`;
 
   const type   = getFileType(ext);
   const today  = new Date().toISOString().split('T')[0];
@@ -939,7 +904,6 @@ app.post('/api/folders/:parentId/subfolders/:subId/presign', requireAdmin, (req,
   res.json({ putUrl, fileId, r2Key });
 });
 
-// Confirmer un upload direct dans un sous-dossier
 app.post('/api/folders/:parentId/subfolders/:subId/files/:fileId/confirm', requireAdmin, (req, res) => {
   const db     = loadDB();
   const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
@@ -954,7 +918,6 @@ app.post('/api/folders/:parentId/subfolders/:subId/files/:fileId/confirm', requi
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
 });
 
-// Confirmer qu'un upload direct a réussi
 app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res) => {
   const db = loadDB();
   const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
