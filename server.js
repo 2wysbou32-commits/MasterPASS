@@ -1034,15 +1034,21 @@ app.post('/api/register', (req, res) => {
   if (!entry) return res.status(403).json({ error: "Code d'invitation invalide" });
   if (entry.usedAt) return res.status(409).json({ error: 'Ce code a déjà été utilisé' });
 
-  if (db.users.find(u => u.login === login))
-    return res.status(409).json({ error: 'Cet identifiant est déjà pris' });
+  // Si le login est déjà pris, ajouter un chiffre incrémental (jean.dupont.MP → jean.dupont2.MP)
+  let finalLogin = login;
+  if (db.users.find(u => u.login === finalLogin)) {
+    let n = 2;
+    while (db.users.find(u => u.login === `${login.replace(/\.MP$/, '')}.${n}.MP`)) n++;
+    finalLogin = `${login.replace(/\.MP$/, '')}.${n}.MP`;
+  }
+
   if (db.users.find(u => u.email === email))
     return res.status(409).json({ error: 'Cet email est déjà utilisé' });
 
   const newUser = {
     id: db.nextId++,
     name: `${firstName.trim()} ${lastName.trim()}`,
-    login: login.trim(),
+    login: finalLogin,
     email: email.trim(),
     password: bcrypt.hashSync(password, 10),
     role: 'student',
@@ -1056,7 +1062,7 @@ app.post('/api/register', (req, res) => {
   entry.usedBy = newUser.login;
   saveDB(db);
 
-  res.json({ ok: true, name: newUser.name });
+  res.json({ ok: true, name: newUser.name, login: newUser.login });
 });
 
 // ── STATS ─────────────────────────────────────────────────────────────────────
