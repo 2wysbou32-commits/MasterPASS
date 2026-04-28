@@ -791,7 +791,7 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- SETTINGS PANEL -->
-      <div class="panel" id="panel-settings" style="display:none">
+      <div class="panel" id="panel-settings">
         <div class="section-header" style="margin-bottom:24px">
           <div><div class="section-title">Mes réglages</div><div class="section-sub">Gérez vos informations personnelles</div></div>
         </div>
@@ -848,7 +848,7 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- USERS PANEL -->
-      <div class="panel" id="panel-users" style="display:none">
+      <div class="panel" id="panel-users">
         <div class="section-header" style="margin-bottom:24px">
           <div><div class="section-title">Gestion des comptes</div><div class="section-sub">Créez et gérez les accès étudiants et administrateurs</div></div>
         </div>
@@ -856,7 +856,7 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- CODES PANEL -->
-      <div class="panel" id="panel-codes" style="display:none">
+      <div class="panel" id="panel-codes">
         <div class="section-header" style="margin-bottom:24px">
           <div><div class="section-title">Codes d'invitation</div><div class="section-sub">Génère des codes uniques à partager avec tes étudiants</div></div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -988,8 +988,7 @@ function setupApp(){
   const isAdmin=currentUser.role==='admin';
   const initials=currentUser.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
-  $('panel-files').classList.add('active');$('panel-files').style.display='';
-  $('panel-users').style.display=isAdmin?'':'none';
+  $('panel-files').classList.add('active');
   $('view-folders').style.display='';$('view-files').style.display='none';
   currentFolder=null;
   $('nav-avatar').textContent=initials;$('nav-username').textContent=currentUser.name;
@@ -1005,8 +1004,7 @@ function setupApp(){
   $('upload-zone-container').style.display=isAdmin?'block':'none';
   $('storage-indicator').style.display=isAdmin?'block':'none';
   if(!isAdmin)$('student-banner-title').textContent=`Bienvenue, ${currentUser.name.split(' ')[0]} !`;
-  // Show settings panel for students
-  $('panel-settings').style.display = isAdmin ? 'none' : '';
+  // Settings panel shown via CSS only
   $('topbar-title').textContent='Espace documentaire';
   updateTopbar();updateBreadcrumb();loadFolders();
   if(isAdmin)loadStats();
