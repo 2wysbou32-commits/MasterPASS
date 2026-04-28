@@ -574,6 +574,7 @@ input[type="file"]{display:none;}
       <div class="error-msg" id="auth-error">Identifiant ou mot de passe incorrect.</div>
       <div class="success-msg" id="auth-success"></div>
       <div class="auth-link"><a onclick="showForgotForm()">Mot de passe oublié ?</a></div>
+      <div class="auth-link" style="margin-top:8px"><a onclick="showRegisterForm()">Créer mon compte avec un code d'invitation</a></div>
     </div>
 
     <!-- FORMULAIRE MOT DE PASSE OUBLIÉ -->
@@ -589,6 +590,42 @@ input[type="file"]{display:none;}
       <div class="error-msg" id="forgot-error">—</div>
       <div class="success-msg" id="forgot-success"></div>
       <button class="btn-primary" id="forgot-btn" onclick="doForgotPassword()" style="margin-top:8px">Envoyer le lien</button>
+      <div class="auth-link" style="margin-top:12px"><a onclick="showLoginForm()">← Retour à la connexion</a></div>
+    </div>
+
+    <!-- FORMULAIRE INSCRIPTION ÉTUDIANT -->
+    <div id="register-form" style="display:none" class="auth-card-body">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-family:'Sora',sans-serif;font-size:19px;font-weight:700;color:var(--text);margin-bottom:6px">Créer mon compte</div>
+        <div style="font-size:13px;color:var(--text3)">Entre le code d'invitation reçu par ton formateur</div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Code d'invitation</label>
+        <input type="text" class="field-input" id="reg-code" placeholder="Ex: X7K2M9P4QR8N" style="text-transform:uppercase;letter-spacing:2px;font-weight:700">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field-group"><label class="field-label">Prénom</label><input type="text" class="field-input" id="reg-firstname" placeholder="Prénom"></div>
+        <div class="field-group"><label class="field-label">Nom</label><input type="text" class="field-input" id="reg-lastname" placeholder="Nom"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Identifiant de connexion</label>
+        <input type="text" class="field-input" id="reg-login" placeholder="Ex: jean.dupont" autocomplete="username">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Email</label>
+        <input type="email" class="field-input" id="reg-email" placeholder="ton.email@exemple.fr">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Mot de passe</label>
+        <input type="password" class="field-input" id="reg-password" placeholder="Minimum 6 caractères" autocomplete="new-password">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Mineure choisie <span style="font-weight:400;color:var(--text3)">(optionnel)</span></label>
+        <input type="text" class="field-input" id="reg-mineure" placeholder="Ex: Chimie, Maths, Physique...">
+      </div>
+      <div class="error-msg" id="reg-error">—</div>
+      <div class="success-msg" id="reg-success"></div>
+      <button class="btn-primary" id="reg-btn" onclick="doRegister()" style="margin-top:8px">Créer mon compte</button>
       <div class="auth-link" style="margin-top:12px"><a onclick="showLoginForm()">← Retour à la connexion</a></div>
     </div>
 
@@ -642,6 +679,10 @@ input[type="file"]{display:none;}
       <div class="nav-item" onclick="showPanel('users')" id="nav-users" style="display:none">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
         Gestion des comptes
+      </div>
+      <div class="nav-item" onclick="showPanel('codes')" id="nav-codes" style="display:none">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+        Codes d'invitation
       </div>
     </nav>
     <div class="sidebar-bottom">
@@ -814,6 +855,38 @@ input[type="file"]{display:none;}
         <div class="users-grid" id="users-grid"></div>
       </div>
 
+      <!-- CODES PANEL -->
+      <div class="panel" id="panel-codes" style="display:none">
+        <div class="section-header" style="margin-bottom:24px">
+          <div><div class="section-title">Codes d'invitation</div><div class="section-sub">Génère des codes uniques à partager avec tes étudiants</div></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px;background:white;border:1.5px solid var(--border);border-radius:10px;padding:6px 12px">
+              <label style="font-size:13px;color:var(--text2);white-space:nowrap">Nombre :</label>
+              <input type="number" id="codes-count" value="10" min="1" max="100" style="width:55px;border:none;font-size:14px;font-weight:600;color:var(--text);outline:none">
+            </div>
+            <button class="btn-action primary-action" onclick="generateCodes()">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+              Générer des codes
+            </button>
+            <button class="btn-action" onclick="deleteUsedCodes()" style="color:var(--danger);border-color:rgba(229,115,115,0.3)">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+              Vider les codes utilisés
+            </button>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap" id="codes-stats"></div>
+        <div class="files-list-wrap">
+          <div class="files-list-header">
+            <span class="files-list-header-title">Codes générés</span>
+            <button onclick="copyCodes()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:white;color:var(--teal-dark);font-size:12px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+              Copier tous les codes disponibles
+            </button>
+          </div>
+          <div id="codes-list-body" style="max-height:500px;overflow-y:auto"></div>
+        </div>
+      </div>
+
     </div>
   </main>
 </div>
@@ -923,6 +996,7 @@ function setupApp(){
   $('nav-role-badge').textContent=isAdmin?'Admin':'Étudiant';
   $('nav-role-text').textContent=isAdmin?'Accès complet':'Lecture seule';
   $('nav-users').style.display=isAdmin?'flex':'none';
+  $('nav-codes').style.display=isAdmin?'flex':'none';
   $('nav-settings').style.display=isAdmin?'none':'flex';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-files').classList.add('active');
@@ -947,6 +1021,7 @@ function showPanel(name){
   $('nav-'+name)?.classList.add('active');
   if(name==='files'){$('topbar-title').textContent='Espace documentaire';backToRoot();}
   if(name==='users'){$('topbar-title').textContent='Gestion des comptes';loadUsers();}
+  if(name==='codes'){$('topbar-title').textContent="Codes d'invitation";loadCodes();}
   if(name==='settings'){$('topbar-title').textContent='Mes réglages';loadSettingsPanel();}
   updateTopbar();
 }
@@ -1288,7 +1363,8 @@ function renderUsers(users){
       <div class="user-card-avatar ${u.role==='admin'?'admin-av':''}">${initials}</div>
       <div class="user-card-info">
         <div class="user-card-name">${u.name}${isSelf?' <span style="font-size:11px;color:var(--text3)">(vous)</span>':''}</div>
-        <div class="user-card-login">${u.login}</div>
+        <div class="user-card-login">${u.login}${u.email?' · '+u.email:''}</div>
+        ${u.mineure?`<div style="font-size:11px;color:var(--teal-dark);margin-top:2px">Mineure : ${u.mineure}</div>`:''}
         <span class="role-badge ${u.role==='admin'?'role-admin':'role-student'}">${u.role==='admin'?'Administrateur':'Étudiant'}</span>
       </div>
       ${!isSelf?`<button class="icon-btn" onclick="deleteUser(${u.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`:''}
@@ -1427,6 +1503,159 @@ async function doResetPassword() {
 }
 
 
+
+// ── INSCRIPTION ÉTUDIANT ─────────────────────────────────────────────────────
+function showRegisterForm() {
+  document.querySelector('.auth-card-body').style.display = 'none';
+  document.getElementById('forgot-form').style.display = 'none';
+  document.getElementById('reset-form').style.display = 'none';
+  document.getElementById('register-form').style.display = '';
+  document.getElementById('reg-error').style.display = 'none';
+  document.getElementById('reg-success').style.display = 'none';
+}
+
+async function doRegister() {
+  const code     = ($('reg-code').value || '').toUpperCase().trim();
+  const firstName= ($('reg-firstname').value || '').trim();
+  const lastName = ($('reg-lastname').value || '').trim();
+  const login    = ($('reg-login').value || '').trim();
+  const email    = ($('reg-email').value || '').trim();
+  const password = $('reg-password').value || '';
+  const mineure  = ($('reg-mineure').value || '').trim();
+  const errEl    = $('reg-error');
+  const okEl     = $('reg-success');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+
+  if (!code || !firstName || !lastName || !login || !email || !password) {
+    errEl.textContent = 'Tous les champs obligatoires doivent être remplis.';
+    errEl.style.display = 'block'; return;
+  }
+  if (password.length < 6) {
+    errEl.textContent = 'Mot de passe minimum 6 caractères.';
+    errEl.style.display = 'block'; return;
+  }
+
+  const btn = $('reg-btn');
+  btn.disabled = true; btn.textContent = 'Création…';
+  try {
+    const data = await api('POST', '/register', { code, firstName, lastName, login, email, password, mineure });
+    okEl.textContent = `Compte créé avec succès ! Bienvenue ${data.name} 🎉 Tu peux maintenant te connecter.`;
+    okEl.style.display = 'block';
+    btn.style.display = 'none';
+    setTimeout(() => showLoginForm(), 3000);
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Créer mon compte';
+  }
+}
+
+// ── CODES D'INVITATION (admin) ────────────────────────────────────────────────
+async function loadCodes() {
+  const body = $('codes-list-body');
+  body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)">Chargement…</div>';
+  try {
+    const codes = await api('GET', '/invite-codes');
+    renderCodes(codes);
+  } catch(e) {
+    body.innerHTML = '<div style="padding:30px;color:var(--danger)">Erreur de chargement</div>';
+  }
+}
+
+function renderCodes(codes) {
+  const body = $('codes-list-body');
+  const stats = $('codes-stats');
+
+  const available = codes.filter(c => !c.usedAt).length;
+  const used = codes.filter(c => c.usedAt).length;
+
+  stats.innerHTML = `
+    <div class="stat-card" style="padding:14px 18px;flex:1;min-width:140px">
+      <div class="stat-icon green" style="width:32px;height:32px;border-radius:8px;margin-bottom:8px"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+      <div class="stat-value" style="font-size:22px">${available}</div>
+      <div class="stat-label">Codes disponibles</div>
+    </div>
+    <div class="stat-card" style="padding:14px 18px;flex:1;min-width:140px">
+      <div class="stat-icon amber" style="width:32px;height:32px;border-radius:8px;margin-bottom:8px"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div>
+      <div class="stat-value" style="font-size:22px">${used}</div>
+      <div class="stat-label">Codes utilisés</div>
+    </div>
+    <div class="stat-card" style="padding:14px 18px;flex:1;min-width:140px">
+      <div class="stat-icon teal" style="width:32px;height:32px;border-radius:8px;margin-bottom:8px"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg></div>
+      <div class="stat-value" style="font-size:22px">${codes.length}</div>
+      <div class="stat-label">Total générés</div>
+    </div>`;
+
+  if (!codes.length) {
+    body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Aucun code généré. Clique sur "Générer des codes".</div>';
+    return;
+  }
+
+  body.innerHTML = codes.map(c => {
+    const isUsed = !!c.usedAt;
+    const date = new Date(c.createdAt).toLocaleDateString('fr-FR');
+    return `<div style="display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid rgba(178,223,219,0.35);${isUsed?'opacity:0.5':''}">
+      <div style="font-family:monospace;font-size:16px;font-weight:700;letter-spacing:2px;color:${isUsed?'var(--text3)':'var(--teal-dark)'};flex:1">${c.code}</div>
+      <div style="font-size:12px;color:var(--text3);min-width:80px">${date}</div>
+      ${isUsed
+        ? `<div style="display:flex;align-items:center;gap:5px;background:#E8F5E9;border-radius:20px;padding:3px 10px;font-size:11px;color:#2E7D32;font-weight:600;white-space:nowrap">✅ Utilisé par ${c.usedBy}</div>`
+        : `<div style="display:flex;align-items:center;gap:5px;background:rgba(0,151,167,0.1);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--teal-dark);font-weight:600">🔑 Disponible</div>`
+      }
+      ${!isUsed ? `<button onclick="deleteCode('${c.code}')" style="width:28px;height:28px;border-radius:8px;border:none;background:rgba(229,115,115,0.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` : '<div style="width:28px"></div>'}
+    </div>`;
+  }).join('');
+}
+
+async function generateCodes() {
+  const count = parseInt($('codes-count').value) || 10;
+  try {
+    await api('POST', '/invite-codes/generate', { count });
+    await loadCodes();
+    toast(`${count} code${count>1?'s':''} généré${count>1?'s':''} ✅`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteCode(code) {
+  try {
+    await api('DELETE', '/invite-codes/' + code);
+    await loadCodes();
+    toast('Code supprimé');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteUsedCodes() {
+  if (!confirm('Supprimer tous les codes déjà utilisés ?')) return;
+  try {
+    const r = await api('DELETE', '/invite-codes/used/all');
+    await loadCodes();
+    toast(`${r.deleted} code${r.deleted>1?'s':''} supprimé${r.deleted>1?'s':''}`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function copyCodes() {
+  const body = $('codes-list-body');
+  // Collect all code elements that are in a row containing "Disponible"
+  const allRows = body.querySelectorAll('div[style*="display:flex"]');
+  const available = [];
+  allRows.forEach(row => {
+    if (row.querySelector('[style*="Disponible"]')) {
+      const codeEl = row.querySelector('[style*="monospace"]');
+      if (codeEl) available.push(codeEl.textContent.trim());
+    }
+  });
+  if (!available.length) { toast('Aucun code disponible à copier', 'error'); return; }
+  const text = available.join('\n');
+  navigator.clipboard.writeText(text)
+    .then(() => toast(`${available.length} code${available.length>1?'s':''} copié${available.length>1?'s':''} dans le presse-papier ✅`))
+    .catch(() => {
+      // Fallback si clipboard API non dispo
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      toast(`${available.length} code${available.length>1?'s':''} copié${available.length>1?'s':''} ✅`);
+    });
+}
 
 // ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
 let currentSubfolder = null; // { id, name, parentId }
