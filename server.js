@@ -47,6 +47,12 @@ function encodeR2Key(key) {
   return key.split('/').map(s => encodeURIComponent(s)).join('/');
 }
 
+// Ancien encodage (avant correction) : encodeURIComponent sur toute la clé, les / deviennent %2F
+// Nécessaire pour lire les fichiers uploadés avec l'ancien code
+function encodeR2KeyLegacy(key) {
+  return encodeURIComponent(key);
+}
+
 // ── Signature AWS v4 — header Authorization (pour PUT/DELETE via serveur) ─────
 function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
