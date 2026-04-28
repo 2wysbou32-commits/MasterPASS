@@ -1504,6 +1504,81 @@ async function doResetPassword() {
 
 
 
+// ── TUTORIEL ──────────────────────────────────────────────────────────────────
+let tutoStep = 0;
+const TUTO_STEPS = 4;
+
+function checkAndShowTutorial() {
+  // Afficher seulement pour les étudiants qui ne l'ont pas encore vu
+  if (!currentUser) return;
+  const key = 'masterpass_tuto_seen_' + currentUser.id;
+  if (localStorage.getItem(key)) return;
+  // Afficher le bouton aide pour tout le monde
+  const btnHelp = document.getElementById('btn-help');
+  if (btnHelp) btnHelp.style.display = 'flex';
+  // Auto-afficher pour les étudiants à la première connexion
+  if (currentUser.role === 'student') {
+    openTutorial();
+  }
+}
+
+function openTutorial() {
+  tutoStep = 0;
+  // Mettre le prénom dans l'étape 1
+  const firstNameEl = document.getElementById('tuto-firstname');
+  if (firstNameEl && currentUser) {
+    firstNameEl.textContent = currentUser.name.split(' ')[0];
+  }
+  renderTutoStep();
+  document.getElementById('tutorial-overlay').style.display = 'flex';
+  // Afficher le bouton aide
+  const btnHelp = document.getElementById('btn-help');
+  if (btnHelp) btnHelp.style.display = 'flex';
+}
+
+function closeTutorial() {
+  document.getElementById('tutorial-overlay').style.display = 'none';
+  // Marquer comme vu
+  if (currentUser) {
+    const key = 'masterpass_tuto_seen_' + currentUser.id;
+    localStorage.setItem(key, '1');
+  }
+}
+
+function tutoNav(dir) {
+  tutoStep += dir;
+  if (tutoStep < 0) tutoStep = 0;
+  if (tutoStep >= TUTO_STEPS) { closeTutorial(); return; }
+  renderTutoStep();
+}
+
+function renderTutoStep() {
+  // Afficher/cacher les étapes
+  for (let i = 0; i < TUTO_STEPS; i++) {
+    const el = document.getElementById('tuto-step-' + i);
+    if (el) el.classList.toggle('active', i === tutoStep);
+  }
+  // Mettre à jour les points
+  const dotsEl = document.getElementById('tuto-dots');
+  if (dotsEl) {
+    dotsEl.innerHTML = Array.from({length: TUTO_STEPS}, (_, i) => {
+      let cls = 'tutorial-dot';
+      if (i === tutoStep) cls += ' active';
+      else if (i < tutoStep) cls += ' done';
+      return `<div class="${cls}"></div>`;
+    }).join('');
+  }
+  // Bouton précédent
+  const prev = document.getElementById('tuto-prev');
+  if (prev) prev.style.display = tutoStep > 0 ? 'block' : 'none';
+  // Bouton suivant / terminer
+  const next = document.getElementById('tuto-next');
+  const skip = document.getElementById('tuto-skip-btn');
+  if (next) next.textContent = tutoStep === TUTO_STEPS - 1 ? 'Terminer ✓' : 'Suivant →';
+  if (skip) skip.textContent = tutoStep === TUTO_STEPS - 1 ? '' : 'Passer';
+  if (skip) skip.style.visibility = tutoStep === TUTO_STEPS - 1 ? 'hidden' : 'visible';
+}
+
 // ── INSCRIPTION ÉTUDIANT ─────────────────────────────────────────────────────
 function showRegisterForm() {
   document.querySelector('.auth-card-body').style.display = 'none';
