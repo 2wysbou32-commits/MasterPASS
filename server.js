@@ -73,46 +73,6 @@ function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
   };
 }
 
-// ── URL signée pour streaming vidéo (navigateur -> R2 direct) ────────────────
-function getSignedVideoUrl(r2Key) {
-  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-  const region = 'auto';
-  const now = new Date();
-  const amzDate = now.toISOString().replace(/[:-]/g, '').replace(/\.\d{3}/, '').slice(0, 15) + 'Z';
-  const dateStamp = amzDate.slice(0, 8);
-  const expires = 7200;
-  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
-
-  // Même encodage que partout : segments séparés
-  const encodedPath = `/${R2_BUCKET_NAME}/${encodeR2Key(r2Key)}`;
-
-  // Paramètres triés par nom encodé (requis AWS v4)
-  const params = [
-    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
-    ['X-Amz-Credential', credential],
-    ['X-Amz-Date', amzDate],
-    ['X-Amz-Expires', String(expires)],
-    ['X-Amz-SignedHeaders', 'host'],
-  ].sort((a, b) => encodeURIComponent(a[0]) < encodeURIComponent(b[0]) ? -1 : 1);
-
-  const qs = params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-
-  const canonicalReq = [
-    'GET',
-    encodedPath,
-    qs,
-    `host:${host}\n`,
-    'host',
-    'UNSIGNED-PAYLOAD',
-  ].join('\n');
-
-  const scope = `${dateStamp}/${region}/s3/aws4_request`;
-  const toSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalReq)].join('\n');
-  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
-  const sig = hmac(signingKey, toSign, 'hex');
-
-  return `https://${host}${encodedPath}?${qs}&X-Amz-Signature=${sig}`;
-}
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 const DATA_DIR    = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -259,17 +219,8 @@ async function deleteFromR2(key) {
   } catch(e) { console.error('R2 delete error:', e.message); }
 }
 
-// Proxy fichier depuis R2 directement (streaming avec support Range)
-async function proxyFileFromR2(key, res, inline, originalReq) {
-  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-  const region = 'auto';
-  const date = new Date();
-  const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
-  const dateStamp = amzDate.slice(0, 8);
-  const bodyHash = hashSHA256('');
-
-  // Même encodage partout : segments séparés
-  const canonicalPath = `/${R2_BUCKET_NAME}/${encodeR2Key(key)}`;
+// Construit les headers de signature pour une requête GET R2
+function buildR2GetHeaders(canonicalPath, host, region, amzDate, dateStamp, bodyHash) {
   const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-date:${amzDate}\n`;
   const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
   const canonicalRequest = ['GET', canonicalPath, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
@@ -277,18 +228,17 @@ async function proxyFileFromR2(key, res, inline, originalReq) {
   const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
   const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
   const signature = hmac(signingKey, stringToSign, 'hex');
+  return {
+    'host': host,
+    'x-amz-content-sha256': bodyHash,
+    'x-amz-date': amzDate,
+    'Authorization': `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+  };
+}
 
+// Effectue une requête GET vers R2 avec un path donné
+function r2GetRequest(host, canonicalPath, reqHeaders) {
   return new Promise((resolve, reject) => {
-    const reqHeaders = {
-      'host': host,
-      'x-amz-content-sha256': bodyHash,
-      'x-amz-date': amzDate,
-      'Authorization': `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
-    };
-    if (originalReq && originalReq.headers && originalReq.headers.range) {
-      reqHeaders['Range'] = originalReq.headers.range;
-    }
-
     const req = https.request({
       hostname: host,
       port: 443,
@@ -296,33 +246,110 @@ async function proxyFileFromR2(key, res, inline, originalReq) {
       method: 'GET',
       rejectUnauthorized: false,
       headers: reqHeaders,
-    }, (r2res) => {
-      if (r2res.statusCode >= 400) {
-        let errData = '';
-        r2res.on('data', c => errData += c);
-        r2res.on('end', () => reject(new Error(`R2 fetch failed: ${r2res.statusCode} ${errData}`)));
-        return;
-      }
-      const ct = r2res.headers['content-type'] || 'application/octet-stream';
-      const cl = r2res.headers['content-length'];
-      const cr = r2res.headers['content-range'];
-      const al = r2res.headers['accept-ranges'];
-      res.status(r2res.statusCode);
-      res.setHeader('Content-Type', ct);
-      if (cl) res.setHeader('Content-Length', cl);
-      if (cr) res.setHeader('Content-Range', cr);
-      if (al) res.setHeader('Accept-Ranges', al);
-      else res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Content-Disposition', inline ? 'inline' : 'attachment');
-      res.setHeader('Cache-Control', 'private, max-age=3600');
-      r2res.pipe(res);
-      r2res.on('end', resolve);
-    });
+    }, resolve);
     req.on('error', reject);
     req.end();
   });
 }
 
+// Proxy fichier depuis R2 — essaie le nouvel encodage puis l'ancien (legacy) si 404
+async function proxyFileFromR2(key, res, inline, originalReq) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const date = new Date();
+  const amzDate = date.toISOString().replace(/[:-]|\.\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const bodyHash = hashSHA256('');
+
+  // Les deux encodages possibles selon comment le fichier a été uploadé
+  const pathNew    = `/${R2_BUCKET_NAME}/${encodeR2Key(key)}`;       // Nouveau : segments séparés
+  const pathLegacy = `/${R2_BUCKET_NAME}/${encodeR2KeyLegacy(key)}`; // Ancien : tout encodé (les / = %2F)
+
+  // Fonction qui construit les headers et envoie la requête
+  async function tryPath(canonicalPath) {
+    const extraRange = (originalReq && originalReq.headers && originalReq.headers.range)
+      ? { 'Range': originalReq.headers.range } : {};
+    const headers = { ...buildR2GetHeaders(canonicalPath, host, region, amzDate, dateStamp, bodyHash), ...extraRange };
+    return r2GetRequest(host, canonicalPath, headers);
+  }
+
+  let r2res;
+  try {
+    r2res = await tryPath(pathNew);
+    if (r2res.statusCode === 404) {
+      // Fichier introuvable avec le nouvel encodage → essayer l'ancien
+      console.log('[R2] 404 nouveau encodage, tentative legacy pour:', key);
+      r2res.resume(); // vider la réponse 404
+      r2res = await tryPath(pathLegacy);
+    }
+  } catch(e) {
+    return Promise.reject(e);
+  }
+
+  return new Promise((resolve, reject) => {
+    if (r2res.statusCode >= 400) {
+      let errData = '';
+      r2res.on('data', c => errData += c);
+      r2res.on('end', () => reject(new Error(`R2 fetch failed: ${r2res.statusCode} ${errData}`)));
+      return;
+    }
+    const ct = r2res.headers['content-type'] || 'application/octet-stream';
+    const cl = r2res.headers['content-length'];
+    const cr = r2res.headers['content-range'];
+    const al = r2res.headers['accept-ranges'];
+    res.status(r2res.statusCode);
+    res.setHeader('Content-Type', ct);
+    if (cl) res.setHeader('Content-Length', cl);
+    if (cr) res.setHeader('Content-Range', cr);
+    if (al) res.setHeader('Accept-Ranges', al);
+    else res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Disposition', inline ? 'inline' : 'attachment');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    r2res.pipe(res);
+    r2res.on('end', resolve);
+  });
+}
+
+// URL signée pour streaming vidéo — essaie nouveau encodage, fallback legacy
+function getSignedVideoUrl(r2Key, useLegacy) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]/g, '').replace(/\.\.\d{3}/, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const expires = 7200;
+  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
+
+  const encodedPath = useLegacy
+    ? `/${R2_BUCKET_NAME}/${encodeR2KeyLegacy(r2Key)}`
+    : `/${R2_BUCKET_NAME}/${encodeR2Key(r2Key)}`;
+
+  const params = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expires)],
+    ['X-Amz-SignedHeaders', 'host'],
+  ].sort((a, b) => encodeURIComponent(a[0]) < encodeURIComponent(b[0]) ? -1 : 1);
+
+  const qs = params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+
+  const canonicalReq = [
+    'GET',
+    encodedPath,
+    qs,
+    `host:${host}\n`,
+    'host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const toSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalReq)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
+  const sig = hmac(signingKey, toSign, 'hex');
+
+  return `https://${host}${encodedPath}?${qs}&X-Amz-Signature=${sig}`;
+}
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 app.post('/api/login', (req, res) => {
   const { login, password } = req.body;
@@ -535,9 +562,10 @@ app.get('/api/folders/:folderId/files/:fileId/stream', requireAuth, (req, res) =
     return res.json({ url: null, fallback: `/api/folders/${req.params.folderId}/files/${req.params.fileId}/preview` });
   }
   try {
-    const signedUrl = getSignedVideoUrl(file.r2Key);
+    const signedUrl = getSignedVideoUrl(file.r2Key, false);
+    const legacyUrl = getSignedVideoUrl(file.r2Key, true);
     console.log('[STREAM] URL générée pour:', file.r2Key);
-    res.json({ url: signedUrl });
+    res.json({ url: signedUrl, urlLegacy: legacyUrl });
   } catch(e) {
     console.error('[STREAM] Erreur:', e.message);
     res.status(500).json({ error: 'Erreur génération URL' });
@@ -554,9 +582,10 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/stream', require
     return res.json({ url: null, fallback: `/api/folders/${req.params.parentId}/subfolders/${req.params.subId}/files/${req.params.fileId}/preview` });
   }
   try {
-    const signedUrl = getSignedVideoUrl(file.r2Key);
+    const signedUrl = getSignedVideoUrl(file.r2Key, false);
+    const legacyUrl = getSignedVideoUrl(file.r2Key, true);
     console.log('[STREAM] URL générée pour:', file.r2Key);
-    res.json({ url: signedUrl });
+    res.json({ url: signedUrl, urlLegacy: legacyUrl });
   } catch(e) {
     console.error('[STREAM] Erreur:', e.message);
     res.status(500).json({ error: 'Erreur génération URL' });
