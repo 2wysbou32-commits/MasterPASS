@@ -791,7 +791,7 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- SETTINGS PANEL -->
-      <div class="panel" id="panel-settings">
+      <div class="panel" id="panel-settings" style="display:none">
         <div class="section-header" style="margin-bottom:24px">
           <div><div class="section-title">Mes réglages</div><div class="section-sub">Gérez vos informations personnelles</div></div>
         </div>
@@ -848,7 +848,7 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- USERS PANEL -->
-      <div class="panel" id="panel-users">
+      <div class="panel" id="panel-users" style="display:none">
         <div class="section-header" style="margin-bottom:24px">
           <div><div class="section-title">Gestion des comptes</div><div class="section-sub">Créez et gérez les accès étudiants et administrateurs</div></div>
         </div>
@@ -856,7 +856,7 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- CODES PANEL -->
-      <div class="panel" id="panel-codes">
+      <div class="panel" id="panel-codes" style="display:none">
         <div class="section-header" style="margin-bottom:24px">
           <div><div class="section-title">Codes d'invitation</div><div class="section-sub">Génère des codes uniques à partager avec tes étudiants</div></div>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -988,7 +988,8 @@ function setupApp(){
   const isAdmin=currentUser.role==='admin';
   const initials=currentUser.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
-  $('panel-files').classList.add('active');
+  $('panel-files').classList.add('active');$('panel-files').style.display='';
+  $('panel-users').style.display=isAdmin?'':'none';
   $('view-folders').style.display='';$('view-files').style.display='none';
   currentFolder=null;
   $('nav-avatar').textContent=initials;$('nav-username').textContent=currentUser.name;
@@ -1004,7 +1005,8 @@ function setupApp(){
   $('upload-zone-container').style.display=isAdmin?'block':'none';
   $('storage-indicator').style.display=isAdmin?'block':'none';
   if(!isAdmin)$('student-banner-title').textContent=`Bienvenue, ${currentUser.name.split(' ')[0]} !`;
-  // Settings panel shown via CSS only
+  // Show settings panel for students
+  $('panel-settings').style.display = isAdmin ? 'none' : '';
   $('topbar-title').textContent='Espace documentaire';
   updateTopbar();updateBreadcrumb();loadFolders();
   if(isAdmin)loadStats();
@@ -1013,8 +1015,15 @@ function setupApp(){
 
 function showPanel(name){
   if(name==='users'&&currentUser?.role!=='admin')return;
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  $('panel-'+name).classList.add('active');
+  // Cacher tous les panels (style inline nécessaire car il écrase le CSS)
+  document.querySelectorAll('.panel').forEach(p=>{
+    p.classList.remove('active');
+    p.style.display='none';
+  });
+  // Afficher le panel cible
+  const target=$('panel-'+name);
+  target.classList.add('active');
+  target.style.display='';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-'+name)?.classList.add('active');
   if(name==='files'){$('topbar-title').textContent='Espace documentaire';backToRoot();}
