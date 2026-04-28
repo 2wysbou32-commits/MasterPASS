@@ -1202,9 +1202,9 @@ async function uploadFiles(files){
             if(xhr.status>=200&&xhr.status<300){
               try{ await api('POST',`/folders/${currentFolder.id}/files/${presign.fileId}/confirm`,{size:file.size}); }catch(e){ console.log('confirm err:',e.message); }
               resolve();
-            }else{reject(new Error('Erreur R2: '+xhr.status));}
+            }else{reject(new Error(`Erreur upload R2: HTTP ${xhr.status}. Vérifiez la config CORS du bucket.`));}
           };
-          xhr.onerror=()=>reject(new Error('Erreur réseau'));
+          xhr.onerror=()=>reject(new Error('Erreur réseau (CORS bloqué ?). Configurez CORS sur votre bucket R2.'));
           xhr.send(file);
         });
       }else{
@@ -1660,9 +1660,9 @@ async function uploadSubfolderFiles(files, subId, parentId) {
             if (xhr.status >= 200 && xhr.status < 300) {
               try { await api('POST', `/folders/${parentId}/subfolders/${subId}/files/${presign.fileId}/confirm`, { size: file.size }); } catch(e) { console.log('confirm err:', e.message); }
               resolve();
-            } else { reject(new Error('Erreur R2: ' + xhr.status)); }
+            } else { reject(new Error(`Erreur upload R2: HTTP ${xhr.status}. Vérifiez la config CORS du bucket.`)); }
           };
-          xhr.onerror = () => reject(new Error('Erreur réseau'));
+          xhr.onerror = () => reject(new Error('Erreur réseau (CORS bloqué ?). Configurez CORS sur votre bucket R2.'));
           xhr.send(file);
         });
       } else {
@@ -1704,12 +1704,15 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
     body.style.justifyContent = 'center';
     body.style.background = '#000';
     body.innerHTML = '<div style="color:rgba(255,255,255,0.6);font-size:14px">Chargement de la vidéo...</div>';
-    // Récupérer une URL signée R2 pour un streaming natif sans proxy
+    // Récupérer les URLs signées R2 (nouveau + legacy) pour streaming natif
     fetch(streamUrl)
       .then(r => r.ok ? r.json() : Promise.reject('Erreur serveur'))
       .then(data => {
-        // data.url = URL signée R2, data.fallback = proxy si R2 indisponible
-        const videoSrc = data.url || data.fallback || previewUrl;
+        // data.url = nouveau encodage, data.urlLegacy = ancien (fichiers déjà uploadés), data.fallback = proxy
+        const urlNew    = data.url;
+        const urlLegacy = data.urlLegacy;
+        const urlProxy  = data.fallback || previewUrl;
+
         body.innerHTML = '';
         const vid = document.createElement('video');
         vid.controls = true;
@@ -1717,19 +1720,25 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
         vid.setAttribute('controlsList', 'nodownload nofullscreen');
         vid.setAttribute('oncontextmenu', 'return false');
         vid.style.cssText = 'max-width:100%;max-height:calc(100vh - 56px);display:block;';
-        vid.src = videoSrc;
-        let fallbackTried = false;
-        vid.onerror = () => {
-          if (!fallbackTried && data.url && videoSrc !== previewUrl) {
-            fallbackTried = true;
-            console.warn('[VIDEO] URL signée échouée, bascule sur proxy');
-            vid.src = previewUrl;
-            vid.load();
-          } else {
-            body.innerHTML = '<div style="color:#ef9a9a;padding:20px;text-align:center">Impossible de lire la vidéo.<br><small style="opacity:0.7">Vérifiez la config CORS du bucket R2.</small></div>';
+
+        let attempt = 0;
+        const urls = [urlNew, urlLegacy, urlProxy].filter(Boolean);
+
+        function tryNextUrl() {
+          if (attempt >= urls.length) {
+            body.innerHTML = '<div style="color:#ef9a9a;padding:20px;text-align:center">Impossible de lire la vidéo.<br><small style="opacity:0.7">Supprimez et re-uploadez la vidéo.</small></div>';
+            return;
           }
-        };
+          const src = urls[attempt];
+          console.log('[VIDEO] Tentative ' + (attempt+1) + '/' + urls.length);
+          attempt++;
+          vid.src = src;
+          vid.load();
+        }
+
+        vid.onerror = () => { console.warn('[VIDEO] Échec, essai suivant...'); tryNextUrl(); };
         body.appendChild(vid);
+        tryNextUrl();
       })
       .catch(err => {
         console.error('[VIDEO] Erreur fetch stream:', err);
