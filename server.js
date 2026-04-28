@@ -98,6 +98,7 @@ function initDB() {
     nextId: 10,
     users: [{ id: 1, name: 'Administrateur Principal', login: 'admin', password: bcrypt.hashSync('admin123', 10), role: 'admin' }],
     folders: [],
+    inviteCodes: [],
   };
   saveDB(db); return db;
 }
@@ -107,6 +108,14 @@ const resetTokens = {};
 
 function generateToken() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
+
+// ── Codes d'invitation ────────────────────────────────────────────────────────
+function generateInviteCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 12; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
 }
 
 // ── Multer → mémoire (puis R2 ou disque) ─────────────────────────────────────
@@ -378,7 +387,7 @@ app.get('/api/me', requireAuth, (req, res) => {
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
 app.get('/api/users', requireAdmin, (req, res) => {
-  res.json(loadDB().users.map(u => ({ id: u.id, name: u.name, login: u.login, role: u.role })));
+  res.json(loadDB().users.map(u => ({ id: u.id, name: u.name, login: u.login, role: u.role, email: u.email || '', mineure: u.mineure || '' })));
 });
 app.post('/api/users', requireAdmin, (req, res) => {
   const { name, login, password, role } = req.body;
@@ -963,6 +972,91 @@ app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res
   if (req.body.size) file.size = req.body.size;
   saveDB(db);
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
+});
+
+// ── CODES D'INVITATION ───────────────────────────────────────────────────────
+
+// Générer N codes (admin)
+app.post('/api/invite-codes/generate', requireAdmin, (req, res) => {
+  const count = Math.min(parseInt(req.body.count) || 1, 100);
+  const db = loadDB();
+  if (!db.inviteCodes) db.inviteCodes = [];
+  const newCodes = [];
+  for (let i = 0; i < count; i++) {
+    let code;
+    do { code = generateInviteCode(); } while (db.inviteCodes.find(c => c.code === code));
+    const entry = { code, createdAt: new Date().toISOString(), usedAt: null, usedBy: null };
+    db.inviteCodes.push(entry);
+    newCodes.push(entry);
+  }
+  saveDB(db);
+  res.json(newCodes);
+});
+
+// Lister tous les codes (admin)
+app.get('/api/invite-codes', requireAdmin, (req, res) => {
+  const db = loadDB();
+  res.json((db.inviteCodes || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+});
+
+// Supprimer un code (admin)
+app.delete('/api/invite-codes/:code', requireAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.inviteCodes) db.inviteCodes = [];
+  db.inviteCodes = db.inviteCodes.filter(c => c.code !== req.params.code);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Supprimer tous les codes utilisés (admin)
+app.delete('/api/invite-codes/used/all', requireAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.inviteCodes) db.inviteCodes = [];
+  const before = db.inviteCodes.length;
+  db.inviteCodes = db.inviteCodes.filter(c => !c.usedAt);
+  saveDB(db);
+  res.json({ deleted: before - db.inviteCodes.length });
+});
+
+// Inscription étudiant via code d'invitation (public)
+app.post('/api/register', (req, res) => {
+  const { code, firstName, lastName, login, email, password, mineure } = req.body;
+  if (!code || !firstName || !lastName || !login || !email || !password) {
+    return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Mot de passe minimum 6 caractères' });
+  }
+  const db = loadDB();
+  if (!db.inviteCodes) db.inviteCodes = [];
+
+  const entry = db.inviteCodes.find(c => c.code === code.toUpperCase().trim());
+  if (!entry) return res.status(403).json({ error: "Code d'invitation invalide" });
+  if (entry.usedAt) return res.status(409).json({ error: 'Ce code a déjà été utilisé' });
+
+  if (db.users.find(u => u.login === login))
+    return res.status(409).json({ error: 'Cet identifiant est déjà pris' });
+  if (db.users.find(u => u.email === email))
+    return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+
+  const newUser = {
+    id: db.nextId++,
+    name: `${firstName.trim()} ${lastName.trim()}`,
+    login: login.trim(),
+    email: email.trim(),
+    password: bcrypt.hashSync(password, 10),
+    role: 'student',
+    mineure: mineure ? mineure.trim() : '',
+    registeredAt: new Date().toISOString(),
+  };
+  db.users.push(newUser);
+
+  // Consommer le code
+  entry.usedAt = new Date().toISOString();
+  entry.usedBy = newUser.login;
+  saveDB(db);
+
+  res.json({ ok: true, name: newUser.name });
 });
 
 // ── STATS ─────────────────────────────────────────────────────────────────────
