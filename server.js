@@ -69,26 +69,33 @@ function getSignedVideoUrl(r2Key) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const now = new Date();
-  // Format: YYYYMMDDTHHMMSSZ
   const amzDate = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
   const expires = 7200;
   const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
 
+  // Encoder le path : chaque segment séparément, slashes conservés
+  const encodedPath = '/' + R2_BUCKET_NAME + '/' + r2Key.split('/').map(s => encodeURIComponent(s)).join('/');
+
+  // Paramètres triés lexicographiquement par nom encodé (requis par AWS v4)
   const params = [
     ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
     ['X-Amz-Credential', credential],
     ['X-Amz-Date', amzDate],
     ['X-Amz-Expires', String(expires)],
     ['X-Amz-SignedHeaders', 'host'],
-  ].sort((a, b) => a[0].localeCompare(b[0]));
+  ].sort((a, b) => {
+    const ka = encodeURIComponent(a[0]);
+    const kb = encodeURIComponent(b[0]);
+    return ka < kb ? -1 : ka > kb ? 1 : 0;
+  });
 
   const qs = params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
-  const encodedKey = r2Key.split('/').map(encodeURIComponent).join('/');
 
+  // Canonical request pour presigned URL GET
   const canonicalReq = [
     'GET',
-    '/' + R2_BUCKET_NAME + '/' + encodedKey,
+    encodedPath,
     qs,
     'host:' + host + '\n',
     'host',
@@ -100,7 +107,7 @@ function getSignedVideoUrl(r2Key) {
   const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
   const sig = hmac(signingKey, toSign, 'hex');
 
-  return `https://${host}/${R2_BUCKET_NAME}/${encodedKey}?${qs}&X-Amz-Signature=${sig}`;
+  return `https://${host}${encodedPath}?${qs}&X-Amz-Signature=${sig}`;
 }
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
@@ -534,8 +541,18 @@ app.get('/api/folders/:folderId/files/:fileId/stream', requireAuth, (req, res) =
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
   const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
   if (!file || file.type !== 'video') return res.status(404).json({ error: 'Fichier introuvable' });
-  if (!r2Enabled || !file.r2Key) return res.status(400).json({ error: 'R2 non disponible' });
-  res.json({ url: getSignedVideoUrl(file.r2Key) });
+  if (!r2Enabled || !file.r2Key) {
+    // Fallback : retourner l'URL de preview proxy
+    return res.json({ url: null, fallback: `/api/folders/${req.params.folderId}/files/${req.params.fileId}/preview` });
+  }
+  try {
+    const signedUrl = getSignedVideoUrl(file.r2Key);
+    console.log('[STREAM] Signed URL générée pour:', file.r2Key);
+    res.json({ url: signedUrl });
+  } catch(e) {
+    console.error('[STREAM] Erreur génération URL:', e.message);
+    res.status(500).json({ error: 'Erreur génération URL signée' });
+  }
 });
 
 app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/stream', requireAuth, (req, res) => {
@@ -544,8 +561,17 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/stream', require
   const sub = (parent?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
   const file = (sub?.files||[]).find(f => f.id === parseInt(req.params.fileId));
   if (!file || file.type !== 'video') return res.status(404).json({ error: 'Fichier introuvable' });
-  if (!r2Enabled || !file.r2Key) return res.status(400).json({ error: 'R2 non disponible' });
-  res.json({ url: getSignedVideoUrl(file.r2Key) });
+  if (!r2Enabled || !file.r2Key) {
+    return res.json({ url: null, fallback: `/api/folders/${req.params.parentId}/subfolders/${req.params.subId}/files/${req.params.fileId}/preview` });
+  }
+  try {
+    const signedUrl = getSignedVideoUrl(file.r2Key);
+    console.log('[STREAM] Signed URL générée pour:', file.r2Key);
+    res.json({ url: signedUrl });
+  } catch(e) {
+    console.error('[STREAM] Erreur génération URL:', e.message);
+    res.status(500).json({ error: 'Erreur génération URL signée' });
+  }
 });
 
 // Toggle downloadable sous-dossier
