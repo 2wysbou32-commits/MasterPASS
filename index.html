@@ -604,12 +604,12 @@ input[type="file"]{display:none;}
         <input type="text" class="field-input" id="reg-code" placeholder="Ex: X7K2M9P4QR8N" style="text-transform:uppercase;letter-spacing:2px;font-weight:700">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="field-group"><label class="field-label">Prénom</label><input type="text" class="field-input" id="reg-firstname" placeholder="Prénom"></div>
-        <div class="field-group"><label class="field-label">Nom</label><input type="text" class="field-input" id="reg-lastname" placeholder="Nom"></div>
+        <div class="field-group"><label class="field-label">Prénom</label><input type="text" class="field-input" id="reg-firstname" placeholder="Prénom" oninput="updateRegLogin()"></div>
+        <div class="field-group"><label class="field-label">Nom</label><input type="text" class="field-input" id="reg-lastname" placeholder="Nom" oninput="updateRegLogin()"></div>
       </div>
       <div class="field-group">
-        <label class="field-label">Identifiant de connexion</label>
-        <input type="text" class="field-input" id="reg-login" placeholder="Ex: jean.dupont" autocomplete="username">
+        <label class="field-label">Identifiant de connexion <span style="font-weight:400;color:var(--text3)">(généré automatiquement)</span></label>
+        <input type="text" class="field-input" id="reg-login" readonly style="background:var(--bg);color:var(--text2);cursor:default;letter-spacing:0.5px" placeholder="Remplis ton prénom et nom d'abord">
       </div>
       <div class="field-group">
         <label class="field-label">Email</label>
@@ -1596,6 +1596,16 @@ function showRegisterForm() {
   document.getElementById('reg-success').style.display = 'none';
 }
 
+function updateRegLogin() {
+  const first = ($('reg-firstname').value || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // enlève les accents
+    .replace(/[^a-z]/g, '');
+  const last = ($('reg-lastname').value || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z]/g, '');
+  $('reg-login').value = (first && last) ? `${first}.${last}.MP` : '';
+}
+
 async function doRegister() {
   const code     = ($('reg-code').value || '').toUpperCase().trim();
   const firstName= ($('reg-firstname').value || '').trim();
@@ -1621,7 +1631,8 @@ async function doRegister() {
   btn.disabled = true; btn.textContent = 'Création…';
   try {
     const data = await api('POST', '/register', { code, firstName, lastName, login, email, password, mineure });
-    okEl.textContent = `Compte créé avec succès ! Bienvenue ${data.name} 🎉 Tu peux maintenant te connecter.`;
+    const loginMsg = data.login !== login ? ` Ton identifiant est <strong>${data.login}</strong> (légèrement modifié car un autre compte existait déjà).` : ` Ton identifiant : <strong>${data.login}</strong>.`;
+    okEl.innerHTML = `Compte créé avec succès ! Bienvenue ${data.name} 🎉${loginMsg} Tu peux maintenant te connecter.`;
     okEl.style.display = 'block';
     btn.style.display = 'none';
     setTimeout(() => showLoginForm(), 3000);
