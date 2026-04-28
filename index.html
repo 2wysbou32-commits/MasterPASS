@@ -1706,9 +1706,10 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
     body.innerHTML = '<div style="color:rgba(255,255,255,0.6);font-size:14px">Chargement de la vidéo...</div>';
     // Récupérer une URL signée R2 pour un streaming natif sans proxy
     fetch(streamUrl)
-      .then(r => r.ok ? r.json() : Promise.reject('Erreur'))
+      .then(r => r.ok ? r.json() : Promise.reject('Erreur serveur'))
       .then(data => {
-        if (!data.url) throw new Error('URL manquante');
+        // data.url = URL signée R2, data.fallback = proxy si R2 indisponible
+        const videoSrc = data.url || data.fallback || previewUrl;
         body.innerHTML = '';
         const vid = document.createElement('video');
         vid.controls = true;
@@ -1716,12 +1717,31 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
         vid.setAttribute('controlsList', 'nodownload nofullscreen');
         vid.setAttribute('oncontextmenu', 'return false');
         vid.style.cssText = 'max-width:100%;max-height:calc(100vh - 56px);display:block;';
-        vid.src = data.url;
-        vid.onerror = () => { body.innerHTML = '<div style="color:#ef9a9a;padding:20px">Impossible de lire la vidéo. Vérifiez votre connexion.</div>'; };
+        vid.src = videoSrc;
+        let fallbackTried = false;
+        vid.onerror = () => {
+          if (!fallbackTried && data.url && videoSrc !== previewUrl) {
+            fallbackTried = true;
+            console.warn('[VIDEO] URL signée échouée, bascule sur proxy');
+            vid.src = previewUrl;
+            vid.load();
+          } else {
+            body.innerHTML = '<div style="color:#ef9a9a;padding:20px;text-align:center">Impossible de lire la vidéo.<br><small style="opacity:0.7">Vérifiez la config CORS du bucket R2.</small></div>';
+          }
+        };
         body.appendChild(vid);
       })
-      .catch(() => {
-        body.innerHTML = '<div style="color:#ef9a9a;padding:20px">Erreur de chargement vidéo.</div>';
+      .catch(err => {
+        console.error('[VIDEO] Erreur fetch stream:', err);
+        body.innerHTML = '';
+        const vid = document.createElement('video');
+        vid.controls = true;
+        vid.autoplay = true;
+        vid.setAttribute('controlsList', 'nodownload nofullscreen');
+        vid.style.cssText = 'max-width:100%;max-height:calc(100vh - 56px);display:block;';
+        vid.src = previewUrl;
+        vid.onerror = () => { body.innerHTML = '<div style="color:#ef9a9a;padding:20px;text-align:center">Impossible de lire la vidéo.</div>'; };
+        body.appendChild(vid);
       });
   } else if (type === 'img') {
     body.style.display = 'flex';
