@@ -29,6 +29,29 @@ if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_KEY) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ── Paths ─────────────────────────────────────────────────────────────────────
+const DATA_DIR    = process.env.DATA_DIR || require('path').join(__dirname, 'data');
+const DATA_FILE   = require('path').join(DATA_DIR, 'db.json');
+const UPLOADS_DIR = require('path').join(DATA_DIR, 'uploads');
+if (!require('fs').existsSync(DATA_DIR)) require('fs').mkdirSync(DATA_DIR, { recursive: true });
+if (!require('fs').existsSync(UPLOADS_DIR)) require('fs').mkdirSync(UPLOADS_DIR, { recursive: true });
+
+// ── DB ────────────────────────────────────────────────────────────────────────
+function loadDB() {
+  if (!fs.existsSync(DATA_FILE)) return initDB();
+  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return initDB(); }
+}
+function saveDB(db) { fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2)); }
+function initDB() {
+  const db = {
+    nextId: 10,
+    users: [{ id: 1, name: 'Administrateur Principal', login: 'admin', password: require('bcryptjs').hashSync('admin123', 10), role: 'admin' }],
+    folders: [],
+    inviteCodes: [],
+  };
+  saveDB(db); return db;
+}
+
 // ── Reset tokens (en mémoire, valides 15 min) ────────────────────────────────
 const resetTokens = {};
 
