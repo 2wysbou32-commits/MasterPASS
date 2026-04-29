@@ -9,12 +9,53 @@ const path = require('path');
 // R2 via API HTTP directe (pas de SDK — évite les problèmes SSL)
 const crypto = require('crypto');
 const https = require('https');
-const { Resend } = require('resend');
 
-// Email (Resend) — optionnel, fonctionne sans si RESEND_API_KEY non défini
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+// Email via Brevo (ex-Sendinblue) — optionnel, fonctionne sans si BREVO_API_KEY non défini
+const BREVO_API_KEY = process.env.BREVO_API_KEY || null;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'masterpass.lille@gmail.com';
+const FROM_NAME = 'MasterPASS';
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
+
+// Fonction d'envoi email via Brevo API
+async function sendEmail({ to, bcc, subject, html }) {
+  if (!BREVO_API_KEY) { console.log('[EMAIL] BREVO_API_KEY non configuré — email non envoyé'); return; }
+  
+  const body = JSON.stringify({
+    sender: { name: FROM_NAME, email: FROM_EMAIL },
+    ...(to ? { to: Array.isArray(to) ? to.map(e => ({ email: e })) : [{ email: to }] } : {}),
+    ...(bcc ? { bcc: bcc.map(e => ({ email: e })) } : {}),
+    subject,
+    htmlContent: html,
+  });
+
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.brevo.com',
+      path: '/v3/smtp/email',
+      method: 'POST',
+      headers: {
+        'api-key': BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          console.log('[EMAIL] Envoyé via Brevo ✅');
+          resolve();
+        } else {
+          console.error('[EMAIL] Erreur Brevo:', res.statusCode, data);
+          reject(new Error(`Brevo error: ${res.statusCode} ${data}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -108,6 +149,55 @@ const resetTokens = {};
 
 function generateToken() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
+
+// ── Notifications email ──────────────────────────────────────────────────────
+async function notifyNewFile(fileName, folderName) {
+  if (!resend) return; // Resend non configuré
+  try {
+    const db = loadDB();
+    // Tous les étudiants ET sous-admins ayant un email
+    const recipients = db.users
+      .filter(u => (u.role === 'student' || u.role === 'subadmin') && u.email)
+      .map(u => u.email);
+    if (!recipients.length) return;
+
+    // Envoyer en batch (max 50 par appel Resend)
+    const chunks = [];
+    for (let i = 0; i < recipients.length; i += 50)
+      chunks.push(recipients.slice(i, i + 50));
+
+    for (const batch of chunks) {
+      await sendEmail({
+        bcc: batch,
+        subject: `📚 Nouveau contenu disponible sur MasterPASS`,
+        html: `
+          <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
+            <div style="background:linear-gradient(135deg,#004D61,#0097A7);border-radius:16px;padding:28px;text-align:center;margin-bottom:24px">
+              <h1 style="color:white;font-size:22px;margin:0 0 6px">MasterPASS</h1>
+              <p style="color:rgba(255,255,255,0.75);font-size:13px;margin:0">Espace Documentaire</p>
+            </div>
+            <h2 style="color:#004D61;font-size:18px;margin:0 0 12px">📂 Nouveau contenu disponible !</h2>
+            <p style="color:#3D6B6F;font-size:14px;line-height:1.7;margin:0 0 20px">
+              Un nouveau fichier vient d'être ajouté dans le dossier <strong>${folderName}</strong> :
+            </p>
+            <div style="background:#F0FAFA;border:1.5px solid #B2DFDB;border-radius:12px;padding:16px 20px;margin-bottom:24px">
+              <p style="color:#004D61;font-size:15px;font-weight:600;margin:0">📄 ${fileName}</p>
+            </div>
+            <a href="${SITE_URL}" style="display:block;text-align:center;background:linear-gradient(135deg,#0097A7,#006064);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px;margin-bottom:24px">
+              Accéder à MasterPASS →
+            </a>
+            <p style="color:#9E9E9E;font-size:11px;text-align:center;margin:0">
+              Tu reçois cet email car tu as un compte MasterPASS.<br>
+              Pour ne plus recevoir ces notifications, contacte <a href="mailto:masterpass.lille@gmail.com" style="color:#0097A7">masterpass.lille@gmail.com</a>
+            </p>
+          </div>`,
+      });
+    }
+    console.log(`[NOTIF] Email envoyé à ${recipients.length} étudiant(s) — fichier: ${fileName}`);
+  } catch(e) {
+    console.error('[NOTIF] Erreur envoi email:', e.message);
+  }
 }
 
 // ── Codes d'invitation ────────────────────────────────────────────────────────
@@ -529,6 +619,12 @@ app.post('/api/folders/:parentId/subfolders/:subId/files', requireAdmin, upload.
     added.push({ id: record.id, name: record.name, size: record.size, type: record.type, addedAt: record.addedAt });
   }
   saveDB(db);
+  if (added.length > 0) {
+    const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+    const sub2 = (parent?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
+    const folderName = sub2 ? `${parent?.name} › ${sub2.name}` : 'Sous-dossier';
+    added.forEach(f => notifyNewFile(f.name, folderName));
+  }
   res.json(added);
 });
 
@@ -670,6 +766,11 @@ app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (r
     added.push({ id: record.id, name: record.name, size: record.size, type: record.type, addedAt: record.addedAt });
   }
   saveDB(db);
+  // Notifier les étudiants (async, ne bloque pas la réponse)
+  if (added.length > 0) {
+    const folderName = folder.name;
+    added.forEach(f => notifyNewFile(f.name, folderName));
+  }
   res.json(added);
 });
 
@@ -749,31 +850,31 @@ app.post('/api/forgot-password', async (req, res) => {
   const token = generateToken();
   resetTokens[token] = { userId: user.id, expires: Date.now() + 15 * 60 * 1000 };
   const resetLink = `${SITE_URL}?reset=${token}`;
-  if (resend) {
-    try {
-      const emailResult = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: user.email,
-        subject: 'MasterPASS — Réinitialisation de mot de passe',
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
-            <h2 style="color:#004D61;margin-bottom:8px">Réinitialisation de mot de passe</h2>
-            <p style="color:#3D6B6F;margin-bottom:24px">Bonjour ${user.name},<br><br>
-            Tu as demandé à réinitialiser ton mot de passe MasterPASS.<br>
-            Clique sur le bouton ci-dessous pour choisir un nouveau mot de passe.</p>
-            <a href="${resetLink}" style="display:inline-block;background:linear-gradient(135deg,#0097A7,#006064);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px">
-              Réinitialiser mon mot de passe
-            </a>
-            <p style="color:#9E9E9E;font-size:12px;margin-top:24px">
-              Ce lien est valable 15 minutes.<br>
-              Si tu n'es pas à l'origine de cette demande, ignore cet email.
-            </p>
-          </div>`,
-      });
-      console.log('[EMAIL] Envoyé, id:', emailResult?.id);
-    } catch(e) { console.error('[EMAIL] Erreur:', e.message); }
-  } else {
-    console.log('RESET LINK:', resetLink);
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: 'MasterPASS — Réinitialisation de mot de passe',
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+          <div style="background:linear-gradient(135deg,#004D61,#0097A7);border-radius:16px;padding:24px;text-align:center;margin-bottom:24px">
+            <h1 style="color:white;font-size:20px;margin:0">MasterPASS</h1>
+          </div>
+          <h2 style="color:#004D61;margin-bottom:8px">Réinitialisation de mot de passe</h2>
+          <p style="color:#3D6B6F;margin-bottom:24px;line-height:1.6">Bonjour ${user.name},<br><br>
+          Tu as demandé à réinitialiser ton mot de passe MasterPASS.<br>
+          Clique sur le bouton ci-dessous pour choisir un nouveau mot de passe.</p>
+          <a href="${resetLink}" style="display:inline-block;background:linear-gradient(135deg,#0097A7,#006064);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px">
+            Réinitialiser mon mot de passe →
+          </a>
+          <p style="color:#9E9E9E;font-size:12px;margin-top:24px">
+            Ce lien est valable 15 minutes.<br>
+            Si tu n'es pas à l'origine de cette demande, ignore cet email.
+          </p>
+        </div>`,
+    });
+  } catch(e) {
+    console.error('[EMAIL] Erreur reset:', e.message);
+    console.log('RESET LINK (fallback):', resetLink);
   }
   res.json({ ok: true, resetLink: resetLink });
 });
@@ -964,6 +1065,12 @@ app.post('/api/folders/:parentId/subfolders/:subId/files/:fileId/confirm', requi
   file.pending = false;
   if (req.body.size) file.size = req.body.size;
   saveDB(db);
+  // Notifier les étudiants après confirmation de l'upload R2
+  const parentForNotif = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const subForNotif = (parentForNotif?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
+  if (parentForNotif && subForNotif) {
+    notifyNewFile(file.name, `${parentForNotif.name} › ${subForNotif.name}`);
+  }
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
 });
 
@@ -976,6 +1083,8 @@ app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res
   file.pending = false;
   if (req.body.size) file.size = req.body.size;
   saveDB(db);
+  const folderForNotif = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (folderForNotif) notifyNewFile(file.name, folderForNotif.name);
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
 });
 
