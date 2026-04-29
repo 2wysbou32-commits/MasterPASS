@@ -157,16 +157,21 @@ function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
   next();
 }
-function requireAdmin(req, res, next) {
-  console.log('[AUTH] requireAdmin — sessionID:', req.sessionID, '— userId:', req.session.userId);
-  if (!req.session.userId) {
-    return res.status(401).json({ error: 'Non authentifié' });
-  }
+// Admin principal uniquement (comptes, codes, stats)
+function requireSuperAdmin(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
   const user = loadDB().users.find(u => u.id === req.session.userId);
-  if (!user || user.role !== 'admin') {
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé — admin principal requis' });
+  next();
+}
+
+// Admin principal OU sous-admin (fichiers uniquement)
+function requireAdmin(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
+  const user = loadDB().users.find(u => u.id === req.session.userId);
+  if (!user || (user.role !== 'admin' && user.role !== 'subadmin')) {
     return res.status(403).json({ error: 'Accès refusé' });
   }
-  console.log('[AUTH] OK — user:', user.login);
   next();
 }
 
@@ -386,12 +391,12 @@ app.get('/api/me', requireAuth, (req, res) => {
 });
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
-app.get('/api/users', requireAdmin, (req, res) => {
+app.get('/api/users', requireSuperAdmin, (req, res) => {
   res.json(loadDB().users.map(u => ({ id: u.id, name: u.name, login: u.login, role: u.role, email: u.email || '', mineure: u.mineure || '' })));
 });
-app.post('/api/users', requireAdmin, (req, res) => {
+app.post('/api/users', requireSuperAdmin, (req, res) => {
   const { name, login, password, role } = req.body;
-  if (!name || !login || !password || !['admin','student'].includes(role))
+  if (!name || !login || !password || !['admin','subadmin','student'].includes(role))
     return res.status(400).json({ error: 'Données invalides' });
   const db = loadDB();
   if (db.users.find(u => u.login === login))
@@ -400,7 +405,7 @@ app.post('/api/users', requireAdmin, (req, res) => {
   db.users.push(u); saveDB(db);
   res.json({ id: u.id, name, login, role });
 });
-app.delete('/api/users/:id', requireAdmin, (req, res) => {
+app.delete('/api/users/:id', requireSuperAdmin, (req, res) => {
   const id = parseInt(req.params.id);
   if (id === req.session.userId) return res.status(400).json({ error: 'Impossible de supprimer votre propre compte' });
   const db = loadDB(); db.users = db.users.filter(u => u.id !== id); saveDB(db);
@@ -977,7 +982,7 @@ app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res
 // ── CODES D'INVITATION ───────────────────────────────────────────────────────
 
 // Générer N codes (admin)
-app.post('/api/invite-codes/generate', requireAdmin, (req, res) => {
+app.post('/api/invite-codes/generate', requireSuperAdmin, (req, res) => {
   const count = Math.min(parseInt(req.body.count) || 1, 100);
   const db = loadDB();
   if (!db.inviteCodes) db.inviteCodes = [];
@@ -994,13 +999,13 @@ app.post('/api/invite-codes/generate', requireAdmin, (req, res) => {
 });
 
 // Lister tous les codes (admin)
-app.get('/api/invite-codes', requireAdmin, (req, res) => {
+app.get('/api/invite-codes', requireSuperAdmin, (req, res) => {
   const db = loadDB();
   res.json((db.inviteCodes || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
 });
 
 // Supprimer un code (admin)
-app.delete('/api/invite-codes/:code', requireAdmin, (req, res) => {
+app.delete('/api/invite-codes/:code', requireSuperAdmin, (req, res) => {
   const db = loadDB();
   if (!db.inviteCodes) db.inviteCodes = [];
   db.inviteCodes = db.inviteCodes.filter(c => c.code !== req.params.code);
@@ -1009,7 +1014,7 @@ app.delete('/api/invite-codes/:code', requireAdmin, (req, res) => {
 });
 
 // Supprimer tous les codes utilisés (admin)
-app.delete('/api/invite-codes/used/all', requireAdmin, (req, res) => {
+app.delete('/api/invite-codes/used/all', requireSuperAdmin, (req, res) => {
   const db = loadDB();
   if (!db.inviteCodes) db.inviteCodes = [];
   const before = db.inviteCodes.length;
@@ -1066,7 +1071,7 @@ app.post('/api/register', (req, res) => {
 });
 
 // ── STATS ─────────────────────────────────────────────────────────────────────
-app.get('/api/stats', requireAdmin, (req, res) => {
+app.get('/api/stats', requireSuperAdmin, (req, res) => {
   const db = loadDB();
   res.json({
     folders: db.folders.length,
