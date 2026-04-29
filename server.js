@@ -21,9 +21,13 @@ async function sendEmail({ to, bcc, subject, html }) {
   if (!BREVO_API_KEY) { console.log('[EMAIL] BREVO_API_KEY non configuré — email non envoyé'); return; }
   
   // Brevo exige toujours un destinataire "to" même si on utilise bcc
-  const toField = to
-    ? (Array.isArray(to) ? to.map(e => ({ email: e })) : [{ email: to }])
-    : [{ email: FROM_EMAIL }]; // destinataire fictif si seulement bcc
+  // Brevo exige to = [{email:'...'}] toujours
+  const normalizeEmails = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.map(e => typeof e === 'string' ? { email: e.trim() } : e);
+    return [{ email: val.trim() }];
+  };
+  const toField = to ? normalizeEmails(to) : [{ email: FROM_EMAIL }];
 
   const body = JSON.stringify({
     sender: { name: FROM_NAME, email: FROM_EMAIL },
@@ -32,6 +36,8 @@ async function sendEmail({ to, bcc, subject, html }) {
     subject,
     htmlContent: html,
   });
+
+  console.log('[EMAIL] Envoi Brevo → to:', JSON.stringify(toField), '| bcc count:', bcc ? bcc.length : 0, '| subject:', subject);
 
   return new Promise((resolve, reject) => {
     const req = https.request({
