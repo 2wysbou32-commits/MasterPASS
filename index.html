@@ -909,48 +909,77 @@ input[type="file"]{display:none;}
 <div id="legal-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);overflow-y:auto;padding:20px">
   <div style="max-width:680px;margin:40px auto;background:white;border-radius:20px;padding:40px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
     <button onclick="closeLegal()" style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:none;background:var(--bg);cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center">✕</button>
-    
-    <h2 style="font-family:'Sora',sans-serif;color:var(--teal-dark);margin:0 0 6px">Mentions légales & Confidentialité</h2>
-    <p style="color:var(--text3);font-size:13px;margin:0 0 28px">Dernière mise à jour : avril 2026</p>
 
-    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Éditeur du site</h3>
+    <h2 style="font-family:'Sora',sans-serif;color:var(--teal-dark);margin:0 0 6px">Mentions légales & Politique de confidentialité</h2>
+    <p style="color:var(--text3);font-size:13px;margin:0 0 28px">Dernière mise à jour : avril 2026 — Conformément à la loi LCEN du 21 juin 2004 et au RGPD (UE) 2016/679</p>
+
+    <!-- ÉDITEUR -->
+    <h3 style="color:var(--teal-dark);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">1. Éditeur du site</h3>
     <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
-      MasterPASS est un site documentaire privé édité par <strong>Kafil H.</strong>, étudiant en médecine.<br>
+      MasterPASS est un site documentaire privé à vocation pédagogique, édité par :<br>
+      <strong>Kafil H.</strong>, étudiant en médecine (année supérieure)<br>
+      Directeur de publication : Kafil H.<br>
       Contact : <a href="mailto:masterpass.lille@gmail.com" style="color:var(--teal-dark)">masterpass.lille@gmail.com</a>
     </p>
 
-    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Hébergement</h3>
+    <!-- HÉBERGEMENT -->
+    <h3 style="color:var(--teal-dark);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">2. Hébergement</h3>
     <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
-      Le site est hébergé par <strong>Railway</strong> (San Francisco, CA, USA) et utilise le stockage de fichiers <strong>Cloudflare R2</strong> (Cloudflare Inc., USA).
+      <strong>Railway</strong> — 548 Market St, San Francisco, CA 94104, USA — <a href="https://railway.app" target="_blank" style="color:var(--teal-dark)">railway.app</a><br>
+      <strong>Cloudflare R2</strong> (stockage des fichiers) — Cloudflare Inc., 101 Townsend St, San Francisco, CA 94107, USA — <a href="https://cloudflare.com" target="_blank" style="color:var(--teal-dark)">cloudflare.com</a>
     </p>
 
-    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Données collectées</h3>
+    <!-- OBJET DU SITE -->
+    <h3 style="color:var(--teal-dark);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">3. Objet du site</h3>
     <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
-      Lors de la création de ton compte, les données suivantes sont collectées :
-      <br>• Prénom et nom
-      <br>• Adresse email
-      <br>• Identifiant de connexion
-      <br>• Mineure PASS (optionnel)
-      <br><br>
-      Ces données sont utilisées <strong>uniquement</strong> pour te permettre d'accéder à MasterPASS. Elles ne sont ni vendues, ni partagées avec des tiers.
+      MasterPASS est une plateforme documentaire privée, sans but commercial, destinée à aider des étudiants en PASS (Parcours d'Accès Spécifique Santé) en leur donnant accès à des cours, vidéos et schémas créés personnellement par l'éditeur. L'accès est strictement réservé aux étudiants invités individuellement via un code personnel à usage unique. Aucune publicité n'est diffusée. Aucun paiement n'est demandé.
     </p>
 
-    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Durée de conservation</h3>
+    <!-- PROPRIÉTÉ INTELLECTUELLE -->
+    <h3 style="color:var(--teal-dark);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">4. Propriété intellectuelle</h3>
     <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
-      Tes données sont conservées le temps de ton accès à MasterPASS. Tu peux demander la suppression de ton compte à tout moment en écrivant à <a href="mailto:masterpass.lille@gmail.com" style="color:var(--teal-dark)">masterpass.lille@gmail.com</a>.
+      L'ensemble des contenus disponibles sur MasterPASS (cours rédigés, vidéos explicatives, schémas redessinés, supports pédagogiques) sont des créations originales de l'éditeur, protégées par le droit d'auteur (Code de la Propriété Intellectuelle, art. L111-1). Toute reproduction, diffusion ou utilisation de ces contenus en dehors de MasterPASS, sans autorisation explicite de l'éditeur, est interdite.
     </p>
 
-    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Tes droits (RGPD)</h3>
+    <!-- DONNÉES COLLECTÉES -->
+    <h3 style="color:var(--teal-dark);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">5. Données personnelles collectées</h3>
+    <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
+      Lors de la création de ton compte, les données suivantes sont collectées :<br>
+      • Prénom et nom<br>
+      • Adresse email<br>
+      • Identifiant de connexion (généré automatiquement)<br>
+      • Mineure PASS (optionnel)<br><br>
+      <strong>Finalité :</strong> permettre l'accès authentifié à la plateforme MasterPASS.<br>
+      <strong>Base juridique :</strong> consentement explicite de l'utilisateur (art. 6.1.a du RGPD), formalisé par l'acceptation de la présente politique lors de l'inscription.<br>
+      <strong>Destinataires :</strong> ces données sont accessibles uniquement à l'éditeur (Kafil H.). Elles ne sont ni vendues, ni transmises, ni partagées avec des tiers.
+    </p>
+
+    <!-- DURÉE DE CONSERVATION -->
+    <h3 style="color:var(--teal-dark);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">6. Durée de conservation</h3>
+    <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
+      Les données sont conservées pendant la durée d'utilisation active de MasterPASS, et supprimées à la demande de l'utilisateur ou au plus tard à la fin de l'année universitaire concernée.
+    </p>
+
+    <!-- DROITS -->
+    <h3 style="color:var(--teal-dark);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">7. Tes droits (RGPD)</h3>
+    <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
+      Conformément au RGPD (art. 15 à 22), tu disposes des droits suivants sur tes données :<br>
+      • <strong>Droit d'accès</strong> : obtenir une copie de tes données<br>
+      • <strong>Droit de rectification</strong> : corriger des données inexactes<br>
+      • <strong>Droit à l'effacement</strong> : demander la suppression de ton compte<br>
+      • <strong>Droit d'opposition</strong> : t'opposer au traitement de tes données<br>
+      • <strong>Droit à la portabilité</strong> : récupérer tes données dans un format lisible<br><br>
+      Pour exercer ces droits : <a href="mailto:masterpass.lille@gmail.com" style="color:var(--teal-dark)">masterpass.lille@gmail.com</a><br><br>
+      Tu as également le droit d'introduire une réclamation auprès de la <strong>CNIL</strong> (Commission Nationale de l'Informatique et des Libertés) : <a href="https://www.cnil.fr" target="_blank" style="color:var(--teal-dark)">www.cnil.fr</a>
+    </p>
+
+    <!-- COOKIES -->
+    <h3 style="color:var(--teal-dark);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">8. Cookies</h3>
     <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 28px">
-      Conformément au Règlement Général sur la Protection des Données (RGPD), tu disposes d'un droit d'accès, de rectification et de suppression de tes données. Pour exercer ces droits, contacte <a href="mailto:masterpass.lille@gmail.com" style="color:var(--teal-dark)">masterpass.lille@gmail.com</a>.
+      MasterPASS utilise uniquement un cookie de session strictement nécessaire au fonctionnement de la connexion. Aucun cookie publicitaire, de tracking ou d'analyse n'est utilisé. Ce cookie de session est exempté de consentement (CNIL, délibération du 17 septembre 2020).
     </p>
 
-    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Accès au site</h3>
-    <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 28px">
-      MasterPASS est un site privé, accessible uniquement sur invitation via un code personnel. L'accès est réservé aux étudiants en PASS de la promotion concernée.
-    </p>
-
-    <button onclick="closeLegal()" style="width:100%;padding:12px;background:linear-gradient(135deg,#0097A7,#006064);color:white;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">J'ai lu et compris</button>
+    <button onclick="closeLegal()" style="width:100%;padding:12px;background:linear-gradient(135deg,#0097A7,#006064);color:white;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">J'ai lu et compris ✓</button>
   </div>
 </div>
 
@@ -2273,4 +2302,3 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
 
 </body>
 </html>
-      
