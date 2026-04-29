@@ -547,6 +547,86 @@ input[type="file"]{display:none;}
 .preview-unsupported svg { width:48px; height:48px; margin-bottom:12px; opacity:0.4; display:block; margin-left:auto; margin-right:auto; }
 
 
+/* ── SEARCH ─────────────────────────────────────────────────────────────── */
+.topbar-search {
+  flex: 1;
+  max-width: 400px;
+}
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 7px 12px;
+  transition: all 0.15s;
+}
+.search-input-wrap:focus-within {
+  border-color: var(--teal);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(0,151,167,0.1);
+}
+.search-icon {
+  width: 16px; height: 16px;
+  color: var(--text3);
+  flex-shrink: 0;
+}
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  color: var(--text);
+  outline: none;
+  font-family: 'Inter', sans-serif;
+}
+.search-input::placeholder { color: var(--text3); }
+#search-clear {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--text3);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+}
+#search-clear:hover { background: var(--teal-dark); }
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(178,223,219,0.35);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.search-result-item:hover { background: rgba(0,151,167,0.04); }
+.search-result-folder {
+  font-size: 11px;
+  color: var(--text3);
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.search-no-results {
+  padding: 48px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .topbar-search { max-width: none; flex: 1; }
+  .topbar-title { display: none; }
+}
+
 /* ── RESPONSIVE MOBILE ───────────────────────────────────────────────────── */
 
 /* Hamburger button — masqué sur desktop */
@@ -848,6 +928,15 @@ input[type="file"]{display:none;}
         </svg>
       </button>
       <div class="topbar-title" id="topbar-title">Espace documentaire</div>
+      <div class="topbar-search" id="topbar-search" style="display:none">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" class="search-input" placeholder="Rechercher un fichier..." oninput="doSearch(this.value)" autocomplete="off">
+          <button id="search-clear" onclick="clearSearch()" style="display:none">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+      </div>
       <div class="topbar-actions" id="topbar-actions"></div>
     </div>
     <div class="content-area">
@@ -1001,6 +1090,15 @@ input[type="file"]{display:none;}
           <div class="settings-section-title" style="color:var(--danger)">Zone de danger</div>
           <p style="font-size:13px;color:var(--text3);margin:0 0 12px;line-height:1.5">La suppression de ton compte est définitive. Toutes tes données seront effacées. Pour supprimer ton compte, envoie un email à <a href="mailto:masterpass.lille@gmail.com" style="color:var(--teal-dark)">masterpass.lille@gmail.com</a> depuis ton adresse email enregistrée.</p>
         </div>
+      </div>
+
+      <!-- SEARCH RESULTS PANEL -->
+      <div class="panel" id="panel-search" style="display:none">
+        <div style="margin-bottom:20px">
+          <div class="section-title" id="search-results-title">Résultats de recherche</div>
+          <div class="section-sub" id="search-results-sub"></div>
+        </div>
+        <div id="search-results-list" class="files-list-wrap"></div>
       </div>
 
       <!-- CODES PANEL -->
@@ -1260,6 +1358,7 @@ function setupApp(){
   // Show settings panel for students only
   $('panel-settings').style.display = isAnyAdmin ? 'none' : '';
   $('topbar-title').textContent='Espace documentaire';
+  if($('topbar-search')) $('topbar-search').style.display='block';
   updateTopbar();updateBreadcrumb();loadFolders();
   if(isAdmin)loadStats();
   checkAndShowTutorial();
@@ -1278,10 +1377,13 @@ function showPanel(name){
   target.style.display='';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-'+name)?.classList.add('active');
-  if(name==='files'){$('topbar-title').textContent='Espace documentaire';backToRoot();}
+  if(name==='files'){$('topbar-title').textContent='Espace documentaire';backToRoot();clearSearch();}
   if(name==='users'){$('topbar-title').textContent='Gestion des comptes';loadUsers();}
   if(name==='codes'){$('topbar-title').textContent="Codes d'invitation";loadCodes();}
   if(name==='settings'){$('topbar-title').textContent='Mes réglages';loadSettingsPanel();}
+  // Afficher la barre de recherche uniquement sur le panel fichiers
+  const searchBar = $('topbar-search');
+  if(searchBar) searchBar.style.display = name==='files' ? 'block' : 'none';
   updateTopbar();
   // Fermer la sidebar sur mobile après navigation
   if(window.innerWidth <= 768) closeSidebar();
@@ -1766,6 +1868,144 @@ async function doResetPassword() {
 }
 
 
+
+// ── RECHERCHE ────────────────────────────────────────────────────────────────
+let searchTimeout = null;
+
+function doSearch(query) {
+  const clearBtn = $('search-clear');
+  if (clearBtn) clearBtn.style.display = query ? 'flex' : 'none';
+
+  clearTimeout(searchTimeout);
+  if (!query.trim()) {
+    // Revenir au panel fichiers normal
+    $('panel-search').style.display = 'none';
+    $('panel-files').style.display = '';
+    $('panel-files').classList.add('active');
+    return;
+  }
+
+  searchTimeout = setTimeout(() => runSearch(query.trim()), 200);
+}
+
+async function runSearch(query) {
+  // Afficher le panel recherche
+  document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display='none'; });
+  const sp = $('panel-search');
+  sp.style.display = '';
+  sp.classList.add('active');
+
+  const q = query.toLowerCase();
+  const db_folders = await api('GET', '/folders');
+  const results = [];
+
+  // Contexte : si on est dans un sous-dossier, chercher uniquement dedans
+  // sinon chercher dans tout
+  if (currentFolder && currentFolder.subId) {
+    // Dans un sous-dossier
+    const files = await api('GET', `/folders/${currentFolder.parentId || currentFolder.id}/subfolders/${currentFolder.subId}/files`);
+    files.forEach(f => {
+      if (f.name.toLowerCase().includes(q)) {
+        results.push({ ...f, folderName: currentFolder.name, folderId: currentFolder.parentId || currentFolder.id, subId: currentFolder.subId });
+      }
+    });
+  } else if (currentFolder) {
+    // Dans un dossier racine
+    const files = await api('GET', `/folders/${currentFolder.id}/files`);
+    files.forEach(f => {
+      if (f.name.toLowerCase().includes(q)) {
+        results.push({ ...f, folderName: currentFolder.name, folderId: currentFolder.id });
+      }
+    });
+    // Aussi dans ses sous-dossiers
+    const subs = await api('GET', `/folders/${currentFolder.id}/subfolders`);
+    for (const sub of subs) {
+      const subFiles = await api('GET', `/folders/${currentFolder.id}/subfolders/${sub.id}/files`);
+      subFiles.forEach(f => {
+        if (f.name.toLowerCase().includes(q)) {
+          results.push({ ...f, folderName: `${currentFolder.name} › ${sub.name}`, folderId: currentFolder.id, subId: sub.id });
+        }
+      });
+    }
+  } else {
+    // Pas de dossier ouvert → chercher partout
+    for (const folder of db_folders) {
+      const files = await api('GET', `/folders/${folder.id}/files`);
+      files.forEach(f => {
+        if (f.name.toLowerCase().includes(q)) {
+          results.push({ ...f, folderName: folder.name, folderId: folder.id });
+        }
+      });
+      const subs = await api('GET', `/folders/${folder.id}/subfolders`);
+      for (const sub of subs) {
+        const subFiles = await api('GET', `/folders/${folder.id}/subfolders/${sub.id}/files`);
+        subFiles.forEach(f => {
+          if (f.name.toLowerCase().includes(q)) {
+            results.push({ ...f, folderName: `${folder.name} › ${sub.name}`, folderId: folder.id, subId: sub.id });
+          }
+        });
+      }
+    }
+  }
+
+  renderSearchResults(results, query);
+}
+
+function renderSearchResults(results, query) {
+  $('search-results-title').textContent = `Résultats pour "${query}"`;
+  $('search-results-sub').textContent = results.length
+    ? `${results.length} fichier${results.length > 1 ? 's' : ''} trouvé${results.length > 1 ? 's' : ''}`
+    : '';
+
+  const list = $('search-results-list');
+  if (!results.length) {
+    list.innerHTML = `<div class="search-no-results">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:40px;height:40px;opacity:0.2;margin-bottom:12px"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <div>Aucun fichier trouvé pour "<strong>${query}</strong>"</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = results.map(r => {
+    const icon = getFileIcon(r.type);
+    const nameHighlighted = r.name.replace(new RegExp(query, 'gi'), m => `<mark style="background:rgba(0,151,167,0.15);color:var(--teal-dark);border-radius:3px;padding:0 2px">${m}</mark>`);
+    return `<div class="search-result-item" onclick="openSearchResult(${JSON.stringify(r).replace(/"/g, '&quot;')})">
+      <div class="file-icon-wrap ${r.type}">${icon}</div>
+      <div style="flex:1;min-width:0">
+        <div class="file-name">${nameHighlighted}</div>
+        <div class="file-date">${formatSize(r.size)}</div>
+      </div>
+      <span class="search-result-folder">${r.folderName}</span>
+    </div>`;
+  }).join('');
+}
+
+function openSearchResult(file) {
+  // Ouvrir le fichier directement depuis les résultats
+  if (file.type === 'video') {
+    openVideoModal(file.folderId, file.id, file.name, file.subId);
+  } else if (file.type === 'pdf' || file.type === 'img') {
+    const url = file.subId
+      ? `/api/folders/${file.folderId}/subfolders/${file.subId}/files/${file.id}/preview`
+      : `/api/folders/${file.folderId}/files/${file.id}/preview`;
+    openPreviewModal(url, file.name, file.type);
+  } else {
+    const url = file.subId
+      ? `/api/folders/${file.folderId}/subfolders/${file.subId}/files/${file.id}/download`
+      : `/api/folders/${file.folderId}/files/${file.id}/download`;
+    window.open(url, '_blank');
+  }
+}
+
+function clearSearch() {
+  const input = $('search-input');
+  if (input) input.value = '';
+  const clearBtn = $('search-clear');
+  if (clearBtn) clearBtn.style.display = 'none';
+  $('panel-search').style.display = 'none';
+  $('panel-files').style.display = '';
+  $('panel-files').classList.add('active');
+}
 
 // ── TUTORIEL ──────────────────────────────────────────────────────────────────
 let tutoStep = 0;
