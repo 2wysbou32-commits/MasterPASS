@@ -547,6 +547,37 @@ input[type="file"]{display:none;}
 .preview-unsupported svg { width:48px; height:48px; margin-bottom:12px; opacity:0.4; display:block; margin-left:auto; margin-right:auto; }
 
 
+/* ── ANNOUNCEMENTS ──────────────────────────────────────────────────────── */
+.ann-card {
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  border-left: 4px solid;
+  position: relative;
+}
+.ann-card.info    { background:#E3F2FD; border-color:#1976D2; }
+.ann-card.success { background:#E8F5E9; border-color:#388E3C; }
+.ann-card.urgent  { background:#FFEBEE; border-color:#D32F2F; }
+.ann-card.tip     { background:#FFFDE7; border-color:#F57F17; }
+.ann-card-title   { font-weight:700; font-size:15px; margin-bottom:6px; }
+.ann-card.info    .ann-card-title { color:#1565C0; }
+.ann-card.success .ann-card-title { color:#2E7D32; }
+.ann-card.urgent  .ann-card-title { color:#C62828; }
+.ann-card.tip     .ann-card-title { color:#E65100; }
+.ann-card-message { font-size:14px; line-height:1.6; color:var(--text2); white-space:pre-wrap; }
+.ann-card-date    { font-size:11px; color:var(--text3); margin-top:8px; }
+.ann-delete-btn   { position:absolute; top:12px; right:12px; width:26px; height:26px; border-radius:50%; border:none; background:rgba(0,0,0,0.08); color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.ann-delete-btn:hover { background:rgba(0,0,0,0.15); }
+.ann-type-btn {
+  display:flex; align-items:center; gap:6px;
+  padding:7px 14px; border-radius:20px;
+  border: 1.5px solid var(--border);
+  cursor:pointer; font-size:13px; font-weight:500;
+  background:white; transition:all 0.15s;
+}
+.ann-type-btn input[type=radio] { display:none; }
+.ann-type-btn:has(input:checked) { border-color:var(--teal); background:rgba(0,151,167,0.08); color:var(--teal-dark); }
+
 /* ── FAVORITES ──────────────────────────────────────────────────────────── */
 .btn-favorite {
   width: 28px; height: 28px;
@@ -909,6 +940,10 @@ input[type="file"]{display:none;}
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
         Mes réglages
       </div>
+      <div class="nav-item" onclick="showPanel('announcements')" id="nav-announcements">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+        Annonces
+      </div>
       <div class="nav-item" onclick="showPanel('favorites')" id="nav-favorites">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
         Mes favoris
@@ -1120,6 +1155,49 @@ input[type="file"]{display:none;}
           <div class="section-sub" id="search-results-sub"></div>
         </div>
         <div id="search-results-list" class="files-list-wrap"></div>
+      </div>
+
+      <!-- ANNOUNCEMENTS PANEL -->
+      <div class="panel" id="panel-announcements" style="display:none">
+        <div class="section-header" style="margin-bottom:24px">
+          <div>
+            <div class="section-title">📢 Annonces</div>
+            <div class="section-sub">Messages de ton formateur</div>
+          </div>
+          <div id="ann-admin-actions" style="display:none;gap:10px">
+            <button class="btn-action primary-action" onclick="showNewAnnForm()">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              Nouvelle annonce
+            </button>
+          </div>
+        </div>
+
+        <!-- Formulaire nouvelle annonce (admin) -->
+        <div id="ann-form" style="display:none;background:white;border:1.5px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px">
+          <div class="field-group" style="margin-bottom:12px">
+            <label class="field-label">Titre</label>
+            <input type="text" class="field-input" id="ann-title" placeholder="Ex: Examen mardi !" maxlength="80">
+          </div>
+          <div class="field-group" style="margin-bottom:12px">
+            <label class="field-label">Message</label>
+            <textarea class="field-input" id="ann-message" placeholder="Ton message ici..." rows="3" style="resize:vertical"></textarea>
+          </div>
+          <div class="field-group" style="margin-bottom:16px">
+            <label class="field-label">Type</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label class="ann-type-btn" data-color="info"><input type="radio" name="ann-color" value="info" checked> ℹ️ Info</label>
+              <label class="ann-type-btn" data-color="success"><input type="radio" name="ann-color" value="success"> ✅ Bon courage</label>
+              <label class="ann-type-btn" data-color="urgent"><input type="radio" name="ann-color" value="urgent"> 🚨 Urgent</label>
+              <label class="ann-type-btn" data-color="tip"><input type="radio" name="ann-color" value="tip"> 💡 Conseil</label>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-action primary-action" onclick="submitAnnouncement()" style="flex:1">Publier</button>
+            <button class="btn-action" onclick="hideAnnForm()">Annuler</button>
+          </div>
+        </div>
+
+        <div id="announcements-list"></div>
       </div>
 
       <!-- FAVORITES PANEL -->
@@ -1397,6 +1475,9 @@ function setupApp(){
   if($('topbar-search')) $('topbar-search').style.display='block';
   updateTopbar();updateBreadcrumb();loadFolders();
   if(isAdmin)loadStats();
+  // Afficher bouton nouvelle annonce pour admin principal seulement
+  const annAdminActions = $('ann-admin-actions');
+  if(annAdminActions) annAdminActions.style.display = isAdmin ? 'flex' : 'none';
   checkAndShowTutorial();
 }
 
@@ -1414,6 +1495,7 @@ function showPanel(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-'+name)?.classList.add('active');
   if(name==='files'){$('topbar-title').textContent='Espace documentaire';backToRoot();clearSearch();}
+  if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='favorites'){$('topbar-title').textContent='Mes favoris';loadFavorites();}
   if(name==='users'){$('topbar-title').textContent='Gestion des comptes';loadUsers();}
   if(name==='codes'){$('topbar-title').textContent="Codes d'invitation";loadCodes();}
@@ -1919,6 +2001,66 @@ async function doResetPassword() {
 
 
 
+// ── ANNONCES ─────────────────────────────────────────────────────────────────
+async function loadAnnouncements() {
+  const list = $('announcements-list');
+  list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
+  try {
+    const anns = await api('GET', '/announcements');
+    if (!anns.length) {
+      list.innerHTML = `<div class="search-no-results">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:40px;height:40px;opacity:0.2;margin-bottom:12px"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+        <div>Aucune annonce pour l'instant.</div>
+      </div>`;
+      return;
+    }
+    const isAdmin = currentUser?.role === 'admin';
+    const colors = { info:'ℹ️', success:'✅', urgent:'🚨', tip:'💡' };
+    list.innerHTML = anns.map(a => `
+      <div class="ann-card ${a.color}">
+        ${isAdmin ? `<button class="ann-delete-btn" onclick="deleteAnnouncement(${a.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>` : ''}
+        <div class="ann-card-title">${colors[a.color] || 'ℹ️'} ${a.title}</div>
+        <div class="ann-card-message">${a.message}</div>
+        <div class="ann-card-date">${new Date(a.createdAt).toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric'})}</div>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="padding:20px;color:var(--danger)">Erreur de chargement</div>';
+  }
+}
+
+function showNewAnnForm() {
+  $('ann-form').style.display = '';
+  $('ann-title').focus();
+}
+
+function hideAnnForm() {
+  $('ann-form').style.display = 'none';
+  $('ann-title').value = '';
+  $('ann-message').value = '';
+}
+
+async function submitAnnouncement() {
+  const title = ($('ann-title').value || '').trim();
+  const message = ($('ann-message').value || '').trim();
+  const color = document.querySelector('input[name="ann-color"]:checked')?.value || 'info';
+  if (!title || !message) { toast('Titre et message requis', 'error'); return; }
+  try {
+    await api('POST', '/announcements', { title, message, color });
+    hideAnnForm();
+    await loadAnnouncements();
+    toast('Annonce publiée ✅');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm('Supprimer cette annonce ?')) return;
+  try {
+    await api('DELETE', '/announcements/' + id);
+    await loadAnnouncements();
+    toast('Annonce supprimée');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 // ── FAVORIS ──────────────────────────────────────────────────────────────────
 function getFavorites() {
   if (!currentUser) return [];
@@ -2079,21 +2221,26 @@ function renderSearchResults(results, query) {
   }
 
   list.innerHTML = results.map(r => {
-    const icon = getFileIcon(r.type);
-    const nameHighlighted = r.name.replace(new RegExp(query, 'gi'), m => `<mark style="background:rgba(0,151,167,0.15);color:var(--teal-dark);border-radius:3px;padding:0 2px">${m}</mark>`);
-    return `<div class="search-result-item" onclick="openSearchResult(${JSON.stringify(r).replace(/"/g, '&quot;')})">
-      <div class="file-icon-wrap ${r.type}">${icon}</div>
+    // Décoder correctement les noms de fichiers avec accents
+    const displayName = r.name;
+    // Échapper correctement les caractères spéciaux pour l'attribut onclick
+    const fileData = encodeURIComponent(JSON.stringify(r));
+    const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const nameHighlighted = displayName.replace(new RegExp(safeQuery, 'gi'), m => `<mark style="background:rgba(0,151,167,0.15);color:var(--teal-dark);border-radius:3px;padding:0 2px">${m}</mark>`);
+    return `<div class="search-result-item" onclick="openSearchResult(decodeURIComponent('${fileData}'))">
+      <div class="file-icon-wrap ${r.type}">${getFileTypeBadge(r.type)}</div>
       <div style="flex:1;min-width:0">
         <div class="file-name">${nameHighlighted}</div>
         <div class="file-date">${formatSize(r.size)}</div>
       </div>
-      <span class="search-result-folder">${r.folderName}</span>
+      <span class="search-result-folder">${r.folderName || ''}</span>
     </div>`;
   }).join('');
 }
 
-function openSearchResult(file) {
-  // Ouvrir le fichier directement depuis les résultats
+function openSearchResult(fileOrStr) {
+  // Accepte soit un objet soit une chaîne JSON encodée
+  const file = typeof fileOrStr === 'string' ? JSON.parse(fileOrStr) : fileOrStr;
   if (file.type === 'video') {
     openVideoModal(file.folderId, file.id, file.name, file.subId);
   } else if (file.type === 'pdf' || file.type === 'img') {
