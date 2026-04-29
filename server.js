@@ -26,6 +26,45 @@ if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_KEY) {
   console.log('⚠️  R2 non configuré → stockage local');
 }
 
+// ── Helpers crypto ────────────────────────────────────────────────────────────
+function hmac(key, data, encoding) {
+  return crypto.createHmac('sha256', key).update(data).digest(encoding || undefined);
+}
+function hashSHA256(data) {
+  return crypto.createHash('sha256').update(data).digest('hex');
+}
+
+// Encode chaque segment du path R2 séparément (conserve les /)
+function encodeR2Key(key) {
+  return key.split('/').map(s => encodeURIComponent(s)).join('/');
+}
+
+// Ancien encodage (avant correction) : les / deviennent %2F
+function encodeR2KeyLegacy(key) {
+  return encodeURIComponent(key);
+}
+
+// Signature AWS v4 pour PUT/DELETE
+function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const datetime = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateShort = datetime.slice(0, 8);
+  const scope = `${dateShort}/${region}/s3/aws4_request`;
+  const canonicalPath = `/${R2_BUCKET_NAME}/${encodeR2Key(key)}`;
+  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-date:${datetime}\n`;
+  const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
+  const canonicalRequest = [method, canonicalPath, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
+  const stringToSign = ['AWS4-HMAC-SHA256', datetime, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateShort), region), 's3'), 'aws4_request');
+  const signature = hmac(signingKey, stringToSign, 'hex');
+  return {
+    authorization: `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+    datetime,
+    host,
+    canonicalPath,
+  };
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
