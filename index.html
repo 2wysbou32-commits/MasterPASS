@@ -625,6 +625,13 @@ input[type="file"]{display:none;}
       </div>
       <div class="error-msg" id="reg-error">—</div>
       <div class="success-msg" id="reg-success"></div>
+      <div style="display:flex;align-items:flex-start;gap:10px;margin:8px 0;padding:12px;background:rgba(0,151,167,0.06);border-radius:10px;border:1px solid rgba(0,151,167,0.15)">
+        <input type="checkbox" id="reg-rgpd" style="margin-top:2px;width:16px;height:16px;accent-color:var(--teal-dark);flex-shrink:0">
+        <label for="reg-rgpd" style="font-size:12px;color:var(--text2);line-height:1.5;cursor:pointer">
+          J'ai lu et j'accepte la <a onclick="openLegal(event)" style="color:var(--teal-dark);text-decoration:underline;cursor:pointer">politique de confidentialité</a>.
+          Mes données (nom, email, identifiant) sont utilisées uniquement pour accéder à MasterPASS et ne sont pas partagées avec des tiers.
+        </label>
+      </div>
       <button class="btn-primary" id="reg-btn" onclick="doRegister()" style="margin-top:8px">Créer mon compte</button>
       <div class="auth-link" style="margin-top:12px"><a onclick="showLoginForm()">← Retour à la connexion</a></div>
     </div>
@@ -698,6 +705,9 @@ input[type="file"]{display:none;}
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
         Déconnexion
       </button>
+      <div style="text-align:center;margin-top:8px">
+        <a onclick="openLegal()" style="font-size:10px;color:rgba(255,255,255,0.25);cursor:pointer">Mentions légales & Confidentialité</a>
+      </div>
     </div>
   </aside>
 
@@ -853,6 +863,10 @@ input[type="file"]{display:none;}
           <div><div class="section-title">Gestion des comptes</div><div class="section-sub">Créez et gérez les accès étudiants et administrateurs</div></div>
         </div>
         <div class="users-grid" id="users-grid"></div>
+        <div class="settings-section" style="margin-top:24px">
+          <div class="settings-section-title" style="color:var(--danger)">Zone de danger</div>
+          <p style="font-size:13px;color:var(--text3);margin:0 0 12px;line-height:1.5">La suppression de ton compte est définitive. Toutes tes données seront effacées. Pour supprimer ton compte, envoie un email à <a href="mailto:masterpass.lille@gmail.com" style="color:var(--teal-dark)">masterpass.lille@gmail.com</a> depuis ton adresse email enregistrée.</p>
+        </div>
       </div>
 
       <!-- CODES PANEL -->
@@ -889,6 +903,55 @@ input[type="file"]{display:none;}
 
     </div>
   </main>
+</div>
+
+<!-- MODAL MENTIONS LÉGALES -->
+<div id="legal-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);overflow-y:auto;padding:20px">
+  <div style="max-width:680px;margin:40px auto;background:white;border-radius:20px;padding:40px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+    <button onclick="closeLegal()" style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:none;background:var(--bg);cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center">✕</button>
+    
+    <h2 style="font-family:'Sora',sans-serif;color:var(--teal-dark);margin:0 0 6px">Mentions légales & Confidentialité</h2>
+    <p style="color:var(--text3);font-size:13px;margin:0 0 28px">Dernière mise à jour : avril 2026</p>
+
+    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Éditeur du site</h3>
+    <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
+      MasterPASS est un site documentaire privé édité par <strong>Kafil H.</strong>, étudiant en médecine.<br>
+      Contact : <a href="mailto:masterpass.lille@gmail.com" style="color:var(--teal-dark)">masterpass.lille@gmail.com</a>
+    </p>
+
+    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Hébergement</h3>
+    <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
+      Le site est hébergé par <strong>Railway</strong> (San Francisco, CA, USA) et utilise le stockage de fichiers <strong>Cloudflare R2</strong> (Cloudflare Inc., USA).
+    </p>
+
+    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Données collectées</h3>
+    <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
+      Lors de la création de ton compte, les données suivantes sont collectées :
+      <br>• Prénom et nom
+      <br>• Adresse email
+      <br>• Identifiant de connexion
+      <br>• Mineure PASS (optionnel)
+      <br><br>
+      Ces données sont utilisées <strong>uniquement</strong> pour te permettre d'accéder à MasterPASS. Elles ne sont ni vendues, ni partagées avec des tiers.
+    </p>
+
+    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Durée de conservation</h3>
+    <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
+      Tes données sont conservées le temps de ton accès à MasterPASS. Tu peux demander la suppression de ton compte à tout moment en écrivant à <a href="mailto:masterpass.lille@gmail.com" style="color:var(--teal-dark)">masterpass.lille@gmail.com</a>.
+    </p>
+
+    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Tes droits (RGPD)</h3>
+    <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 28px">
+      Conformément au Règlement Général sur la Protection des Données (RGPD), tu disposes d'un droit d'accès, de rectification et de suppression de tes données. Pour exercer ces droits, contacte <a href="mailto:masterpass.lille@gmail.com" style="color:var(--teal-dark)">masterpass.lille@gmail.com</a>.
+    </p>
+
+    <h3 style="color:var(--text);font-size:15px;margin:0 0 8px">Accès au site</h3>
+    <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 28px">
+      MasterPASS est un site privé, accessible uniquement sur invitation via un code personnel. L'accès est réservé aux étudiants en PASS de la promotion concernée.
+    </p>
+
+    <button onclick="closeLegal()" style="width:100%;padding:12px;background:linear-gradient(135deg,#0097A7,#006064);color:white;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">J'ai lu et compris</button>
+  </div>
 </div>
 
 <!-- MODALS -->
@@ -1596,6 +1659,17 @@ function showRegisterForm() {
   document.getElementById('reg-success').style.display = 'none';
 }
 
+function openLegal(e) {
+  if (e) e.preventDefault();
+  document.getElementById('legal-modal').style.display = 'block';
+}
+function closeLegal() {
+  document.getElementById('legal-modal').style.display = 'none';
+  // Cocher automatiquement la case si l'utilisateur a lu jusqu'au bout
+  const cb = document.getElementById('reg-rgpd');
+  if (cb) cb.checked = true;
+}
+
 function updateRegLogin() {
   const first = ($('reg-firstname').value || '').trim().toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '') // enlève les accents
@@ -1624,6 +1698,10 @@ async function doRegister() {
   }
   if (password.length < 6) {
     errEl.textContent = 'Mot de passe minimum 6 caractères.';
+    errEl.style.display = 'block'; return;
+  }
+  if (!document.getElementById('reg-rgpd').checked) {
+    errEl.textContent = 'Tu dois accepter la politique de confidentialité pour créer ton compte.';
     errEl.style.display = 'block'; return;
   }
 
@@ -2195,3 +2273,4 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
 
 </body>
 </html>
+      
