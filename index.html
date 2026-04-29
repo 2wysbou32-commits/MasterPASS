@@ -1050,12 +1050,9 @@ input[type="file"]{display:none;}
         </div>
 
         <div id="view-files" style="display:none">
-          <div class="section-header">
-            <div><div class="section-title" id="current-folder-name">Dossier</div><div class="section-sub" id="files-count-sub">—</div></div>
-          </div>
           <div class="files-list-wrap">
             <div class="files-list-header">
-              <span class="files-list-header-title">Fichiers</span>
+              <span class="files-list-header-title" id="files-count-sub">Fichiers</span>
               <span class="files-count-badge" id="files-count-tag">0</span>
             </div>
             <div id="files-list-body"></div>
@@ -1580,14 +1577,26 @@ function renderFolders(folders){
     </div>`).join('');
 }
 
-function backToRoot(){currentFolder=null;$('view-folders').style.display='';$('view-files').style.display='none';updateBreadcrumb();loadFolders();updateTopbar();}
+function backToRoot(){
+  currentFolder=null;
+  $('view-folders').style.display='';
+  $('view-files').style.display='none';
+  $('topbar-title').textContent='Espace documentaire';
+  // Réafficher le banner étudiant à la racine
+  const isAnyAdmin = currentUser?.role==='admin'||currentUser?.role==='subadmin';
+  if($('student-banner') && !isAnyAdmin) $('student-banner').style.display='flex';
+  updateBreadcrumb();loadFolders();updateTopbar();
+}
 
 async function openFolder(id,name){
   currentSubfolder = null;
   currentFolder={id,name};
   $('view-folders').style.display='none';
   $('view-files').style.display='';
-  $('current-folder-name').textContent=name;
+  // Mettre le nom du dossier dans la topbar
+  $('topbar-title').textContent=name;
+  // Masquer le banner étudiant dans le dossier
+  if($('student-banner')) $('student-banner').style.display='none';
   updateBreadcrumb();updateTopbar();
   // Load subfolders and files
   const [subs] = await Promise.all([loadSubfolders(id), loadFiles()]);
@@ -1699,7 +1708,7 @@ function renderFiles(files){
   currentFiles = files;
   const isAdmin=currentUser?.role==='admin';
   const container = document.getElementById('files-list-body');
-  $('files-count-sub').textContent=`${files.length} fichier${files.length!==1?'s':''}`;
+  if($('files-count-sub')) $('files-count-sub').textContent=`${files.length} fichier${files.length!==1?'s':''}`;
   $('files-count-tag').textContent=files.length;
   if(!files.length){
     if(container) container.innerHTML=`<div class="empty-state" style="padding:40px">
@@ -2591,7 +2600,7 @@ function renderSubfolders(subs, parentId, parentName) {
   let html = '';
   if (subs.length > 0) {
     html += `<div class="section-header" style="margin-top:8px;margin-bottom:12px">
-      <div><div class="section-title" style="font-size:13px">Sous-dossiers</div></div>
+      <div><div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Sous-dossiers</div></div>
       ${isAdmin ? `<button class="btn-action" onclick="window.openCreateSubfolder(${parentId},'${parentName.replace(/'/g,"\\'")}')">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3v-3h2v3h3v2z"/></svg>
         Nouveau sous-dossier</button>` : ''}
@@ -2663,6 +2672,10 @@ async function deleteSubfolder(parentId, subId) {
 
 async function openSubfolder(subId, subName, parentId, parentName) {
   currentSubfolder = { id: subId, name: subName, parentId, parentName };
+  // Mettre le nom du sous-dossier dans la topbar
+  $('topbar-title').textContent = subName;
+  // Masquer le banner étudiant
+  if($('student-banner')) $('student-banner').style.display='none';
   // Update breadcrumb
   const bc = document.getElementById('breadcrumb');
   bc.innerHTML = `
