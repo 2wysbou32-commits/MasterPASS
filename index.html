@@ -1208,7 +1208,31 @@ async function doLogout(){await api('POST','/logout').catch(()=>{});currentUser=
 $('password-input').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 $('login-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('password-input').focus();});
 
-(async()=>{try{const u=await api('GET','/me');currentUser=u;$('auth-page').style.display='none';$('app').style.display='block';setupApp();}catch(_){}})();
+(async()=>{
+  // Détecter token de reset dans l'URL
+  const resetToken = new URLSearchParams(window.location.search).get('reset');
+  if (resetToken) {
+    try {
+      const check = await api('GET', '/reset-token/' + resetToken);
+      if (check.valid) {
+        $('auth-page').style.display='';
+        $('app').style.display='none';
+        document.querySelector('.auth-card-body').style.display='none';
+        $('forgot-form').style.display='none';
+        $('register-form').style.display='none';
+        $('reset-form').style.display='';
+        return;
+      }
+    } catch(e) {
+      $('auth-page').style.display='';
+      const errEl = document.getElementById('login-error');
+      if(errEl){errEl.textContent='Lien de réinitialisation invalide ou expiré.';errEl.style.display='block';}
+    }
+    return;
+  }
+  // Vérifier si déjà connecté
+  try{const u=await api('GET','/me');currentUser=u;$('auth-page').style.display='none';$('app').style.display='block';setupApp();}catch(_){}
+})();
 
 function setupApp(){
   const isAdmin    = currentUser.role === 'admin';
