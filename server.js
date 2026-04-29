@@ -584,7 +584,6 @@ app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (r
     added.push({ id: record.id, name: record.name, size: record.size, type: record.type, addedAt: record.addedAt });
   }
   saveDB(db);
-  }
   res.json(added);
 });
 
@@ -854,7 +853,6 @@ app.post('/api/folders/:parentId/subfolders/:subId/files/:fileId/confirm', requi
   file.pending = false;
   if (req.body.size) file.size = req.body.size;
   saveDB(db);
-  }
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
 });
 
