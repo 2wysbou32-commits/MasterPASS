@@ -10,205 +10,13 @@ const path = require('path');
 const crypto = require('crypto');
 const https = require('https');
 
-// Email via Brevo (ex-Sendinblue) — optionnel, fonctionne sans si BREVO_API_KEY non défini
-const BREVO_API_KEY = process.env.BREVO_API_KEY || null;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'masterpass.lille@gmail.com';
-const FROM_NAME = 'MasterPASS';
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
-
-// Fonction d'envoi email via Brevo API
-async function sendEmail({ to, bcc, subject, html }) {
-  if (!BREVO_API_KEY) { console.log('[EMAIL] BREVO_API_KEY non configuré — email non envoyé'); return; }
-  
-  // Brevo exige toujours un destinataire "to" même si on utilise bcc
-  // Brevo exige to = [{email:'...'}] toujours
-  const normalizeEmails = (val) => {
-    if (!val) return [];
-    if (Array.isArray(val)) return val.map(e => typeof e === 'string' ? { email: e.trim() } : e);
-    return [{ email: val.trim() }];
-  };
-  const toField = to ? normalizeEmails(to) : [{ email: FROM_EMAIL }];
-
-  const body = JSON.stringify({
-    sender: { name: FROM_NAME, email: FROM_EMAIL },
-    to: toField,
-    ...(bcc ? { bcc: bcc.map(e => ({ email: e })) } : {}),
-    subject,
-    htmlContent: html,
-  });
-
-  console.log('[EMAIL] Envoi Brevo → to:', JSON.stringify(toField), '| bcc count:', bcc ? bcc.length : 0, '| subject:', subject);
-
-  return new Promise((resolve, reject) => {
-    const req = https.request({
-      hostname: 'api.brevo.com',
-      path: '/v3/smtp/email',
-      method: 'POST',
-      headers: {
-        'api-key': BREVO_API_KEY,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-      },
-    }, (res) => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log('[EMAIL] Envoyé via Brevo ✅');
-          resolve();
-        } else {
-          console.error('[EMAIL] Erreur Brevo:', res.statusCode, data);
-          reject(new Error(`Brevo error: ${res.statusCode} ${data}`));
-        }
-      });
-    });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
-  });
-}
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// ── Cloudflare R2 config (variables d'environnement) ─────────────────────────
-const R2_ACCOUNT_ID    = process.env.R2_ACCOUNT_ID;
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
-const R2_SECRET_KEY    = process.env.R2_SECRET_KEY;
-const R2_BUCKET_NAME   = process.env.R2_BUCKET_NAME || 'masterpass';
-
-let r2Enabled = false;
-if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_KEY) {
-  r2Enabled = true;
-  console.log('✅ Cloudflare R2 activé — bucket:', R2_BUCKET_NAME);
-} else {
-  console.log('⚠️  R2 non configuré → stockage local (dev uniquement)');
-}
-
-// ── Helpers crypto ────────────────────────────────────────────────────────────
-function hmac(key, data, encoding) {
-  return crypto.createHmac('sha256', key).update(data).digest(encoding || undefined);
-}
-function hashSHA256(data) {
-  return crypto.createHash('sha256').update(data).digest('hex');
-}
-
-// Encode chaque segment du path R2 séparément (conserve les /)
-// C'est la SEULE méthode d'encodage utilisée partout dans ce fichier
-function encodeR2Key(key) {
-  return key.split('/').map(s => encodeURIComponent(s)).join('/');
-}
-
-// Ancien encodage (avant correction) : encodeURIComponent sur toute la clé, les / deviennent %2F
-// Nécessaire pour lire les fichiers uploadés avec l'ancien code
-function encodeR2KeyLegacy(key) {
-  return encodeURIComponent(key);
-}
-
-// ── Signature AWS v4 — header Authorization (pour PUT/DELETE via serveur) ─────
-function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
-  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-  const datetime = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
-  const dateShort = datetime.slice(0, 8);
-  const scope = `${dateShort}/${region}/s3/aws4_request`;
-
-  // Le canonical path doit utiliser les segments encodés séparément
-  const canonicalPath = `/${R2_BUCKET_NAME}/${encodeR2Key(key)}`;
-
-  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-date:${datetime}\n`;
-  const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
-  const canonicalRequest = [method, canonicalPath, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
-
-  const stringToSign = ['AWS4-HMAC-SHA256', datetime, scope, hashSHA256(canonicalRequest)].join('\n');
-  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateShort), region), 's3'), 'aws4_request');
-  const signature = hmac(signingKey, stringToSign, 'hex');
-
-  return {
-    authorization: `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
-    datetime,
-    host,
-    canonicalPath,
-  };
-}
-
-
-// ── Paths ─────────────────────────────────────────────────────────────────────
-const DATA_DIR    = process.env.DATA_DIR || path.join(__dirname, 'data');
-const DATA_FILE   = path.join(DATA_DIR, 'db.json');
-const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-
-// ── DB ────────────────────────────────────────────────────────────────────────
-function loadDB() {
-  if (!fs.existsSync(DATA_FILE)) return initDB();
-  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return initDB(); }
-}
-function saveDB(db) { fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2)); }
-function initDB() {
-  const db = {
-    nextId: 10,
-    users: [{ id: 1, name: 'Administrateur Principal', login: 'admin', password: bcrypt.hashSync('admin123', 10), role: 'admin' }],
-    folders: [],
-    inviteCodes: [],
-  };
-  saveDB(db); return db;
-}
 
 // ── Reset tokens (en mémoire, valides 15 min) ────────────────────────────────
 const resetTokens = {};
 
 function generateToken() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
-}
-
-// ── Notifications email ──────────────────────────────────────────────────────
-async function notifyNewFile(fileName, folderName) {
-  if (!resend) return; // Resend non configuré
-  try {
-    const db = loadDB();
-    // Tous les étudiants ET sous-admins ayant un email
-    const recipients = db.users
-      .filter(u => (u.role === 'student' || u.role === 'subadmin') && u.email)
-      .map(u => u.email);
-    if (!recipients.length) return;
-
-    // Envoyer en batch (max 50 par appel Resend)
-    const chunks = [];
-    for (let i = 0; i < recipients.length; i += 50)
-      chunks.push(recipients.slice(i, i + 50));
-
-    for (const batch of chunks) {
-      await sendEmail({
-        bcc: batch,
-        subject: `📚 Nouveau contenu disponible sur MasterPASS`,
-        html: `
-          <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
-            <div style="background:linear-gradient(135deg,#004D61,#0097A7);border-radius:16px;padding:28px;text-align:center;margin-bottom:24px">
-              <h1 style="color:white;font-size:22px;margin:0 0 6px">MasterPASS</h1>
-              <p style="color:rgba(255,255,255,0.75);font-size:13px;margin:0">Espace Documentaire</p>
-            </div>
-            <h2 style="color:#004D61;font-size:18px;margin:0 0 12px">📂 Nouveau contenu disponible !</h2>
-            <p style="color:#3D6B6F;font-size:14px;line-height:1.7;margin:0 0 20px">
-              Un nouveau fichier vient d'être ajouté dans le dossier <strong>${folderName}</strong> :
-            </p>
-            <div style="background:#F0FAFA;border:1.5px solid #B2DFDB;border-radius:12px;padding:16px 20px;margin-bottom:24px">
-              <p style="color:#004D61;font-size:15px;font-weight:600;margin:0">📄 ${fileName}</p>
-            </div>
-            <a href="${SITE_URL}" style="display:block;text-align:center;background:linear-gradient(135deg,#0097A7,#006064);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px;margin-bottom:24px">
-              Accéder à MasterPASS →
-            </a>
-            <p style="color:#9E9E9E;font-size:11px;text-align:center;margin:0">
-              Tu reçois cet email car tu as un compte MasterPASS.<br>
-              Pour ne plus recevoir ces notifications, contacte <a href="mailto:masterpass.lille@gmail.com" style="color:#0097A7">masterpass.lille@gmail.com</a>
-            </p>
-          </div>`,
-      });
-    }
-    console.log(`[NOTIF] Email envoyé à ${recipients.length} étudiant(s) — fichier: ${fileName}`);
-  } catch(e) {
-    console.error('[NOTIF] Erreur envoi email:', e.message);
-  }
 }
 
 // ── Codes d'invitation ────────────────────────────────────────────────────────
@@ -634,7 +442,6 @@ app.post('/api/folders/:parentId/subfolders/:subId/files', requireAdmin, upload.
     const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
     const sub2 = (parent?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
     const folderName = sub2 ? `${parent?.name} › ${sub2.name}` : 'Sous-dossier';
-    added.forEach(f => notifyNewFile(f.name, folderName));
   }
   res.json(added);
 });
@@ -777,10 +584,6 @@ app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (r
     added.push({ id: record.id, name: record.name, size: record.size, type: record.type, addedAt: record.addedAt });
   }
   saveDB(db);
-  // Notifier les étudiants (async, ne bloque pas la réponse)
-  if (added.length > 0) {
-    const folderName = folder.name;
-    added.forEach(f => notifyNewFile(f.name, folderName));
   }
   res.json(added);
 });
@@ -861,32 +664,7 @@ app.post('/api/forgot-password', async (req, res) => {
   const token = generateToken();
   resetTokens[token] = { userId: user.id, expires: Date.now() + 15 * 60 * 1000 };
   const resetLink = `${SITE_URL}?reset=${token}`;
-  try {
-    await sendEmail({
-      to: user.email,
-      subject: 'MasterPASS — Réinitialisation de mot de passe',
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
-          <div style="background:linear-gradient(135deg,#004D61,#0097A7);border-radius:16px;padding:24px;text-align:center;margin-bottom:24px">
-            <h1 style="color:white;font-size:20px;margin:0">MasterPASS</h1>
-          </div>
-          <h2 style="color:#004D61;margin-bottom:8px">Réinitialisation de mot de passe</h2>
-          <p style="color:#3D6B6F;margin-bottom:24px;line-height:1.6">Bonjour ${user.name},<br><br>
-          Tu as demandé à réinitialiser ton mot de passe MasterPASS.<br>
-          Clique sur le bouton ci-dessous pour choisir un nouveau mot de passe.</p>
-          <a href="${resetLink}" style="display:inline-block;background:linear-gradient(135deg,#0097A7,#006064);color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px">
-            Réinitialiser mon mot de passe →
-          </a>
-          <p style="color:#9E9E9E;font-size:12px;margin-top:24px">
-            Ce lien est valable 15 minutes.<br>
-            Si tu n'es pas à l'origine de cette demande, ignore cet email.
-          </p>
-        </div>`,
-    });
-  } catch(e) {
-    console.error('[EMAIL] Erreur reset:', e.message);
-    console.log('RESET LINK (fallback):', resetLink);
-  }
+  console.log('RESET LINK:', resetLink);
   res.json({ ok: true, resetLink: resetLink });
 });
 
@@ -1076,11 +854,6 @@ app.post('/api/folders/:parentId/subfolders/:subId/files/:fileId/confirm', requi
   file.pending = false;
   if (req.body.size) file.size = req.body.size;
   saveDB(db);
-  // Notifier les étudiants après confirmation de l'upload R2
-  const parentForNotif = db.folders.find(f => f.id === parseInt(req.params.parentId));
-  const subForNotif = (parentForNotif?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
-  if (parentForNotif && subForNotif) {
-    notifyNewFile(file.name, `${parentForNotif.name} › ${subForNotif.name}`);
   }
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
 });
@@ -1094,8 +867,6 @@ app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res
   file.pending = false;
   if (req.body.size) file.size = req.body.size;
   saveDB(db);
-  const folderForNotif = db.folders.find(f => f.id === parseInt(req.params.folderId));
-  if (folderForNotif) notifyNewFile(file.name, folderForNotif.name);
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
 });
 
