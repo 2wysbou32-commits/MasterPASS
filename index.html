@@ -1050,6 +1050,7 @@ input[type="file"]{display:none;}
         </div>
 
         <div id="view-files" style="display:none">
+          <span id="current-folder-name" style="display:none"></span>
           <div class="files-list-wrap">
             <div class="files-list-header">
               <span class="files-list-header-title" id="files-count-sub">Fichiers</span>
@@ -2123,8 +2124,8 @@ function loadFavorites() {
   list.innerHTML = '<div class="files-list-header"><span class="files-list-header-title">' + favs.length + ' favori' + (favs.length>1?'s':'') + '</span></div>' +
     favs.map(f => {
       const previewFn = f.subId
-        ? `openPreviewModal('/api/folders/${f.folderId}/subfolders/${f.subId}/files/${f.id}/preview','${f.name}','${f.type}')`
-        : `openPreviewModal('/api/folders/${f.folderId}/files/${f.id}/preview','${f.name}','${f.type}')`;
+        ? `openPreviewWithUrls('${f.name}','${f.type}','/api/folders/${f.folderId}/subfolders/${f.subId}/files/${f.id}/preview','/api/folders/${f.folderId}/subfolders/${f.subId}/files/${f.id}/download','/api/folders/${f.folderId}/subfolders/${f.subId}/files/${f.id}/stream')`
+        : `openPreviewWithUrls('${f.name}','${f.type}','/api/folders/${f.folderId}/files/${f.id}/preview','/api/folders/${f.folderId}/files/${f.id}/download','/api/folders/${f.folderId}/files/${f.id}/stream')`;
       const dlPath = f.subId
         ? `/api/folders/${f.folderId}/subfolders/${f.subId}/files/${f.id}`
         : `/api/folders/${f.folderId}/files/${f.id}`;
@@ -2248,20 +2249,22 @@ function renderSearchResults(results, query) {
 }
 
 function openSearchResult(fileOrStr) {
-  // Accepte soit un objet soit une chaîne JSON encodée
   const file = typeof fileOrStr === 'string' ? JSON.parse(fileOrStr) : fileOrStr;
+  const previewUrl = file.subId
+    ? `/api/folders/${file.folderId}/subfolders/${file.subId}/files/${file.id}/preview`
+    : `/api/folders/${file.folderId}/files/${file.id}/preview`;
+  const downloadUrl = file.subId
+    ? `/api/folders/${file.folderId}/subfolders/${file.subId}/files/${file.id}/download`
+    : `/api/folders/${file.folderId}/files/${file.id}/download`;
+  const streamUrl = file.subId
+    ? `/api/folders/${file.folderId}/subfolders/${file.subId}/files/${file.id}/stream`
+    : `/api/folders/${file.folderId}/files/${file.id}/stream`;
   if (file.type === 'video') {
-    openVideoModal(file.folderId, file.id, file.name, file.subId);
-  } else if (file.type === 'pdf' || file.type === 'img') {
-    const url = file.subId
-      ? `/api/folders/${file.folderId}/subfolders/${file.subId}/files/${file.id}/preview`
-      : `/api/folders/${file.folderId}/files/${file.id}/preview`;
-    openPreviewModal(url, file.name, file.type);
+    openPreviewWithUrls(file.name, 'video', previewUrl, downloadUrl, streamUrl);
+  } else if (['pdf','img','audio'].includes(file.type)) {
+    openPreviewWithUrls(file.name, file.type, previewUrl, downloadUrl, streamUrl);
   } else {
-    const url = file.subId
-      ? `/api/folders/${file.folderId}/subfolders/${file.subId}/files/${file.id}/download`
-      : `/api/folders/${file.folderId}/files/${file.id}/download`;
-    window.open(url, '_blank');
+    window.open(downloadUrl, '_blank');
   }
 }
 
