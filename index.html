@@ -369,6 +369,7 @@ input[type="file"]{display:none;}
 .role-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-top:7px;}
 .role-admin{background:rgba(0,151,167,0.1);color:var(--teal-dark);}
 .role-student{background:rgba(126,200,227,0.15);color:#0277BD;}
+.role-subadmin{background:rgba(255,152,0,0.12);color:#E65100;}
 
 /* ── STUDENT BANNER ── */
 .student-banner{
@@ -932,7 +933,7 @@ input[type="file"]{display:none;}
     <!-- OBJET DU SITE -->
     <h3 style="color:var(--teal-dark);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">3. Objet du site</h3>
     <p style="color:var(--text2);font-size:14px;line-height:1.7;margin:0 0 20px">
-      MasterPASS est une plateforme documentaire privée, destinée à aider des étudiants en PASS (Parcours d'Accès Spécifique Santé) en leur donnant accès à des cours, vidéos et schémas créés personnellement par l'éditeur, étudiant en chirurgie dentaire. L'accès est strictement réservé aux étudiants invités individuellement via un code personnel à usage unique. Aucune publicité n'est diffusée.
+      MasterPASS est une plateforme documentaire privée, sans but commercial, destinée à aider des étudiants en PASS (Parcours d'Accès Spécifique Santé) en leur donnant accès à des cours, vidéos et schémas créés personnellement par l'éditeur, étudiant en chirurgie dentaire. L'accès est strictement réservé aux étudiants invités individuellement via un code personnel à usage unique. Aucune publicité n'est diffusée. Aucun paiement n'est demandé.
     </p>
 
     <!-- PROPRIÉTÉ INTELLECTUELLE -->
@@ -1003,7 +1004,7 @@ input[type="file"]{display:none;}
     <div class="field-group"><label class="field-label">Nom complet</label><input type="text" class="field-input" id="user-name-input" placeholder="Prénom Nom"></div>
     <div class="field-group"><label class="field-label">Identifiant de connexion</label><input type="text" class="field-input" id="user-login-input" placeholder="Ex : jean.dupont"></div>
     <div class="field-group"><label class="field-label">Mot de passe</label><input type="password" class="field-input" id="user-password-input" placeholder="••••••••"></div>
-    <div class="field-group"><label class="field-label">Rôle</label><select class="field-input" id="user-role-input"><option value="student">Étudiant</option><option value="admin">Administrateur</option></select></div>
+    <div class="field-group"><label class="field-label">Rôle</label><select class="field-input" id="user-role-input"><option value="student">Étudiant</option><option value="subadmin">Sous-administrateur</option><option value="admin">Administrateur principal</option></select></div>
     <div class="error-msg" id="user-error">—</div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modal-user')">Annuler</button>
@@ -1077,7 +1078,9 @@ $('login-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('password-i
 (async()=>{try{const u=await api('GET','/me');currentUser=u;$('auth-page').style.display='none';$('app').style.display='block';setupApp();}catch(_){}})();
 
 function setupApp(){
-  const isAdmin=currentUser.role==='admin';
+  const isAdmin    = currentUser.role === 'admin';
+  const isSubAdmin = currentUser.role === 'subadmin';
+  const isAnyAdmin = isAdmin || isSubAdmin;
   const initials=currentUser.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
   $('panel-files').classList.add('active');$('panel-files').style.display='';
@@ -1085,20 +1088,20 @@ function setupApp(){
   $('view-folders').style.display='';$('view-files').style.display='none';
   currentFolder=null;
   $('nav-avatar').textContent=initials;$('nav-username').textContent=currentUser.name;
-  $('nav-role-badge').textContent=isAdmin?'Admin':'Étudiant';
-  $('nav-role-text').textContent=isAdmin?'Accès complet':'Lecture seule';
+  $('nav-role-badge').textContent=isAdmin?'Admin':isSubAdmin?'Sous-admin':'Étudiant';
+  $('nav-role-text').textContent=isAdmin?'Accès complet':isSubAdmin?'Dépôt de fichiers':'Lecture seule';
   $('nav-users').style.display=isAdmin?'flex':'none';
   $('nav-codes').style.display=isAdmin?'flex':'none';
-  $('nav-settings').style.display=isAdmin?'none':'flex';
+  $('nav-settings').style.display=isAnyAdmin?'none':'flex';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-files').classList.add('active');
   $('admin-stats').style.display=isAdmin?'grid':'none';
-  $('student-banner').style.display=isAdmin?'none':'flex';
-  $('upload-zone-container').style.display=isAdmin?'block':'none';
+  $('student-banner').style.display=isAnyAdmin?'none':'flex';
+  $('upload-zone-container').style.display=isAnyAdmin?'block':'none';
   $('storage-indicator').style.display=isAdmin?'block':'none';
-  if(!isAdmin)$('student-banner-title').textContent=`Bienvenue, ${currentUser.name.split(' ')[0]} !`;
-  // Show settings panel for students
-  $('panel-settings').style.display = isAdmin ? 'none' : '';
+  if(!isAnyAdmin)$('student-banner-title').textContent=`Bienvenue, ${currentUser.name.split(' ')[0]} !`;
+  // Show settings panel for students only
+  $('panel-settings').style.display = isAnyAdmin ? 'none' : '';
   $('topbar-title').textContent='Espace documentaire';
   updateTopbar();updateBreadcrumb();loadFolders();
   if(isAdmin)loadStats();
@@ -1106,7 +1109,7 @@ function setupApp(){
 }
 
 function showPanel(name){
-  if(name==='users'&&currentUser?.role!=='admin')return;
+  if((name==='users'||name==='codes')&&currentUser?.role!=='admin')return;
   // Cacher tous les panels (style inline nécessaire car il écrase le CSS)
   document.querySelectorAll('.panel').forEach(p=>{
     p.classList.remove('active');
@@ -1127,6 +1130,8 @@ function showPanel(name){
 
 function updateTopbar(){
   const isAdmin=currentUser?.role==='admin';
+  const isSubAdmin=currentUser?.role==='subadmin';
+  const isAnyAdmin=isAdmin||isSubAdmin;
   const panel=document.querySelector('.panel.active')?.id;
   const el=$('topbar-actions');el.innerHTML='';
   if(panel==='panel-files'&&isAdmin){
@@ -1464,7 +1469,7 @@ function renderUsers(users){
         <div class="user-card-name">${u.name}${isSelf?' <span style="font-size:11px;color:var(--text3)">(vous)</span>':''}</div>
         <div class="user-card-login">${u.login}${u.email?' · '+u.email:''}</div>
         ${u.mineure?`<div style="font-size:11px;color:var(--teal-dark);margin-top:2px">Mineure : ${u.mineure}</div>`:''}
-        <span class="role-badge ${u.role==='admin'?'role-admin':'role-student'}">${u.role==='admin'?'Administrateur':'Étudiant'}</span>
+        <span class="role-badge ${u.role==='admin'?'role-admin':u.role==='subadmin'?'role-subadmin':'role-student'}">${u.role==='admin'?'Administrateur principal':u.role==='subadmin'?'Sous-admin':'Étudiant'}</span>
       </div>
       ${!isSelf?`<button class="icon-btn" onclick="deleteUser(${u.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`:''}
     </div>`;
