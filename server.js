@@ -20,9 +20,14 @@ const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
 async function sendEmail({ to, bcc, subject, html }) {
   if (!BREVO_API_KEY) { console.log('[EMAIL] BREVO_API_KEY non configuré — email non envoyé'); return; }
   
+  // Brevo exige toujours un destinataire "to" même si on utilise bcc
+  const toField = to
+    ? (Array.isArray(to) ? to.map(e => ({ email: e })) : [{ email: to }])
+    : [{ email: FROM_EMAIL }]; // destinataire fictif si seulement bcc
+
   const body = JSON.stringify({
     sender: { name: FROM_NAME, email: FROM_EMAIL },
-    ...(to ? { to: Array.isArray(to) ? to.map(e => ({ email: e })) : [{ email: to }] } : {}),
+    to: toField,
     ...(bcc ? { bcc: bcc.map(e => ({ email: e })) } : {}),
     subject,
     htmlContent: html,
