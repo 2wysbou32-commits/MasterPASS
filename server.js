@@ -12,6 +12,20 @@ const https = require('https');
 
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
 
+// ── Cloudflare R2 config ──────────────────────────────────────────────────────
+const R2_ACCOUNT_ID    = process.env.R2_ACCOUNT_ID;
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_KEY    = process.env.R2_SECRET_KEY;
+const R2_BUCKET_NAME   = process.env.R2_BUCKET_NAME || 'masterpass';
+
+let r2Enabled = false;
+if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_KEY) {
+  r2Enabled = true;
+  console.log('✅ Cloudflare R2 activé — bucket:', R2_BUCKET_NAME);
+} else {
+  console.log('⚠️  R2 non configuré → stockage local');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
