@@ -2769,43 +2769,43 @@ async function loadSubfolders(parentId) {
 }
 
 function renderSubfolders(subs, parentId, parentName) {
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
+  const isSuperAdmin = currentUser?.role === 'admin';
   if (!subs.length && !isAdmin) return '';
   let html = '';
-  if (subs.length > 0) {
-    html += `<div class="section-header" style="margin-top:8px;margin-bottom:12px">
-      <div><div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Sous-dossiers</div></div>
-      ${isAdmin ? `<button class="btn-action" onclick="window.openCreateSubfolder(${parentId},'${parentName.replace(/'/g,"\\'")}')">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3v-3h2v3h3v2z"/></svg>
-        Nouveau sous-dossier</button>` : ''}
+
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px">
+      ${subs.length} sous-dossier${subs.length!==1?'s':''}
     </div>
-    <div class="folders-grid" style="margin-bottom:20px">`;
-    subs.forEach(s => {
-      html += `<div class="folder-card" onclick="window.openSubfolder(${s.id},'${s.name.replace(/'/g,"\\'")}',${parentId},'${parentName.replace(/'/g,"\\'")}')">
-        ${isAdmin ? `<div class="folder-actions">
-          <button class="icon-btn" onclick="event.stopPropagation();deleteSubfolder(${parentId},${s.id})" title="Supprimer">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          </button></div>` : ''}
-        <div class="folder-card-inner">
-          <div class="folder-icon-wrap" style="background:linear-gradient(135deg,#DBEEFF,#B3D9FF)">
-            <svg viewBox="0 0 24 24" fill="currentColor" style="color:#0277BD"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-          </div>
-          <div class="folder-name">${s.name}</div>
-          <div class="folder-meta">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
-            ${s.fileCount} fichier${s.fileCount!==1?'s':''}
-          </div>
+    ${isSuperAdmin ? `<button class="btn-action" onclick="window.openCreateSubfolder(${parentId},'${parentName.replace(/'/g,"\\'")}')">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3v-3h2v3h3v2z"/></svg>
+      Nouveau sous-dossier</button>` : ''}
+  </div>`;
+
+  if (subs.length > 0) {
+    html += `<div style="background:white;border-radius:14px;overflow:hidden;border:1.5px solid var(--border);margin-bottom:24px">`;
+    subs.forEach((s, i) => {
+      const safeName = s.name.replace(/'/g, "\\'");
+      const safeParent = parentName.replace(/'/g, "\\'");
+      html += `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:${i<subs.length-1?'1px solid rgba(178,223,219,0.35)':'none'};transition:background 0.1s;background:transparent"
+        onmouseover="this.style.background='rgba(0,151,167,0.04)'"
+        onmouseout="this.style.background='transparent'"
+        onclick="window.openSubfolder(${s.id},'${safeName}',${parentId},'${safeParent}')">
+        <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#DBEEFF,#B3D9FF);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;color:#0277BD"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
         </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+          <div style="font-size:12px;color:var(--text3)">${s.fileCount} fichier${s.fileCount!==1?'s':''}</div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--text3);flex-shrink:0"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+        ${isSuperAdmin ? `<button onclick="event.stopPropagation();deleteSubfolder(${parentId},${s.id})" title="Supprimer" style="width:26px;height:26px;border-radius:7px;border:none;background:rgba(229,115,115,0.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        </button>` : ''}
       </div>`;
     });
-    html += '</div>';
-  } else if (isAdmin) {
-    html += `<div style="margin-bottom:16px">
-      <button class="btn-action" onclick="openCreateSubfolder(${parentId},'${parentName.replace(/'/g,"\\'")}')">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3v-3h2v3h3v2z"/></svg>
-        Ajouter un sous-dossier
-      </button>
-    </div>`;
+    html += `</div>`;
   }
   return html;
 }
