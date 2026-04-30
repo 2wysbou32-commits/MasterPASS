@@ -87,6 +87,7 @@ function initDB() {
     users: [{ id: 1, name: 'Administrateur Principal', login: 'admin', password: require('bcryptjs').hashSync('admin123', 10), role: 'admin' }],
     folders: [],
     inviteCodes: [],
+    announcements: [],
   };
   saveDB(db); return db;
 }
@@ -945,6 +946,41 @@ app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res
   if (req.body.size) file.size = req.body.size;
   saveDB(db);
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
+});
+
+// ── ANNONCES ─────────────────────────────────────────────────────────────────
+
+// Créer une annonce (admin)
+app.post('/api/announcements', requireSuperAdmin, (req, res) => {
+  const { title, message, color } = req.body;
+  if (!title?.trim() || !message?.trim()) return res.status(400).json({ error: 'Titre et message requis' });
+  const db = loadDB();
+  if (!db.announcements) db.announcements = [];
+  const ann = {
+    id: db.nextId++,
+    title: title.trim(),
+    message: message.trim(),
+    color: color || 'info',
+    createdAt: new Date().toISOString(),
+  };
+  db.announcements.unshift(ann); // Plus récent en premier
+  saveDB(db);
+  res.json(ann);
+});
+
+// Lister toutes les annonces
+app.get('/api/announcements', requireAuth, (req, res) => {
+  const db = loadDB();
+  res.json(db.announcements || []);
+});
+
+// Supprimer une annonce (admin)
+app.delete('/api/announcements/:id', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.announcements) db.announcements = [];
+  db.announcements = db.announcements.filter(a => a.id !== parseInt(req.params.id));
+  saveDB(db);
+  res.json({ ok: true });
 });
 
 // ── CODES D'INVITATION ───────────────────────────────────────────────────────
