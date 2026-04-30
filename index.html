@@ -578,6 +578,21 @@ input[type="file"]{display:none;}
 .ann-type-btn input[type=radio] { display:none; }
 .ann-type-btn:has(input:checked) { border-color:var(--teal); background:rgba(0,151,167,0.08); color:var(--teal-dark); }
 
+/* ── ANNOUNCEMENTS ──────────────────────────────────────────────────────────── */
+.announcement-card {
+  background: white; border-radius: 14px; padding: 18px 20px;
+  margin-bottom: 12px; border-left: 4px solid var(--teal);
+  box-shadow: 0 2px 8px rgba(0,77,97,0.06); position: relative;
+}
+.announcement-card.urgent { border-left-color: #ef5350; background: #fff8f8; }
+.announcement-card.success { border-left-color: #66BB6A; background: #f8fff8; }
+.announcement-card.warning { border-left-color: #FFA726; background: #fffdf5; }
+.announcement-title { font-family:'Sora',sans-serif; font-size:15px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.announcement-message { font-size:14px; color:var(--text2); line-height:1.6; white-space:pre-wrap; }
+.announcement-date { font-size:11px; color:var(--text3); margin-top:10px; }
+.announcement-delete { position:absolute; top:12px; right:12px; width:26px; height:26px; border-radius:8px; border:none; background:rgba(229,115,115,0.1); color:var(--danger); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.announcement-new-badge { display:inline-block; background:#ef5350; color:white; border-radius:10px; padding:1px 7px; font-size:10px; font-weight:700; margin-left:8px; vertical-align:middle; }
+
 /* ── FAVORITES ──────────────────────────────────────────────────────────── */
 .btn-favorite {
   width: 28px; height: 28px;
@@ -940,9 +955,10 @@ input[type="file"]{display:none;}
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
         Mes réglages
       </div>
-      <div class="nav-item" onclick="showPanel('announcements')" id="nav-announcements">
+      <div class="nav-item" onclick="showPanel('announcements')" id="nav-announcements" style="position:relative">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
         Annonces
+        <span id="announcements-badge" style="display:none;position:absolute;top:6px;right:10px;background:#ef5350;color:white;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;min-width:16px;text-align:center;line-height:16px"></span>
       </div>
       <div class="nav-item" onclick="showPanel('favorites')" id="nav-favorites">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
@@ -1195,6 +1211,48 @@ input[type="file"]{display:none;}
           </div>
         </div>
 
+        <div id="announcements-list"></div>
+      </div>
+
+      <!-- ANNOUNCEMENTS PANEL -->
+      <div class="panel" id="panel-announcements" style="display:none">
+        <div class="section-header" style="margin-bottom:24px" id="announcements-header-admin" style="display:none">
+          <div><div class="section-title">📢 Annonces</div><div class="section-sub">Publie des messages pour tous tes étudiants</div></div>
+          <button class="btn-action primary-action" onclick="showNewAnnouncementForm()">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+            Nouvelle annonce
+          </button>
+        </div>
+        <div class="section-header" style="margin-bottom:24px" id="announcements-header-student" style="display:none">
+          <div><div class="section-title">📢 Annonces</div><div class="section-sub">Messages de ton formateur</div></div>
+        </div>
+
+        <!-- Formulaire nouvelle annonce (admin) -->
+        <div id="new-announcement-form" style="display:none;background:white;border-radius:16px;padding:24px;margin-bottom:24px;box-shadow:0 2px 12px rgba(0,77,97,0.08);border:1.5px solid var(--border)">
+          <div class="field-group" style="margin-bottom:12px">
+            <label class="field-label">Titre</label>
+            <input type="text" class="field-input" id="ann-title" placeholder="Ex: Nouveau cours disponible !">
+          </div>
+          <div class="field-group" style="margin-bottom:12px">
+            <label class="field-label">Message</label>
+            <textarea class="field-input" id="ann-message" rows="3" placeholder="Votre message..." style="resize:vertical;font-family:'Inter',sans-serif"></textarea>
+          </div>
+          <div class="field-group" style="margin-bottom:16px">
+            <label class="field-label">Type</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:13px"><input type="radio" name="ann-color" value="info" checked> 📘 Info</label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:13px"><input type="radio" name="ann-color" value="urgent"> 🔴 Urgent</label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:13px"><input type="radio" name="ann-color" value="success"> ✅ Bon courage</label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:13px"><input type="radio" name="ann-color" value="warning"> ⚠️ Attention</label>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn-action primary-action" onclick="publishAnnouncement()">Publier</button>
+            <button class="btn-action" onclick="hideNewAnnouncementForm()">Annuler</button>
+          </div>
+        </div>
+
+        <!-- Liste des annonces -->
         <div id="announcements-list"></div>
       </div>
 
@@ -1477,6 +1535,7 @@ function setupApp(){
   const annAdminActions = $('ann-admin-actions');
   if(annAdminActions) annAdminActions.style.display = isAdmin ? 'flex' : 'none';
   checkAndShowTutorial();
+  updateAnnouncementsBadge();
 }
 
 function showPanel(name){
@@ -1495,6 +1554,7 @@ function showPanel(name){
   if(name==='files'){$('topbar-title').textContent='Espace documentaire';backToRoot();clearSearch();}
   if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='favorites'){$('topbar-title').textContent='Mes favoris';loadFavorites();}
+  if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='users'){$('topbar-title').textContent='Gestion des comptes';loadUsers();}
   if(name==='codes'){$('topbar-title').textContent="Codes d'invitation";loadCodes();}
   if(name==='settings'){$('topbar-title').textContent='Mes réglages';loadSettingsPanel();}
@@ -2057,6 +2117,117 @@ async function submitAnnouncement() {
   try {
     await api('POST', '/announcements', { title, message, color });
     hideAnnForm();
+    await loadAnnouncements();
+    toast('Annonce publiée ✅');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm('Supprimer cette annonce ?')) return;
+  try {
+    await api('DELETE', '/announcements/' + id);
+    await loadAnnouncements();
+    toast('Annonce supprimée');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── ANNONCES ──────────────────────────────────────────────────────────────────
+function getSeenAnnouncements() {
+  if (!currentUser) return [];
+  try { return JSON.parse(localStorage.getItem('masterpass_seen_ann_' + currentUser.id) || '[]'); }
+  catch { return []; }
+}
+function markAnnouncementsSeen(ids) {
+  if (!currentUser) return;
+  const seen = getSeenAnnouncements();
+  const merged = [...new Set([...seen, ...ids])];
+  localStorage.setItem('masterpass_seen_ann_' + currentUser.id, JSON.stringify(merged));
+}
+
+async function loadAnnouncements() {
+  const isAdmin = currentUser?.role === 'admin';
+  const isSubAdmin = currentUser?.role === 'subadmin';
+
+  // Afficher le bon header
+  const adminHeader = $('announcements-header-admin');
+  const studentHeader = $('announcements-header-student');
+  if (adminHeader) adminHeader.style.display = isAdmin ? 'flex' : 'none';
+  if (studentHeader) studentHeader.style.display = isAdmin ? 'none' : 'flex';
+
+  const list = $('announcements-list');
+  list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
+
+  try {
+    const anns = await api('GET', '/announcements');
+    const seen = getSeenAnnouncements();
+
+    // Marquer toutes comme vues maintenant qu'on les a lues
+    markAnnouncementsSeen(anns.map(a => a.id));
+    updateAnnouncementsBadge();
+
+    if (!anns.length) {
+      list.innerHTML = `<div class="search-no-results">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:40px;height:40px;opacity:0.2;margin-bottom:12px"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        <div>Aucune annonce pour l'instant.</div>
+      </div>`;
+      return;
+    }
+
+    const icons = { info: '📘', urgent: '🔴', success: '✅', warning: '⚠️' };
+    list.innerHTML = anns.map(a => {
+      const isNew = !seen.includes(a.id);
+      const date = new Date(a.createdAt).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      return `<div class="announcement-card ${a.color}">
+        ${isAdmin ? `<button class="announcement-delete" onclick="deleteAnnouncement(${a.id})" title="Supprimer">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        </button>` : ''}
+        <div class="announcement-title">
+          ${icons[a.color] || '📢'} ${a.title}
+          ${isNew ? '<span class="announcement-new-badge">Nouveau</span>' : ''}
+        </div>
+        <div class="announcement-message">${a.message}</div>
+        <div class="announcement-date">${date}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="padding:20px;color:var(--danger)">Erreur de chargement</div>';
+  }
+}
+
+async function updateAnnouncementsBadge() {
+  try {
+    const anns = await api('GET', '/announcements');
+    const seen = getSeenAnnouncements();
+    const unread = anns.filter(a => !seen.includes(a.id)).length;
+    const badge = $('announcements-badge');
+    if (!badge) return;
+    if (unread > 0) {
+      badge.textContent = unread;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+function showNewAnnouncementForm() {
+  $('new-announcement-form').style.display = '';
+  $('ann-title').focus();
+}
+function hideNewAnnouncementForm() {
+  $('new-announcement-form').style.display = 'none';
+  $('ann-title').value = '';
+  $('ann-message').value = '';
+}
+
+async function publishAnnouncement() {
+  const title = $('ann-title').value.trim();
+  const message = $('ann-message').value.trim();
+  const color = document.querySelector('input[name="ann-color"]:checked')?.value || 'info';
+  if (!title || !message) { toast('Titre et message requis', 'error'); return; }
+  try {
+    await api('POST', '/announcements', { title, message, color });
+    hideNewAnnouncementForm();
     await loadAnnouncements();
     toast('Annonce publiée ✅');
   } catch(e) { toast(e.message, 'error'); }
