@@ -893,19 +893,6 @@ input[type="file"]{display:none;}
         <input type="email" class="field-input" id="reg-email" placeholder="ton.email@exemple.fr">
       </div>
       <div class="field-group">
-        <label class="field-label">Pseudo Discord <span style="font-weight:400;color:var(--text3)">(optionnel)</span></label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="width:32px;height:32px;background:#5865F2;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg viewBox="0 0 24 24" fill="white" style="width:18px;height:18px"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-          </div>
-          <input type="text" class="field-input" id="reg-discord" placeholder="Ex: jean_dupont" style="flex:1">
-        </div>
-      </div>
-      <div class="field-group">
-        <label class="field-label">Mot de passe</label>
-        <input type="password" class="field-input" id="reg-password" placeholder="Minimum 6 caractères" autocomplete="new-password">
-      </div>
-      <div class="field-group">
         <label class="field-label">Mineure choisie</label>
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;background:white;border-radius:12px;border:1.5px solid var(--border);overflow:hidden">
           <label for="min_Mathématiques" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(178,223,219,0.4);transition:background 0.1s" onmouseover="this.style.background='rgba(0,151,167,0.04)'" onmouseout="this.style.background='transparent'">
@@ -970,6 +957,51 @@ input[type="file"]{display:none;}
           </label>
         </div>
       </div>
+      <div class="field-group">
+        <label class="field-label">Pseudo Discord <span style="font-weight:400;color:var(--text3)">(optionnel)</span></label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:32px;height:32px;background:#5865F2;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg viewBox="0 0 24 24" fill="white" style="width:18px;height:18px"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+          </div>
+          <input type="text" class="field-input" id="reg-discord" placeholder="Ex: jean_dupont" style="flex:1">
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Mot de passe</label>
+        <input type="password" class="field-input" id="reg-password" placeholder="Minimum 6 caractères" autocomplete="new-password">
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:10px;margin:8px 0;padding:12px;background:rgba(0,151,167,0.06);border-radius:10px;border:1px solid rgba(0,151,167,0.15)">
+        <input type="checkbox" id="reg-rgpd" style="margin-top:2px;width:16px;height:16px;accent-color:var(--teal-dark);flex-shrink:0">
+        <label for="reg-rgpd" style="font-size:12px;color:var(--text2);line-height:1.5;cursor:pointer">
+          J'ai lu et j'accepte la <a onclick="openLegal(event)" style="color:var(--teal-dark);text-decoration:underline;cursor:pointer">politique de confidentialité</a>.
+          Mes données sont utilisées uniquement pour accéder à MasterPASS.
+        </label>
+      </div>
+      <div class="error-msg" id="reg-error" style="display:none">—</div>
+      <div class="success-msg" id="reg-success" style="display:none"></div>
+      <button class="btn-primary" id="reg-btn" onclick="doRegister()" style="margin-top:8px">Créer mon compte</button>
+      <div class="auth-link" style="margin-top:12px"><a onclick="showLoginForm()">← Retour à la connexion</a></div>
+    </div>
+
+    <!-- FORMULAIRE RESET MOT DE PASSE -->
+    <div id="reset-form" style="display:none" class="auth-card-body">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-family:'Sora',sans-serif;font-size:19px;font-weight:700;color:var(--text);margin-bottom:6px">Nouveau mot de passe</div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Nouveau mot de passe</label>
+        <input type="password" class="field-input" id="reset-password-input" placeholder="Minimum 6 caractères">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Confirmer</label>
+        <input type="password" class="field-input" id="reset-confirm-input" placeholder="Répète le mot de passe">
+      </div>
+      <div class="error-msg" id="reset-error">—</div>
+      <div class="success-msg" id="reset-success"></div>
+      <button class="btn-primary" id="reset-btn" onclick="doResetPassword()" style="margin-top:8px">Enregistrer le mot de passe</button>
+      <div class="auth-link" style="margin-top:12px"><a onclick="showLoginForm()">← Retour à la connexion</a></div>
+    </div>
+
       <!-- SETTINGS PANEL -->
       <div class="panel" id="panel-settings" style="display:none">
         <div style="margin-bottom:24px"><div class="section-title">Mes réglages</div></div>
@@ -999,24 +1031,7 @@ input[type="file"]{display:none;}
           </div>
         </div>
 
-        <!-- Email pour récupération -->
-        <div class="settings-card">
-          <div class="settings-card-header">
-            <div class="settings-card-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></div>
-            <div><div class="settings-card-title">Email de récupération</div><div class="settings-card-sub">Utilisé si tu oublies ton mot de passe</div></div>
-          </div>
-          <div class="settings-card-body">
-            <div class="field-group" style="max-width:340px;margin-bottom:0">
-              <label class="field-label">Adresse email</label>
-              <input type="email" class="field-input" id="settings-email" placeholder="ton.email@exemple.fr">
-            </div>
-            <div class="success-msg" id="settings-email-success" style="margin-top:12px"></div>
-            <button class="btn-action primary-action" onclick="doSaveEmail()" style="margin-top:16px">
-              <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-              Enregistrer l'email
-            </button>
-          </div>
-        </div>
+
       </div>
 
       <!-- USERS PANEL -->
