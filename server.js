@@ -362,7 +362,9 @@ function getSignedVideoUrl(r2Key, useLegacy) {
 // ── AUTH ──────────────────────────────────────────────────────────────────────
 app.post('/api/login', (req, res) => {
   const { login, password } = req.body;
-  const user = loadDB().users.find(u => u.login === login);
+  const db = loadDB();
+  // Connexion par identifiant OU par email
+  const user = db.users.find(u => u.login === login || (u.email && u.email === login));
   if (!user || !bcrypt.compareSync(password, user.password))
     return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });
   req.session.userId = user.id;
