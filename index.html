@@ -1643,9 +1643,10 @@ function backToRoot(){
   $('view-folders').style.display='';
   $('view-files').style.display='none';
   $('topbar-title').textContent='Espace documentaire';
-  // Réafficher le banner étudiant à la racine
+  // Réafficher le banner étudiant et les stats à la racine
   const isAnyAdmin = currentUser?.role==='admin'||currentUser?.role==='subadmin';
   if($('student-banner') && !isAnyAdmin) $('student-banner').style.display='flex';
+  if($('admin-stats') && currentUser?.role==='admin') $('admin-stats').style.display='grid';
   updateBreadcrumb();loadFolders();updateTopbar();
 }
 
@@ -1656,8 +1657,9 @@ async function openFolder(id,name){
   $('view-files').style.display='';
   // Mettre le nom du dossier dans la topbar
   $('topbar-title').textContent=name;
-  // Masquer le banner étudiant dans le dossier
+  // Masquer le banner étudiant et les stats dans le dossier
   if($('student-banner')) $('student-banner').style.display='none';
+  if($('admin-stats')) $('admin-stats').style.display='none';
   updateBreadcrumb();updateTopbar();
   // Load subfolders and files
   const [subs] = await Promise.all([loadSubfolders(id), loadFiles()]);
@@ -2848,8 +2850,9 @@ async function openSubfolder(subId, subName, parentId, parentName) {
   currentSubfolder = { id: subId, name: subName, parentId, parentName };
   // Mettre le nom du sous-dossier dans la topbar
   $('topbar-title').textContent = subName;
-  // Masquer le banner étudiant
+  // Masquer le banner étudiant et les stats
   if($('student-banner')) $('student-banner').style.display='none';
+  if($('admin-stats')) $('admin-stats').style.display='none';
   // Update breadcrumb
   const bc = document.getElementById('breadcrumb');
   bc.innerHTML = `
@@ -2870,6 +2873,10 @@ async function openSubfolder(subId, subName, parentId, parentName) {
     const isAdmin = currentUser?.role === 'admin';
     document.getElementById('upload-zone-container').style.display = isAdmin ? 'block' : 'none';
   }
+
+  // Vider le container de sous-dossiers (les sous-dossiers n'ont pas de sous-sous-dossiers)
+  const subCont = document.getElementById('subfolders-container');
+  if (subCont) subCont.innerHTML = '';
 
   updateTopbarForSubfolder(subId, parentId);
   await loadSubfolderFiles(subId, parentId);
