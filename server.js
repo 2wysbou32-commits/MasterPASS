@@ -383,7 +383,7 @@ app.get('/api/me', requireAuth, (req, res) => {
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
 app.get('/api/users', requireSuperAdmin, (req, res) => {
-  res.json(loadDB().users.map(u => ({ id: u.id, name: u.name, login: u.login, role: u.role, email: u.email || '', mineure: u.mineure || '' })));
+  res.json(loadDB().users.map(u => ({ id: u.id, name: u.name, login: u.login, role: u.role, email: u.email || '', mineure: u.mineure || '', discord: u.discord || '' })));
 });
 app.post('/api/users', requireSuperAdmin, (req, res) => {
   const { name, login, password, role } = req.body;
@@ -1031,7 +1031,7 @@ app.delete('/api/invite-codes/used/all', requireSuperAdmin, (req, res) => {
 
 // Inscription étudiant via code d'invitation (public)
 app.post('/api/register', (req, res) => {
-  const { code, firstName, lastName, login, email, password, mineure } = req.body;
+  const { code, firstName, lastName, login, email, password, mineure, discord } = req.body;
   if (!code || !firstName || !lastName || !login || !email || !password) {
     return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
   }
@@ -1064,6 +1064,7 @@ app.post('/api/register', (req, res) => {
     password: bcrypt.hashSync(password, 10),
     role: 'student',
     mineure: mineure ? mineure.trim() : '',
+    discord: discord ? discord.trim() : '',
     registeredAt: new Date().toISOString(),
   };
   db.users.push(newUser);
