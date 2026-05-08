@@ -834,8 +834,8 @@ input[type="file"]{display:none;}
       <div class="auth-title">Connexion</div>
       <div class="auth-sub">Accès réservé aux membres MasterPASS</div>
       <div class="field-group">
-        <label class="field-label">Identifiant</label>
-        <input type="text" class="field-input" id="login-input" placeholder="Votre identifiant" autocomplete="username">
+        <label class="field-label">Identifiant ou email</label>
+        <input type="text" class="field-input" id="login-input" placeholder="Identifiant ou adresse email" autocomplete="username">
       </div>
       <div class="field-group">
         <label class="field-label">Mot de passe</label>
@@ -879,8 +879,14 @@ input[type="file"]{display:none;}
         <div class="field-group"><label class="field-label">Nom</label><input type="text" class="field-input" id="reg-lastname" placeholder="Nom" oninput="updateRegLogin()"></div>
       </div>
       <div class="field-group">
-        <label class="field-label">Identifiant de connexion <span style="font-weight:400;color:var(--text3)">(généré automatiquement)</span></label>
-        <input type="text" class="field-input" id="reg-login" readonly style="background:var(--bg);color:var(--text2);cursor:default;letter-spacing:0.5px" placeholder="Remplis ton prénom et nom d'abord">
+        <label class="field-label">Ton identifiant de connexion <span style="font-weight:400;color:var(--text3)">(généré automatiquement)</span></label>
+        <input type="text" class="field-input" id="reg-login" readonly 
+          style="background:rgba(0,151,167,0.06);color:var(--teal-dark);cursor:default;letter-spacing:1px;font-weight:700;font-size:15px;border-color:var(--teal);text-align:center" 
+          placeholder="Remplis ton prénom et nom d'abord">
+        <div style="font-size:11.5px;color:var(--teal-dark);margin-top:5px;padding:6px 10px;background:rgba(0,151,167,0.08);border-radius:8px;display:flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;flex-shrink:0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <span>Note bien cet identifiant — c'est lui que tu devras utiliser pour te connecter !</span>
+        </div>
       </div>
       <div class="field-group">
         <label class="field-label">Email</label>
@@ -892,7 +898,18 @@ input[type="file"]{display:none;}
       </div>
       <div class="field-group">
         <label class="field-label">Mineure choisie <span style="font-weight:400;color:var(--text3)">(optionnel)</span></label>
-        <input type="text" class="field-input" id="reg-mineure" placeholder="Ex: Chimie, Maths, Physique...">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
+          ${['Mathématiques','Physique-Chimie','Sciences de la Vie','Sciences de la Terre','Informatique','STAPS','Droit','Économie','Sociologie','Psychologie','Langues étrangères','Histoire-Géographie','Musique','Arts plastiques','Philosophie'].map(m => `
+          <label style="display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:12.5px;cursor:pointer;transition:all 0.15s" 
+            onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor=document.getElementById('reg-min-'+this.querySelector('input').value.replace(/ /g,'_'))?.checked?'var(--teal)':'var(--border)'">
+            <input type="radio" name="reg-mineure-radio" id="reg-min-${m.replace(/ /g,'_')}" value="${m}" style="accent-color:var(--teal-dark)">
+            ${m}
+          </label>`).join('')}
+          <label style="display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);font-size:12.5px;cursor:pointer">
+            <input type="radio" name="reg-mineure-radio" value="" style="accent-color:var(--teal-dark)" checked>
+            <span style="color:var(--text3)">Aucune / Ne sait pas encore</span>
+          </label>
+        </div>
       </div>
       <div class="error-msg" id="reg-error">—</div>
       <div class="success-msg" id="reg-success"></div>
@@ -2588,7 +2605,8 @@ async function doRegister() {
   const login    = ($('reg-login').value || '').trim();
   const email    = ($('reg-email').value || '').trim();
   const password = $('reg-password').value || '';
-  const mineure  = ($('reg-mineure').value || '').trim();
+  const mineumeRadio = document.querySelector('input[name="reg-mineure-radio"]:checked');
+  const mineure = mineumeRadio ? mineumeRadio.value : '';
   const errEl    = $('reg-error');
   const okEl     = $('reg-success');
   errEl.style.display = 'none'; okEl.style.display = 'none';
