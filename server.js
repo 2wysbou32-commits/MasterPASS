@@ -167,6 +167,12 @@ function requireAuth(req, res, next) {
   const activeSessionId = getActiveSessions()[req.session.userId];
   if (activeSessionId && activeSessionId !== req.sessionID) {
     console.log('[SECURITY] Session expirée pour userId:', req.session.userId, '— double connexion détectée');
+    // Marquer l'utilisateur comme ayant tenté une double connexion
+    try {
+      const dbSec = loadDB();
+      const userSec = dbSec.users.find(u => u.id === req.session.userId);
+      if (userSec) { userSec.doubleConnectionAt = new Date().toISOString(); saveDB(dbSec); }
+    } catch(e) {}
     req.session.destroy(() => {});
     return res.status(401).json({ error: 'SESSION_EXPIRED', message: 'Ton compte a été connecté depuis un autre appareil.' });
   }
@@ -468,7 +474,13 @@ app.get('/api/me', requireAuth, (req, res) => {
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
 app.get('/api/users', requireSuperAdmin, (req, res) => {
-  res.json(loadDB().users.map(u => ({ id: u.id, name: u.name, login: u.login, role: u.role, email: u.email || '', mineure: u.mineure || '', discord: u.discord || '' })));
+  const db = loadDB();
+  const activeSess = db.activeSessions || {};
+  res.json(db.users.map(u => ({
+    id: u.id, name: u.name, login: u.login, role: u.role,
+    email: u.email || '', mineure: u.mineure || '', discord: u.discord || '',
+    doubleConnection: !!u.doubleConnectionAt
+  })));
 });
 app.post('/api/users', requireSuperAdmin, (req, res) => {
   const { name, login, password, role } = req.body;
@@ -1035,6 +1047,16 @@ app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
 });
 
+// ── CLEAR DOUBLE CONNECTION FLAG ─────────────────────────────────────────────
+app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === parseInt(req.params.id));
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  delete user.doubleConnectionAt;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
 app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
   const db = loadDB();
@@ -1168,6 +1190,16 @@ app.post('/api/register', (req, res) => {
   res.json({ ok: true, name: newUser.name, login: newUser.login });
 });
 
+// ── CLEAR DOUBLE CONNECTION FLAG ─────────────────────────────────────────────
+app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === parseInt(req.params.id));
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  delete user.doubleConnectionAt;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
 app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
   const db = loadDB();
@@ -1206,10 +1238,30 @@ app.delete('/api/announcements/:id', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// ── CLEAR DOUBLE CONNECTION FLAG ─────────────────────────────────────────────
+app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === parseInt(req.params.id));
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  delete user.doubleConnectionAt;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
 app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
   const db = loadDB();
   res.json((db.connectionLogs || []).slice(0, 100));
+});
+
+// ── CLEAR DOUBLE CONNECTION FLAG ─────────────────────────────────────────────
+app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === parseInt(req.params.id));
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  delete user.doubleConnectionAt;
+  saveDB(db);
+  res.json({ ok: true });
 });
 
 // ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
