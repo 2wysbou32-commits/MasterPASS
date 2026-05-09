@@ -588,7 +588,7 @@ app.get('/api/folders/:parentId/subfolders/:subId/files', requireAuth, (req, res
       }
       return isAdmin || !f.pending;
     })
-    .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false })));
+    .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false, views: f.views || 0 })));
 });
 
 app.post('/api/folders/:parentId/subfolders/:subId/files', requireAdmin, upload.array('files'), async (req, res) => {
@@ -647,6 +647,9 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/preview', requir
   const sub = (parent?.subfolders || []).find(s => s.id === parseInt(req.params.subId));
   const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  // Incrémenter le compteur de vues
+  file.views = (file.views || 0) + 1;
+  saveDB(db);
   if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, true, req); return; }
   if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.sendFile(p); }
   res.status(500).json({ error: 'Erreur stockage' });
@@ -732,7 +735,7 @@ app.get('/api/folders/:id/files', requireAuth, (req, res) => {
       }
       return isAdmin || !f.pending;
     })
-    .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false })));
+    .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false, views: f.views || 0 })));
 });
 
 app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (req, res) => {
@@ -772,6 +775,9 @@ app.get('/api/folders/:folderId/files/:fileId/preview', requireAuth, async (req,
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
   const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  // Incrémenter le compteur de vues
+  file.views = (file.views || 0) + 1;
+  saveDB(db);
 
   if (r2Enabled && file.r2Key) {
     await proxyFileFromR2(file.r2Key, res, true, req);
