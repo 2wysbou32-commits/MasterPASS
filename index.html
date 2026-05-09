@@ -547,6 +547,28 @@ input[type="file"]{display:none;}
 .preview-unsupported svg { width:48px; height:48px; margin-bottom:12px; opacity:0.4; display:block; margin-left:auto; margin-right:auto; }
 
 
+/* ── WATERMARK ──────────────────────────────────────────────────────────────── */
+.watermark-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 99999;
+  overflow: hidden;
+}
+.watermark-text {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-35deg);
+  font-size: 28px;
+  font-weight: 700;
+  color: rgba(0,77,97,0.08);
+  white-space: nowrap;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+}
 /* ── ANNOUNCEMENTS ──────────────────────────────────────────────────────── */
 .ann-card {
   border-radius: 14px;
@@ -578,6 +600,28 @@ input[type="file"]{display:none;}
 .ann-type-btn input[type=radio] { display:none; }
 .ann-type-btn:has(input:checked) { border-color:var(--teal); background:rgba(0,151,167,0.08); color:var(--teal-dark); }
 
+/* ── WATERMARK ──────────────────────────────────────────────────────────────── */
+.watermark-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 99999;
+  overflow: hidden;
+}
+.watermark-text {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-35deg);
+  font-size: 28px;
+  font-weight: 700;
+  color: rgba(0,77,97,0.08);
+  white-space: nowrap;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  pointer-events: none;
+  user-select: none;
+}
 /* ── ANNOUNCEMENTS ──────────────────────────────────────────────────────────── */
 .announcement-card {
   background: white; border-radius: 14px; padding: 18px 20px;
@@ -841,11 +885,23 @@ input[type="file"]{display:none;}
         <label class="field-label">Mot de passe</label>
         <input type="password" class="field-input" id="password-input" placeholder="••••••••" autocomplete="current-password">
       </div>
+      <div style="font-size:11.5px;color:var(--text3);text-align:center;margin-bottom:12px;line-height:1.6;padding:8px 12px;background:rgba(239,83,80,0.05);border-radius:8px;border:1px solid rgba(239,83,80,0.12)">
+        🔒 Le partage de compte est <strong style="color:#c62828">strictement interdit</strong>. Toute connexion simultanée entraîne une déconnexion automatique.
+      </div>
       <button class="btn-primary" id="login-btn" onclick="doLogin()">Se connecter</button>
+      <div class="error-msg" id="login-error" style="display:none"></div>
       <div class="error-msg" id="auth-error">Identifiant ou mot de passe incorrect.</div>
       <div class="success-msg" id="auth-success"></div>
       <div class="auth-link"><a onclick="showForgotForm()">Mot de passe oublié ?</a></div>
       <div class="auth-link" style="margin-top:8px"><a onclick="showRegisterForm()">Créer mon compte avec un code d'invitation</a></div>
+      <div style="margin-top:16px;padding:10px 14px;background:rgba(239,83,80,0.06);border-radius:10px;border:1px solid rgba(239,83,80,0.2)">
+        <p style="font-size:11px;color:#c62828;line-height:1.5;margin:0;text-align:center">
+          🔒 <strong>Accès strictement personnel.</strong> Le partage de compte est interdit et entraîne la suppression immédiate de l'accès. Toute connexion simultanée sera automatiquement détectée.
+        </p>
+      </div>
+      <div style="margin-top:16px;padding:10px 14px;background:rgba(239,83,80,0.06);border-radius:10px;border:1px solid rgba(239,83,80,0.2);font-size:11.5px;color:#C62828;line-height:1.5;text-align:center">
+        🔒 Ce compte est strictement personnel. Le partage de compte ou de contenu est interdit et entraîne la suppression immédiate de l'accès.
+      </div>
     </div>
 
     <!-- FORMULAIRE MOT DE PASSE OUBLIÉ -->
@@ -1207,6 +1263,15 @@ input[type="file"]{display:none;}
           <div><div class="section-title">Gestion des comptes</div><div class="section-sub">Créez et gérez les accès étudiants et administrateurs</div></div>
         </div>
         <div class="users-grid" id="users-grid"></div>
+        <div style="margin-top:32px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.8px">🔍 Dernières connexions</div>
+            <button onclick="loadConnectionLogs()" class="btn-action" style="font-size:12px;padding:6px 12px">Actualiser</button>
+          </div>
+          <div id="connection-logs" style="background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden;font-size:12px">
+            <div style="padding:20px;text-align:center;color:var(--text3)">Clique sur "Actualiser" pour voir les logs</div>
+          </div>
+        </div>
         <div class="settings-section" style="margin-top:24px">
           <div class="settings-section-title" style="color:var(--danger)">Zone de danger</div>
           <p style="font-size:13px;color:var(--text3);margin:0 0 12px;line-height:1.5">La suppression de ton compte est définitive. Toutes tes données seront effacées. Pour supprimer ton compte, envoie un email à <a href="mailto:masterpass.lille@gmail.com" style="color:var(--teal-dark)">masterpass.lille@gmail.com</a> depuis ton adresse email enregistrée.</p>
@@ -1524,8 +1589,37 @@ async function api(method,path,body){
   if(body instanceof FormData){opts.body=body;}
   else if(body){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
   const r=await fetch('/api'+path,opts);
-  if(!r.ok){const e=await r.json().catch(()=>({error:'Erreur réseau'}));throw new Error(e.error||'Erreur');}
-  return r.json();
+  const data=await r.json().catch(()=>({error:'Erreur réseau'}));
+  // Déconnexion si session remplacée (double connexion détectée)
+  if(r.status===401 && (data.error==='SESSION_EXPIRED'||data.error==='SESSION_REPLACED')){
+    currentUser=null;
+    $('app').style.display='none';
+    $('auth-page').style.display='flex';
+    $('login-input').value='';$('password-input').value='';
+    // Afficher une alerte modale percutante
+    let modal = document.getElementById('expired-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'expired-modal';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
+      modal.innerHTML = `<div style="background:white;border-radius:20px;padding:36px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.3)">
+        <div style="font-size:52px;margin-bottom:12px">🔐</div>
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:#C62828;margin-bottom:10px">Session expirée</div>
+        <p style="color:#546E7A;font-size:13.5px;line-height:1.65;margin-bottom:24px">
+          Une connexion depuis un autre appareil a été détectée sur ton compte.<br><br>
+          <strong style="color:#C62828">Le partage de compte est strictement interdit</strong> selon les conditions d'utilisation de MasterPASS. En cas de récidive, l'accès à la plateforme sera définitivement supprimé.
+        </p>
+        <button onclick="document.getElementById('expired-modal').remove()" style="width:100%;padding:13px;background:linear-gradient(135deg,#0097A7,#006064);color:white;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">
+          Compris — me reconnecter
+        </button>
+      </div>`;
+      document.body.appendChild(modal);
+    }
+    modal.style.display = 'flex';
+    throw new Error('Session expirée');
+  }
+  if(!r.ok){throw new Error(data.error||'Erreur');}
+  return data;
 }
 
 let toastTimer;
@@ -1551,6 +1645,27 @@ async function doLogin(){
   }catch(e){$('auth-error').style.display='block';$('password-input').value='';}
   finally{btn.disabled=false;btn.textContent='Se connecter';}
 }
+
+// Vérifier la session toutes les 30s (détection double connexion)
+async function checkSession() {
+  if (!currentUser) return;
+  try {
+    await api('GET', '/me');
+  } catch(e) {
+    if (e.message && (e.message.includes('SESSION_EXPIRED') || e.message.includes('autre appareil') || e.status === 401)) {
+      currentUser = null;
+      $('app').style.display = 'none';
+      $('auth-page').style.display = 'flex';
+      const errEl = $('auth-error') || $('login-error');
+      if(errEl) {
+        errEl.innerHTML = '⚠️ Ton compte a été connecté depuis un autre appareil. Tu as été déconnecté(e).';
+        errEl.style.display = 'block';
+      }
+    }
+  }
+}
+setInterval(checkSession, 30000);
+
 async function doLogout(){await api('POST','/logout').catch(()=>{});currentUser=null;currentFolder=null;$('app').style.display='none';$('auth-page').style.display='flex';$('login-input').value='';$('password-input').value='';}
 $('password-input').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 $('login-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('password-input').focus();});
@@ -1994,6 +2109,7 @@ function closePreview() {
   document.getElementById('preview-overlay').classList.remove('open');
   document.getElementById('preview-body').innerHTML = '';
   document.body.style.overflow = '';
+  removeWatermark();
 }
 
 // Fermer avec Échap
@@ -2225,6 +2341,66 @@ async function deleteAnnouncement(id) {
     await loadAnnouncements();
     toast('Annonce supprimée');
   } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
+async function loadConnectionLogs() {
+  const container = $('connection-logs');
+  if (!container) return;
+  container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3)">Chargement…</div>';
+  try {
+    const logs = await api('GET', '/connection-logs');
+    if (!logs.length) {
+      container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Aucune connexion enregistrée</div>';
+      return;
+    }
+    container.innerHTML = logs.map((l, i) => {
+      const date = new Date(l.date).toLocaleString('fr-FR');
+      const border = i < logs.length-1 ? 'border-bottom:1px solid rgba(178,223,219,0.3)' : '';
+      return `<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;${border}">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--teal-dark));display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:700;flex-shrink:0">${(l.name||l.login).substring(0,2).toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;color:var(--text);font-size:13px">${l.name || l.login}</div>
+          <div style="color:var(--text3);font-size:11px">${l.login}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="color:var(--text2);font-size:12px">${date}</div>
+          <div style="color:var(--text3);font-size:11px;font-family:monospace">${l.ip}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = '<div style="padding:16px;color:var(--danger)">Erreur de chargement</div>';
+  }
+}
+
+// ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
+async function loadConnectionLogs() {
+  const list = $('connection-logs-list');
+  if (!list) return;
+  list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3)">Chargement…</div>';
+  try {
+    const logs = await api('GET', '/connection-logs');
+    if (!logs.length) {
+      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Aucune connexion enregistrée</div>';
+      return;
+    }
+    list.innerHTML = logs.map((l, i) => {
+      const date = new Date(l.at).toLocaleString('fr-FR');
+      const border = i < logs.length-1 ? 'border-bottom:1px solid rgba(178,223,219,0.3)' : '';
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;${border}">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--teal-dark));display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:700;flex-shrink:0">${l.name?l.name[0].toUpperCase():'?'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${l.name || l.login}</div>
+          <div style="font-size:11px;color:var(--text3)">${l.login}</div>
+        </div>
+        <div style="font-size:12px;color:var(--text3);white-space:nowrap">${date}</div>
+        <div style="font-size:11px;color:var(--text3);font-family:monospace;background:var(--bg);padding:2px 8px;border-radius:6px">${l.ip}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="padding:20px;color:var(--danger)">Erreur de chargement</div>';
+  }
 }
 
 // ── ANNONCES ──────────────────────────────────────────────────────────────────
@@ -3176,6 +3352,50 @@ async function uploadSubfolderFiles(files, subId, parentId) {
 }
 
 // Update openPreview to work with explicit URLs
+function addWatermarkToPreview() {
+  // Supprimer ancien filigrane
+  const old = document.getElementById('watermark-overlay');
+  if(old) old.remove();
+  if(!currentUser) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'watermark-overlay';
+  overlay.className = 'watermark-overlay';
+  // Répéter le filigrane en grille
+  const names = Array(12).fill(currentUser.name).join('   ·   ');
+  overlay.innerHTML = `
+    <div class="watermark-text" style="top:25%;left:50%">${names}</div>
+    <div class="watermark-text" style="top:50%;left:50%">${names}</div>
+    <div class="watermark-text" style="top:75%;left:50%">${names}</div>`;
+  document.body.appendChild(overlay);
+}
+function removeWatermark() {
+  const w = document.getElementById('watermark-overlay');
+  if(w) w.remove();
+}
+
+// Filigrane sur les PDFs - récupère l'utilisateur depuis le header ou currentUser
+function addWatermark(container) {
+  if (!currentUser) return;
+  const wm = document.createElement('div');
+  const text = `${currentUser.name} · ${currentUser.login} · MasterPASS`;
+  wm.style.cssText = `
+    position:absolute;inset:0;pointer-events:none;z-index:10;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+  `;
+  // Filigrane répété en diagonale
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+    <defs>
+      <pattern id="wm" x="0" y="0" width="320" height="180" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+        <text x="10" y="90" font-family="Inter,sans-serif" font-size="13" fill="rgba(0,77,97,0.09)" font-weight="600">${text}</text>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#wm)"/>
+  </svg>`;
+  wm.innerHTML = svg;
+  container.style.position = 'relative';
+  container.appendChild(wm);
+}
+
 function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl) {
   streamUrl = streamUrl || previewUrl.replace('/preview', '/stream');
   const body = document.getElementById('preview-body');
@@ -3189,9 +3409,10 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
   dlBtn.style.display = (type === 'video' && !isAdmin) ? 'none' : '';
   body.innerHTML = '';
   if (type === 'pdf') {
-    // Use embed for better PDF with full scroll support
     body.style.display = 'block';
+    body.style.position = 'relative';
     body.innerHTML = `<embed src="${previewUrl}" type="application/pdf" style="width:100%;height:100%;position:absolute;top:0;left:0;border:none;">`;
+    addWatermark(body);
   } else if (type === 'video') {
     body.style.display = 'flex';
     body.style.alignItems = 'center';
@@ -3267,6 +3488,7 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
   }
   document.getElementById('preview-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+  addWatermarkToPreview();
 }
 
 </script>
