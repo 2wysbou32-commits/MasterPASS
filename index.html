@@ -359,7 +359,7 @@ input[type="file"]{display:none;}
 .breadcrumb-sep{color:var(--border);}
 
 /* ── USERS ── */
-.users-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+.users-grid{}
 .user-card{background:white;border-radius:16px;padding:20px;border:1.5px solid var(--border);box-shadow:0 2px 8px var(--shadow2);display:flex;align-items:center;gap:15px;}
 .user-card-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--teal-dark));display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:white;flex-shrink:0;}
 .user-card-avatar.admin-av{background:linear-gradient(135deg,#004D61,#003340);}
@@ -2127,6 +2127,16 @@ async function toggleDownload(fileId){
   }catch(e){toast(e.message,'error');}
 }
 
+async function clearDoubleConnection(e, userId) {
+  e.stopPropagation();
+  if (!confirm("Effacer l'alerte de double connexion pour cet étudiant ?")) return;
+  try {
+    await api('DELETE', '/users/' + userId + '/double-connection');
+    await loadUsers();
+    toast('Alerte effacée');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 async function loadUsers(){
   const grid=$('users-grid');grid.innerHTML='<div style="color:var(--text3);font-size:14px">Chargement…</div>';
   try{const users=await api('GET','/users');renderUsers(users);}
@@ -2135,23 +2145,44 @@ async function loadUsers(){
 
 function renderUsers(users){
   const grid=$('users-grid');
-  if(!users.length){grid.innerHTML='<div style="color:var(--text3);font-size:14px">Aucun compte.</div>';return;}
-  const admins=users.filter(u=>u.role==='admin'),students=users.filter(u=>u.role==='student');
-  grid.innerHTML=[...admins,...students].map(u=>{
-    const initials=u.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-    const isSelf=u.id===currentUser.id;
-    return `<div class="user-card">
-      <div class="user-card-avatar ${u.role==='admin'?'admin-av':''}">${initials}</div>
-      <div class="user-card-info">
-        <div class="user-card-name">${u.name}${isSelf?' <span style="font-size:11px;color:var(--text3)">(vous)</span>':''}</div>
-        <div class="user-card-login">${u.login}${u.email?' · '+u.email:''}</div>
-        ${u.mineure?`<div style="font-size:11px;color:var(--teal-dark);margin-top:2px">Mineure : ${u.mineure}</div>`:''}
-        ${u.discord?`<div style="font-size:11px;color:#5865F2;margin-top:2px">Discord : ${u.discord}</div>`:''}
-        <span class="role-badge ${u.role==='admin'?'role-admin':u.role==='subadmin'?'role-subadmin':'role-student'}">${u.role==='admin'?'Administrateur principal':u.role==='subadmin'?'Sous-admin':'Étudiant'}</span>
-      </div>
-      ${!isSelf?`<button class="icon-btn" onclick="deleteUser(${u.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`:''}
+  if(!users.length){grid.innerHTML='<div style="padding:24px;color:var(--text3);font-size:14px">Aucun compte.</div>';return;}
+  const admins=users.filter(u=>u.role==='admin'||u.role==='subadmin');
+  const students=users.filter(u=>u.role==='student');
+
+  const renderSection = (list, title) => {
+    if (!list.length) return '';
+    const rows = list.map((u, i) => {
+      const initials = u.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+      const isSelf = u.id === currentUser.id;
+      const border = i < list.length-1 ? 'border-bottom:1px solid rgba(178,223,219,0.3)' : '';
+      const doubleConn = u.doubleConnection;
+      const rowBg = doubleConn ? 'background:rgba(239,83,80,0.04)' : '';
+      return `<div style="display:flex;align-items:center;gap:14px;padding:12px 18px;${border};${rowBg};transition:background 0.15s" onmouseover="this.style.background='rgba(0,151,167,0.03)'" onmouseout="this.style.background='${doubleConn?'rgba(239,83,80,0.04)':'transparent'}'">
+        <div style="width:36px;height:36px;border-radius:50%;background:${u.role==='admin'?'linear-gradient(135deg,#004D61,#003340)':'linear-gradient(135deg,var(--teal),var(--teal-dark))'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-weight:600;font-size:13.5px;color:var(--text)">${u.name}</span>
+            ${isSelf?'<span style="font-size:10px;color:var(--text3)">(vous)</span>':''}
+            <span class="role-badge ${u.role==='admin'?'role-admin':u.role==='subadmin'?'role-subadmin':'role-student'}">${u.role==='admin'?'Admin':u.role==='subadmin'?'Sous-admin':'Étudiant'}</span>
+            ${doubleConn?`<span style="background:#FFEBEE;color:#C62828;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:5px">⚠️ Double connexion détectée <button onclick="clearDoubleConnection(event,${u.id})" style="background:none;border:none;color:#C62828;cursor:pointer;font-size:11px;padding:0;line-height:1" title="Effacer l'alerte">✕</button></span>`:''}
+          </div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:2px">${u.login}${u.email?' · '+u.email:''}</div>
+          <div style="display:flex;gap:10px;margin-top:3px;flex-wrap:wrap">
+            ${u.mineure?`<span style="font-size:11px;color:var(--teal-dark)">📚 ${u.mineure}</span>`:''}
+            ${u.discord?`<span style="font-size:11px;color:#5865F2">💬 ${u.discord}</span>`:''}
+          </div>
+        </div>
+        ${!isSelf?`<button class="icon-btn" onclick="deleteUser(${u.id})" title="Supprimer" style="flex-shrink:0"><svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`:''}
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;padding:0 18px;margin-bottom:8px">${title}</div>
+      <div style="background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden">${rows}</div>
     </div>`;
-  }).join('');
+  };
+
+  grid.innerHTML = renderSection(admins, 'Administrateurs') + renderSection(students, `Étudiants (${students.length})`);
 }
 
 async function createUser(){
