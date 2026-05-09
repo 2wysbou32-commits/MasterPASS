@@ -1281,7 +1281,8 @@ input[type="file"]{display:none;}
         </div>
 
         <div id="view-files" style="display:none">
-          <div id="folder-page-title" style="display:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:32px;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:-0.5px;line-height:1.1"></div>
+          <div id="folder-page-title" style="display:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:32px;font-weight:800;color:var(--text);margin-bottom:6px;letter-spacing:-0.5px;line-height:1.1"></div>
+          <div id="folder-progress-bar" style="display:none;margin-bottom:20px"></div>
           <div class="section-header">
             <div><div class="section-title" id="current-folder-name" style="display:none">Dossier</div><div class="section-sub" id="files-count-sub">—</div></div>
           </div>
@@ -1944,19 +1945,6 @@ function renderFolders(folders){
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
           ${f.fileCount} fichier${f.fileCount!==1?'s':''}${f.totalSize>0?' · '+formatSize(f.totalSize):''}
         </div>
-        ${(()=>{
-          if(!f.fileCount || currentUser?.role==='admin') return '';
-          // Compter les fichiers lus dans ce dossier
-          const read = getReadFiles();
-          let readCount = 0;
-          if(f.files) f.files.forEach(file => { if(read.has(`${f.id}__${file.id}`)) readCount++; });
-          const pct = f.fileCount > 0 ? Math.round(readCount/f.fileCount*100) : 0;
-          const done = readCount === f.fileCount && f.fileCount > 0;
-          return `<div class="progress-wrap${done?' progress-done':''}">
-            <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-            <span>${done?'✓ Terminé':readCount+'/'+f.fileCount+' lus'}</span>
-          </div>`;
-        })()}
       </div>
     </div>`).join('');
 }
@@ -2114,6 +2102,11 @@ function renderFiles(files){
   const container = document.getElementById('files-list-body');
   if($('files-count-sub')) $('files-count-sub').textContent=`${files.length} fichier${files.length!==1?'s':''}`;
   $('files-count-tag').textContent=files.length;
+  // Afficher/masquer la barre de tri
+  const sortBar = document.getElementById('sort-bar');
+  if (sortBar) sortBar.style.display = files.length > 0 ? 'flex' : 'none';
+  // Mettre à jour la barre de progression du dossier
+  updateFolderProgress(files);
   if(!files.length){
     if(container) container.innerHTML=`<div class="empty-state" style="padding:40px">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
@@ -2245,6 +2238,10 @@ function openPreview(fileId, filename, type) {
       fileName.appendChild(badge);
     }
   }
+  // Mettre à jour la barre de progression
+  const allRows = document.querySelectorAll('.file-row[data-file-id]');
+  const allFiles = [...allRows].map(r => ({ id: parseInt(r.getAttribute('data-file-id')) }));
+  updateFolderProgress(allFiles);
   const previewUrl = `/api/folders/${currentFolder.id}/files/${fileId}/preview`;
   const downloadUrl = `/api/folders/${currentFolder.id}/files/${fileId}/download`;
   const streamUrl = `/api/folders/${currentFolder.id}/files/${fileId}/stream`;
@@ -2755,6 +2752,35 @@ function urlBase64ToUint8Array(base64String) {
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
   const rawData = window.atob(base64);
   return new Uint8Array([...rawData].map(c => c.charCodeAt(0)));
+}
+
+// ── BARRE DE PROGRESSION ─────────────────────────────────────────────────────
+function updateFolderProgress(files) {
+  const bar = $('folder-progress-bar');
+  if (!bar || !currentFolder) return;
+  if (!files || !files.length || currentUser?.role === 'admin') {
+    bar.style.display = 'none';
+    return;
+  }
+  const total = files.length;
+  const read = getReadFiles();
+  let readCount = 0;
+  files.forEach(f => {
+    const key = `${currentFolder.id}_${currentFolder.subId||''}_${f.id}`;
+    if (read.has(key)) readCount++;
+  });
+  const pct = Math.round(readCount / total * 100);
+  const done = readCount === total;
+  bar.style.display = 'block';
+  bar.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="flex:1;height:6px;background:var(--border);border-radius:99px;overflow:hidden;max-width:200px">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--teal),var(--teal-dark));border-radius:99px;transition:width 0.4s ease"></div>
+      </div>
+      <span style="font-size:12px;font-weight:600;color:${done?'#2E7D32':'var(--text3)'}">
+        ${done ? '✓ Tout lu !' : `${readCount}/${total} fichier${total>1?'s':''} lu${readCount>1?'s':''}`}
+      </span>
+    </div>`;
 }
 
 // ── MODE SOMBRE ──────────────────────────────────────────────────────────────
@@ -3440,18 +3466,7 @@ function renderSubfolders(subs, parentId, parentName) {
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
           <div style="font-size:12px;color:var(--text3)">${s.fileCount} fichier${s.fileCount!==1?'s':''}</div>
-          ${(()=>{
-            if(!s.fileCount || currentUser?.role==='admin') return '';
-            const read = getReadFiles();
-            let rc=0;
-            if(s.files) s.files.forEach(f=>{if(read.has(parentId+'_'+s.id+'_'+f.id))rc++;});
-            const pct = s.fileCount>0?Math.round(rc/s.fileCount*100):0;
-            const done = rc===s.fileCount && s.fileCount>0;
-            return `<div class="progress-wrap${done?' progress-done':''}" style="margin-top:3px">
-              <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-              <span>${done?'✓':rc+'/'+s.fileCount}</span>
-            </div>`;
-          })()}
+
         </div>
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--text3);flex-shrink:0"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
         ${isSuperAdmin ? `<button onclick="event.stopPropagation();deleteSubfolder(${parentId},${s.id})" title="Supprimer" style="width:26px;height:26px;border-radius:7px;border:none;background:rgba(229,115,115,0.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px">
