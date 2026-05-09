@@ -46,6 +46,16 @@
 [data-theme="dark"] .folder-card,
 [data-theme="dark"] .announcement-card { background: var(--surface) !important; border-color: var(--border) !important; color: var(--text) !important; }
 [data-theme="dark"] .files-list-wrap { background: var(--surface) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .folder-card-inner { background: var(--surface) !important; }
+[data-theme="dark"] .folder-card-inner .folder-name { color: var(--text) !important; }
+[data-theme="dark"] .folder-meta { color: var(--text3) !important; }
+[data-theme="dark"] .section-title { color: var(--text) !important; }
+[data-theme="dark"] .section-sub { color: var(--text3) !important; }
+/* Subfolder list items in dark mode */
+[data-theme="dark"] [style*="background:white"] { background: var(--surface) !important; }
+[data-theme="dark"] [style*="border:1.5px solid var(--border)"] { border-color: var(--border) !important; }
+[data-theme="dark"] [style*="color:var(--text)"] { color: var(--text) !important; }
+[data-theme="dark"] [style*="color:var(--text3)"] { color: var(--text3) !important; }
 [data-theme="dark"] .file-row { border-color: var(--border) !important; }
 [data-theme="dark"] .file-row:hover { background: var(--surface2) !important; }
 [data-theme="dark"] .file-name { color: var(--text) !important; }
@@ -834,15 +844,15 @@ input[type="file"]{display:none;}
   .sidebar.open { transform: translateX(0); }
 
   /* Main content pleine largeur */
-  .main-content { margin-left: 0; }
+  .main-content { margin-left: 0; padding: 0 !important; }
 
   /* Topbar */
   .topbar { padding: 0 14px; gap: 10px; }
   .hamburger-btn { display: flex; }
   .topbar-title { font-size: 15px; }
 
-  /* Content area */
-  .content-area { padding: 16px; }
+  /* Content area - less margin on mobile */
+  .content-area { padding: 12px 14px !important; }
   .panel { padding: 0; }
   .announcement-card { margin-bottom: 10px; }
   .search-result-item { padding: 10px 14px; }
@@ -1875,8 +1885,8 @@ function showPanel(name){
   const topbar = document.querySelector('.topbar');
   if(topbar) topbar.style.display = name==='files' ? 'flex' : 'none';
   updateTopbar();
-  // Fermer la sidebar sur mobile après navigation
-  if(window.innerWidth <= 768) closeSidebar();
+  // Sur mobile, fermer la sidebar seulement sur panel fichiers (pour voir le contenu)
+  if(window.innerWidth <= 768 && name === 'files') closeSidebar();
 }
 
 function updateTopbar(){
