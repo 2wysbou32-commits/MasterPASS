@@ -1323,33 +1323,59 @@ input[type="file"]{display:none;}
 
       <!-- CODES PANEL -->
       <div class="panel" id="panel-codes" style="display:none">
-        <div class="section-header" style="margin-bottom:24px">
-          <div><div class="section-title">Codes d'invitation</div><div class="section-sub">Génère des codes uniques à partager avec tes étudiants</div></div>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <div style="display:flex;align-items:center;gap:8px;background:white;border:1.5px solid var(--border);border-radius:10px;padding:6px 12px">
-              <label style="font-size:13px;color:var(--text2);white-space:nowrap">Nombre :</label>
-              <input type="number" id="codes-count" value="10" min="1" max="100" style="width:55px;border:none;font-size:14px;font-weight:600;color:var(--text);outline:none">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px">
+          <div>
+            <div class="section-title">Codes d'invitation</div>
+            <div class="section-sub">Génère des codes uniques à partager avec tes étudiants</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px;background:white;border:1.5px solid var(--border);border-radius:10px;padding:6px 14px">
+              <label style="font-size:13px;color:var(--text2);white-space:nowrap">Générer</label>
+              <input type="number" id="codes-count" value="10" min="1" max="100" style="width:50px;border:none;font-size:15px;font-weight:700;color:var(--text);outline:none">
+              <label style="font-size:13px;color:var(--text2)">codes</label>
             </div>
             <button class="btn-action primary-action" onclick="generateCodes()">
-              <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
-              Générer des codes
-            </button>
-            <button class="btn-action" onclick="deleteUsedCodes()" style="color:var(--danger);border-color:rgba(229,115,115,0.3)">
-              <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-              Vider les codes utilisés
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+              Générer
             </button>
           </div>
         </div>
-        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap" id="codes-stats"></div>
-        <div class="files-list-wrap">
-          <div class="files-list-header">
-            <span class="files-list-header-title">Codes générés</span>
-            <button onclick="copyCodes()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:white;color:var(--teal-dark);font-size:12px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif">
-              <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-              Copier tous les codes disponibles
-            </button>
-          </div>
-          <div id="codes-list-body" style="max-height:500px;overflow-y:auto"></div>
+
+        <!-- Stats rapides -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px" id="codes-stats"></div>
+
+        <!-- Onglets -->
+        <div style="display:flex;gap:0;background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden;margin-bottom:20px">
+          <button id="tab-available" onclick="switchCodesTab('available')"
+            style="flex:1;padding:12px;font-size:14px;font-weight:600;border:none;background:var(--teal-dark);color:white;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px">
+            🔑 Disponibles <span id="badge-available" style="background:rgba(255,255,255,0.25);border-radius:20px;padding:1px 8px;font-size:12px"></span>
+          </button>
+          <button id="tab-used" onclick="switchCodesTab('used')"
+            style="flex:1;padding:12px;font-size:14px;font-weight:600;border:none;background:white;color:var(--text2);cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;border-left:1.5px solid var(--border)">
+            ✅ Utilisés <span id="badge-used" style="background:rgba(0,0,0,0.08);border-radius:20px;padding:1px 8px;font-size:12px"></span>
+          </button>
+        </div>
+
+        <!-- Actions onglet disponibles -->
+        <div id="tab-actions-available" style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <button onclick="copyCodes()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;border:1.5px solid var(--border);background:white;color:var(--teal-dark);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            Copier tous
+          </button>
+        </div>
+
+        <!-- Actions onglet utilisés -->
+        <div id="tab-actions-used" style="display:none;justify-content:flex-end;margin-bottom:12px">
+          <button onclick="deleteUsedCodes()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;border:1.5px solid rgba(229,115,115,0.3);background:white;color:var(--danger);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            Vider les codes utilisés
+          </button>
+        </div>
+
+        <!-- Liste -->
+        <div style="background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden">
+          <div id="codes-list-body"></div>
         </div>
       </div>
 
@@ -2692,54 +2718,101 @@ async function loadCodes() {
   }
 }
 
-function renderCodes(codes) {
-  const body = $('codes-list-body');
-  const stats = $('codes-stats');
+let _codesData = [];
+let _codesTab = 'available';
 
+function switchCodesTab(tab) {
+  _codesTab = tab;
+  // Style onglets
+  const tabAvail = $('tab-available');
+  const tabUsed = $('tab-used');
+  const actAvail = $('tab-actions-available');
+  const actUsed = $('tab-actions-used');
+  if (tab === 'available') {
+    tabAvail.style.background = 'var(--teal-dark)'; tabAvail.style.color = 'white';
+    tabUsed.style.background = 'white'; tabUsed.style.color = 'var(--text2)';
+    actAvail.style.display = 'flex'; actUsed.style.display = 'none';
+  } else {
+    tabUsed.style.background = 'var(--teal-dark)'; tabUsed.style.color = 'white';
+    tabAvail.style.background = 'white'; tabAvail.style.color = 'var(--text2)';
+    actUsed.style.display = 'flex'; actAvail.style.display = 'none';
+  }
+  renderCodesTab();
+}
+
+function renderCodes(codes) {
+  _codesData = codes;
+  const stats = $('codes-stats');
   const available = codes.filter(c => !c.usedAt).length;
   const used = codes.filter(c => c.usedAt).length;
 
+  // Badges sur les onglets
+  if($('badge-available')) $('badge-available').textContent = available;
+  if($('badge-used')) $('badge-used').textContent = used;
+
+  // Stats
   stats.innerHTML = `
-    <div class="stat-card" style="padding:14px 18px;flex:1;min-width:140px">
-      <div class="stat-icon green" style="width:32px;height:32px;border-radius:8px;margin-bottom:8px"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-      <div class="stat-value" style="font-size:22px">${available}</div>
-      <div class="stat-label">Codes disponibles</div>
+    <div class="stat-card" style="padding:16px 20px">
+      <div style="font-size:28px;font-weight:800;color:var(--teal-dark);font-family:'Plus Jakarta Sans',sans-serif">${available}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;font-weight:500">🔑 Disponibles</div>
     </div>
-    <div class="stat-card" style="padding:14px 18px;flex:1;min-width:140px">
-      <div class="stat-icon amber" style="width:32px;height:32px;border-radius:8px;margin-bottom:8px"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div>
-      <div class="stat-value" style="font-size:22px">${used}</div>
-      <div class="stat-label">Codes utilisés</div>
+    <div class="stat-card" style="padding:16px 20px">
+      <div style="font-size:28px;font-weight:800;color:#2E7D32;font-family:'Plus Jakarta Sans',sans-serif">${used}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;font-weight:500">✅ Utilisés</div>
     </div>
-    <div class="stat-card" style="padding:14px 18px;flex:1;min-width:140px">
-      <div class="stat-icon teal" style="width:32px;height:32px;border-radius:8px;margin-bottom:8px"><svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg></div>
-      <div class="stat-value" style="font-size:22px">${codes.length}</div>
-      <div class="stat-label">Total générés</div>
+    <div class="stat-card" style="padding:16px 20px">
+      <div style="font-size:28px;font-weight:800;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif">${codes.length}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;font-weight:500">📊 Total</div>
     </div>`;
 
+  renderCodesTab();
+}
+
+function renderCodesTab() {
+  const body = $('codes-list-body');
+  const codes = _codesTab === 'available'
+    ? _codesData.filter(c => !c.usedAt)
+    : _codesData.filter(c => !!c.usedAt);
+
+  if (!_codesData.length) {
+    body.innerHTML = '<div style="padding:48px;text-align:center;color:var(--text3)">Aucun code généré.<br><small>Clique sur "Générer" pour créer des codes.</small></div>';
+    return;
+  }
   if (!codes.length) {
-    body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Aucun code généré. Clique sur "Générer des codes".</div>';
+    const msg = _codesTab === 'available' ? 'Tous les codes ont été utilisés.' : 'Aucun code utilisé pour l'instant.';
+    body.innerHTML = `<div style="padding:48px;text-align:center;color:var(--text3)">${msg}</div>`;
     return;
   }
 
-  body.innerHTML = codes.map(c => {
-    const isUsed = !!c.usedAt;
-    const date = new Date(c.createdAt).toLocaleDateString('fr-FR');
-    return `<div style="display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid rgba(178,223,219,0.35);${isUsed?'opacity:0.5':''}">
-      <div style="font-family:monospace;font-size:16px;font-weight:700;letter-spacing:2px;color:${isUsed?'var(--text3)':'var(--teal-dark)'};flex:1">${c.code}</div>
-      <div style="font-size:12px;color:var(--text3);min-width:80px">${date}</div>
-      ${isUsed
-        ? `<div style="display:flex;align-items:center;gap:5px;background:#E8F5E9;border-radius:20px;padding:3px 10px;font-size:11px;color:#2E7D32;font-weight:600;white-space:nowrap">✅ Utilisé par ${c.usedBy}</div>`
-        : `<div style="display:flex;align-items:center;gap:5px;background:rgba(0,151,167,0.1);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--teal-dark);font-weight:600">🔑 Disponible</div>`
-      }
-      ${!isUsed ? `
-        <button onclick="copyOneCode('${c.code}', this)" title="Copier le message d'invitation" style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;border:1.5px solid rgba(0,151,167,0.3);background:rgba(0,151,167,0.06);color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:'Inter',sans-serif;white-space:nowrap;transition:all 0.15s">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+  if (_codesTab === 'available') {
+    body.innerHTML = codes.map((c, i) => {
+      const border = i < codes.length-1 ? 'border-bottom:1px solid rgba(178,223,219,0.3)' : '';
+      return `<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;${border}">
+        <div style="font-family:monospace;font-size:17px;font-weight:700;letter-spacing:3px;color:var(--teal-dark);flex:1">${c.code}</div>
+        <button onclick="copyOneCode('${c.code}', this)"
+          style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;border:1.5px solid rgba(0,151,167,0.3);background:rgba(0,151,167,0.06);color:var(--teal-dark);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;white-space:nowrap;transition:all 0.15s">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
           Copier
         </button>
-        <button onclick="deleteCode('${c.code}')" title="Supprimer" style="width:28px;height:28px;border-radius:8px;border:none;background:rgba(229,115,115,0.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
-      ` : '<div style="width:28px"></div>'}
-    </div>`;
-  }).join('');
+        <button onclick="deleteCode('${c.code}')"
+          style="width:30px;height:30px;border-radius:8px;border:none;background:rgba(229,115,115,0.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        </button>
+      </div>`;
+    }).join('');
+  } else {
+    body.innerHTML = codes.map((c, i) => {
+      const border = i < codes.length-1 ? 'border-bottom:1px solid rgba(178,223,219,0.3)' : '';
+      const date = new Date(c.usedAt).toLocaleDateString('fr-FR');
+      return `<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;${border}">
+        <div style="font-family:monospace;font-size:15px;font-weight:600;letter-spacing:2px;color:var(--text3);flex:1">${c.code}</div>
+        <div style="font-size:12px;color:var(--text3)">${date}</div>
+        <div style="display:flex;align-items:center;gap:6px;background:#F1F8E9;border-radius:20px;padding:4px 12px;font-size:12px;color:#388E3C;font-weight:600;white-space:nowrap">
+          ✅ ${c.usedBy}
+        </div>
+      </div>`;
+    }).join('');
+  }
 }
 
 async function generateCodes() {
