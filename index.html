@@ -52,7 +52,13 @@
 [data-theme="dark"] .section-title { color: var(--text) !important; }
 [data-theme="dark"] .section-sub { color: var(--text3) !important; }
 /* Subfolder list items in dark mode */
-[data-theme="dark"] [style*="background:white"] { background: var(--surface) !important; }
+[data-theme="dark"] [style*="background:white"],
+[data-theme="dark"] [style*="background: white"] { background: var(--surface) !important; color: var(--text) !important; }
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"] { background: var(--surface) !important; }
+[data-theme="dark"] .files-list-wrap,
+[data-theme="dark"] .files-list-header { background: var(--surface) !important; color: var(--text) !important; }
+[data-theme="dark"] .sort-btn { background: var(--surface2) !important; color: var(--text2) !important; }
 [data-theme="dark"] [style*="border:1.5px solid var(--border)"] { border-color: var(--border) !important; }
 [data-theme="dark"] [style*="color:var(--text)"] { color: var(--text) !important; }
 [data-theme="dark"] [style*="color:var(--text3)"] { color: var(--text3) !important; }
@@ -1981,7 +1987,7 @@ async function openFolder(id,name){
   $('view-folders').style.display='none';
   $('view-files').style.display='';
   // Mettre le nom du dossier dans la topbar
-  $('topbar-title').textContent=name;
+  $('topbar-title').textContent='';
   // Afficher le titre en grand dans la page
   const folderTitle = document.getElementById('folder-page-title');
   if(folderTitle){ folderTitle.textContent=name; folderTitle.style.display='block'; }
@@ -3530,7 +3536,7 @@ async function deleteSubfolder(parentId, subId) {
 async function openSubfolder(subId, subName, parentId, parentName) {
   currentSubfolder = { id: subId, name: subName, parentId, parentName };
   // Mettre le nom du sous-dossier dans la topbar
-  $('topbar-title').textContent = subName;
+  $('topbar-title').textContent = '';
   const folderTitle2 = document.getElementById('folder-page-title');
   if(folderTitle2){ folderTitle2.textContent=subName; folderTitle2.style.display='block'; }
   // Vider le container de sous-dossiers
