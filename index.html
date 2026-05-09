@@ -1765,6 +1765,8 @@ function setupApp(){
   // Show settings panel for students only
   $('panel-settings').style.display = isAnyAdmin ? 'none' : '';
   $('topbar-title').textContent='Espace documentaire';
+  const topbarEl = document.querySelector('.topbar');
+  if(topbarEl) topbarEl.style.display = 'flex';
   if($('topbar-search')) $('topbar-search').style.display='block';
   updateTopbar();updateBreadcrumb();loadFolders();
   if(isAdmin)loadStats();
@@ -1811,8 +1813,9 @@ function showPanel(name){
   // Afficher la barre de recherche uniquement sur le panel fichiers
   const searchBar = $('topbar-search');
   if(searchBar) searchBar.style.display = name==='files' ? 'block' : 'none';
-  // Masquer le titre topbar sur tous les panels sauf fichiers (chaque panel a son propre titre)
-  if($('topbar-title')) $('topbar-title').style.display = 'none';
+  // Masquer toute la topbar sauf sur le panel fichiers
+  const topbar = document.querySelector('.topbar');
+  if(topbar) topbar.style.display = name==='files' ? 'flex' : 'none';
   updateTopbar();
   // Fermer la sidebar sur mobile après navigation
   if(window.innerWidth <= 768) closeSidebar();
@@ -1893,6 +1896,8 @@ function backToRoot(){
   $('view-folders').style.display='';
   $('view-files').style.display='none';
   $('topbar-title').textContent='Espace documentaire';
+  const topbarEl = document.querySelector('.topbar');
+  if(topbarEl) topbarEl.style.display = 'flex';
   // Réafficher le banner étudiant et les stats à la racine
   const isAnyAdmin = currentUser?.role==='admin'||currentUser?.role==='subadmin';
   if($('student-banner') && !isAnyAdmin) $('student-banner').style.display='flex';
