@@ -1720,6 +1720,19 @@ function setupApp(){
   if(annAdminActions) annAdminActions.style.display = isAdmin ? 'flex' : 'none';
   checkAndShowTutorial();
   updateAnnouncementsBadge();
+  // Vérifier la session toutes les 30 secondes (anti-partage de compte)
+  startSessionPolling();
+}
+
+function startSessionPolling() {
+  setInterval(async () => {
+    if (!currentUser) return;
+    try {
+      await api('GET', '/me');
+    } catch(e) {
+      // Si SESSION_EXPIRED, api() gère déjà la déconnexion automatiquement
+    }
+  }, 30000); // toutes les 30 secondes
 }
 
 function showPanel(name){
