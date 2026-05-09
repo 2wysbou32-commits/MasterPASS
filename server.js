@@ -88,9 +88,14 @@ function initDB() {
     folders: [],
     inviteCodes: [],
     announcements: [],
+    connectionLogs: [],
   };
   saveDB(db); return db;
 }
+
+// ── Registre des sessions actives (déconnexion simultanée) ──────────────────
+// userId → sessionId actif
+const activeSessions = {};
 
 // ── Reset tokens (en mémoire, valides 15 min) ────────────────────────────────
 const resetTokens = {};
@@ -144,6 +149,13 @@ app.use(express.static(publicDir));
 // ── Auth guards ───────────────────────────────────────────────────────────────
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
+  // Vérifier que c'est bien la session active (anti-partage de compte)
+  const activeSessionId = activeSessions[req.session.userId];
+  if (activeSessionId && activeSessionId !== req.sessionID) {
+    console.log('[SECURITY] Session expirée pour userId:', req.session.userId, '— double connexion détectée');
+    req.session.destroy(() => {});
+    return res.status(401).json({ error: 'SESSION_EXPIRED', message: 'Ton compte a été connecté depuis un autre appareil.' });
+  }
   next();
 }
 // Admin principal uniquement (comptes, codes, stats)
@@ -262,6 +274,23 @@ function r2GetRequest(host, canonicalPath, reqHeaders) {
 }
 
 // Proxy fichier depuis R2 — essaie le nouvel encodage puis l'ancien (legacy) si 404
+async function addWatermarkHeader(res, userId) {
+  // Ajoute le nom de l'utilisateur dans les headers pour le filigrane frontend
+  try {
+    const db = loadDB();
+    const user = db.users.find(u => u.id === userId);
+    if (user) res.setHeader('X-User-Watermark', encodeURIComponent(user.name));
+  } catch(e) {}
+}
+
+// Watermark info from session for PDF
+function getWatermarkUser(req) {
+  if (!req.session.userId) return null;
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  return user ? `${user.name} (${user.login})` : null;
+}
+
 async function proxyFileFromR2(key, res, inline, originalReq) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
@@ -313,7 +342,12 @@ async function proxyFileFromR2(key, res, inline, originalReq) {
     if (al) res.setHeader('Accept-Ranges', al);
     else res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Content-Disposition', inline ? 'inline' : 'attachment');
-    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('Cache-Control', 'private, no-store');
+    // Filigrane : envoyer l'identité de l'utilisateur au client
+    if (originalReq && originalReq.session && originalReq.session.userId) {
+      const wUser = getWatermarkUser(originalReq);
+      if (wUser) res.setHeader('X-Watermark-User', Buffer.from(wUser).toString('base64'));
+    }
     r2res.pipe(res);
     r2res.on('end', resolve);
   });
@@ -372,9 +406,46 @@ app.post('/api/login', (req, res) => {
     if (err) console.log('[SESSION] Save error:', err);
     else console.log('[SESSION] Saved — sessionID:', req.sessionID, '— userId:', user.id);
   });
-  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '' });
+  // Enregistrer la session active — déconnecter toute session précédente
+  const prevSession = activeSessions[user.id];
+  activeSessions[user.id] = req.sessionID;
+
+  // Log de connexion
+  const dbLog = loadDB();
+  if (!dbLog.connectionLogs) dbLog.connectionLogs = [];
+  dbLog.connectionLogs.unshift({
+    userId: user.id,
+    login: user.login,
+    name: user.name,
+    ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'inconnue',
+    ua: (req.headers['user-agent'] || '').substring(0, 120),
+    at: new Date().toISOString(),
+    replaced: !!prevSession,
+  });
+  if (dbLog.connectionLogs.length > 200) dbLog.connectionLogs = dbLog.connectionLogs.slice(0, 200);
+  saveDB(dbLog);
+  console.log('[SESSION] Session active enregistrée pour userId:', user.id);
+  // Log de connexion
+  try {
+    const db2 = loadDB();
+    if (!db2.connectionLogs) db2.connectionLogs = [];
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
+    db2.connectionLogs.unshift({
+      userId: user.id, login: user.login, name: user.name,
+      ip, date: new Date().toISOString(),
+    });
+    // Garder uniquement les 200 derniers logs
+    if (db2.connectionLogs.length > 200) db2.connectionLogs = db2.connectionLogs.slice(0, 200);
+    saveDB(db2);
+  } catch(e) { console.error('[LOG] Erreur log connexion:', e.message); }
+  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', registeredAt: user.registeredAt || '' });
 });
-app.post('/api/logout', (req, res) => req.session.destroy(() => res.json({ ok: true })));
+app.post('/api/logout', (req, res) => {
+  if (req.session.userId && activeSessions[req.session.userId] === req.sessionID) {
+    delete activeSessions[req.session.userId];
+  }
+  req.session.destroy(() => res.json({ ok: true }));
+});
 app.get('/api/me', requireAuth, (req, res) => {
   const user = loadDB().users.find(u => u.id === req.session.userId);
   if (!user) return res.status(401).json({ error: 'Session invalide' });
@@ -950,6 +1021,12 @@ app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
 });
 
+// ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
+app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json(db.connectionLogs || []);
+});
+
 // ── ANNONCES ─────────────────────────────────────────────────────────────────
 
 // Créer une annonce (admin)
@@ -1077,6 +1154,12 @@ app.post('/api/register', (req, res) => {
   res.json({ ok: true, name: newUser.name, login: newUser.login });
 });
 
+// ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
+app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json(db.connectionLogs || []);
+});
+
 // ── ANNONCES ─────────────────────────────────────────────────────────────────
 
 app.get('/api/announcements', requireAuth, (req, res) => {
@@ -1107,6 +1190,21 @@ app.delete('/api/announcements/:id', requireSuperAdmin, (req, res) => {
   db.announcements = db.announcements.filter(a => a.id !== parseInt(req.params.id));
   saveDB(db);
   res.json({ ok: true });
+});
+
+// ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
+app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json((db.connectionLogs || []).slice(0, 100));
+});
+
+// ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
+// Stocker les dernières connexions
+const connectionLogs = []; // { userId, login, ip, at, sessionId }
+const MAX_LOGS = 200;
+
+app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
+  res.json(connectionLogs.slice(-100).reverse());
 });
 
 // ── STATS ─────────────────────────────────────────────────────────────────────
