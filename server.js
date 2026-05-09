@@ -499,7 +499,7 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', requireAuth, (req, res) => {
   const user = loadDB().users.find(u => u.id === req.session.userId);
   if (!user) return res.status(401).json({ error: 'Session invalide' });
-  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '' });
+  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null });
 });
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
@@ -1134,6 +1134,79 @@ app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ── AVATAR ───────────────────────────────────────────────────────────────────
+app.post('/api/avatar', requireAuth, upload.single('avatar'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
+  // Accepter seulement les images
+  if (!req.file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'Format invalide' });
+  // Limiter à 2Mo
+  if (req.file.size > 2 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 2Mo)' });
+
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  // Stocker en base64 dans la DB (simple, pas besoin de R2 pour les avatars)
+  const base64 = req.file.buffer.toString('base64');
+  const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+  user.avatar = dataUrl;
+  saveDB(db);
+  res.json({ avatar: dataUrl });
+});
+
+app.get('/api/avatar/:userId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === parseInt(req.params.userId));
+  if (!user || !user.avatar) return res.status(404).json({ error: "Pas d'avatar" });
+  res.json({ avatar: user.avatar });
+});
+
+// Inclure l'avatar dans /me
+// ── COMMENTAIRES ─────────────────────────────────────────────────────────────
+// GET comments for a file
+app.get('/api/comments/:fileId', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.comments) db.comments = {};
+  res.json(db.comments[req.params.fileId] || []);
+});
+
+// POST a comment
+app.post('/api/comments/:fileId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  if (!db.comments) db.comments = {};
+  if (!db.comments[req.params.fileId]) db.comments[req.params.fileId] = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const comment = {
+    id: db.nextId++,
+    fileId: req.params.fileId,
+    userId: user.id,
+    userName: user.name,
+    userRole: user.role,
+    userAvatar: user.avatar || null,
+    message: message.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  db.comments[req.params.fileId].push(comment);
+  saveDB(db);
+  res.json(comment);
+});
+
+// DELETE a comment (admin or own comment)
+app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.comments?.[req.params.fileId]) return res.status(404).json({ error: 'Introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const comment = db.comments[req.params.fileId].find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Commentaire introuvable' });
+  if (comment.userId !== req.session.userId && user.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  db.comments[req.params.fileId] = db.comments[req.params.fileId].filter(c => c.id !== parseInt(req.params.commentId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
 app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
   const db = loadDB();
@@ -1308,6 +1381,79 @@ app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ── AVATAR ───────────────────────────────────────────────────────────────────
+app.post('/api/avatar', requireAuth, upload.single('avatar'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
+  // Accepter seulement les images
+  if (!req.file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'Format invalide' });
+  // Limiter à 2Mo
+  if (req.file.size > 2 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 2Mo)' });
+
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  // Stocker en base64 dans la DB (simple, pas besoin de R2 pour les avatars)
+  const base64 = req.file.buffer.toString('base64');
+  const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+  user.avatar = dataUrl;
+  saveDB(db);
+  res.json({ avatar: dataUrl });
+});
+
+app.get('/api/avatar/:userId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === parseInt(req.params.userId));
+  if (!user || !user.avatar) return res.status(404).json({ error: "Pas d'avatar" });
+  res.json({ avatar: user.avatar });
+});
+
+// Inclure l'avatar dans /me
+// ── COMMENTAIRES ─────────────────────────────────────────────────────────────
+// GET comments for a file
+app.get('/api/comments/:fileId', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.comments) db.comments = {};
+  res.json(db.comments[req.params.fileId] || []);
+});
+
+// POST a comment
+app.post('/api/comments/:fileId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  if (!db.comments) db.comments = {};
+  if (!db.comments[req.params.fileId]) db.comments[req.params.fileId] = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const comment = {
+    id: db.nextId++,
+    fileId: req.params.fileId,
+    userId: user.id,
+    userName: user.name,
+    userRole: user.role,
+    userAvatar: user.avatar || null,
+    message: message.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  db.comments[req.params.fileId].push(comment);
+  saveDB(db);
+  res.json(comment);
+});
+
+// DELETE a comment (admin or own comment)
+app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.comments?.[req.params.fileId]) return res.status(404).json({ error: 'Introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const comment = db.comments[req.params.fileId].find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Commentaire introuvable' });
+  if (comment.userId !== req.session.userId && user.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  db.comments[req.params.fileId] = db.comments[req.params.fileId].filter(c => c.id !== parseInt(req.params.commentId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
 app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
   const db = loadDB();
@@ -1358,6 +1504,79 @@ app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ── AVATAR ───────────────────────────────────────────────────────────────────
+app.post('/api/avatar', requireAuth, upload.single('avatar'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
+  // Accepter seulement les images
+  if (!req.file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'Format invalide' });
+  // Limiter à 2Mo
+  if (req.file.size > 2 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 2Mo)' });
+
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  // Stocker en base64 dans la DB (simple, pas besoin de R2 pour les avatars)
+  const base64 = req.file.buffer.toString('base64');
+  const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+  user.avatar = dataUrl;
+  saveDB(db);
+  res.json({ avatar: dataUrl });
+});
+
+app.get('/api/avatar/:userId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === parseInt(req.params.userId));
+  if (!user || !user.avatar) return res.status(404).json({ error: "Pas d'avatar" });
+  res.json({ avatar: user.avatar });
+});
+
+// Inclure l'avatar dans /me
+// ── COMMENTAIRES ─────────────────────────────────────────────────────────────
+// GET comments for a file
+app.get('/api/comments/:fileId', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.comments) db.comments = {};
+  res.json(db.comments[req.params.fileId] || []);
+});
+
+// POST a comment
+app.post('/api/comments/:fileId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  if (!db.comments) db.comments = {};
+  if (!db.comments[req.params.fileId]) db.comments[req.params.fileId] = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const comment = {
+    id: db.nextId++,
+    fileId: req.params.fileId,
+    userId: user.id,
+    userName: user.name,
+    userRole: user.role,
+    userAvatar: user.avatar || null,
+    message: message.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  db.comments[req.params.fileId].push(comment);
+  saveDB(db);
+  res.json(comment);
+});
+
+// DELETE a comment (admin or own comment)
+app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.comments?.[req.params.fileId]) return res.status(404).json({ error: 'Introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const comment = db.comments[req.params.fileId].find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Commentaire introuvable' });
+  if (comment.userId !== req.session.userId && user.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  db.comments[req.params.fileId] = db.comments[req.params.fileId].filter(c => c.id !== parseInt(req.params.commentId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
 app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
   const db = loadDB();
@@ -1401,6 +1620,79 @@ app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
   const { endpoint } = req.body;
   const db = loadDB();
   db.pushSubscriptions = (db.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== endpoint);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── AVATAR ───────────────────────────────────────────────────────────────────
+app.post('/api/avatar', requireAuth, upload.single('avatar'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
+  // Accepter seulement les images
+  if (!req.file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'Format invalide' });
+  // Limiter à 2Mo
+  if (req.file.size > 2 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 2Mo)' });
+
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  // Stocker en base64 dans la DB (simple, pas besoin de R2 pour les avatars)
+  const base64 = req.file.buffer.toString('base64');
+  const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+  user.avatar = dataUrl;
+  saveDB(db);
+  res.json({ avatar: dataUrl });
+});
+
+app.get('/api/avatar/:userId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === parseInt(req.params.userId));
+  if (!user || !user.avatar) return res.status(404).json({ error: "Pas d'avatar" });
+  res.json({ avatar: user.avatar });
+});
+
+// Inclure l'avatar dans /me
+// ── COMMENTAIRES ─────────────────────────────────────────────────────────────
+// GET comments for a file
+app.get('/api/comments/:fileId', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.comments) db.comments = {};
+  res.json(db.comments[req.params.fileId] || []);
+});
+
+// POST a comment
+app.post('/api/comments/:fileId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  if (!db.comments) db.comments = {};
+  if (!db.comments[req.params.fileId]) db.comments[req.params.fileId] = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const comment = {
+    id: db.nextId++,
+    fileId: req.params.fileId,
+    userId: user.id,
+    userName: user.name,
+    userRole: user.role,
+    userAvatar: user.avatar || null,
+    message: message.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  db.comments[req.params.fileId].push(comment);
+  saveDB(db);
+  res.json(comment);
+});
+
+// DELETE a comment (admin or own comment)
+app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.comments?.[req.params.fileId]) return res.status(404).json({ error: 'Introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const comment = db.comments[req.params.fileId].find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Commentaire introuvable' });
+  if (comment.userId !== req.session.userId && user.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  db.comments[req.params.fileId] = db.comments[req.params.fileId].filter(c => c.id !== parseInt(req.params.commentId));
   saveDB(db);
   res.json({ ok: true });
 });
