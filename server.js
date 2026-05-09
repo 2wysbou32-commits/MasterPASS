@@ -1167,7 +1167,12 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 app.get('/api/comments/:fileId', requireAuth, (req, res) => {
   const db = loadDB();
   if (!db.comments) db.comments = {};
-  res.json(db.comments[req.params.fileId] || []);
+  const comments = (db.comments[req.params.fileId] || []).map(c => {
+    // Toujours récupérer l'avatar actuel de l'utilisateur
+    const user = db.users.find(u => u.id === c.userId);
+    return { ...c, userAvatar: user?.avatar || null };
+  });
+  res.json(comments);
 });
 
 // POST a comment
@@ -1191,6 +1196,22 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
   db.comments[req.params.fileId].push(comment);
   saveDB(db);
   res.json(comment);
+});
+
+// GET unread comments count for multiple files
+app.post('/api/comments/unread', requireAuth, (req, res) => {
+  const { fileIds, lastSeen } = req.body; // lastSeen: { fileId: timestamp }
+  const db = loadDB();
+  if (!db.comments) return res.json({});
+  const result = {};
+  (fileIds || []).forEach(fileId => {
+    const comments = db.comments[fileId] || [];
+    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
+    result[fileId] = lastSeenAt
+      ? comments.filter(c => new Date(c.createdAt) > lastSeenAt).length
+      : comments.length;
+  });
+  res.json(result);
 });
 
 // DELETE a comment (admin or own comment)
@@ -1414,7 +1435,12 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 app.get('/api/comments/:fileId', requireAuth, (req, res) => {
   const db = loadDB();
   if (!db.comments) db.comments = {};
-  res.json(db.comments[req.params.fileId] || []);
+  const comments = (db.comments[req.params.fileId] || []).map(c => {
+    // Toujours récupérer l'avatar actuel de l'utilisateur
+    const user = db.users.find(u => u.id === c.userId);
+    return { ...c, userAvatar: user?.avatar || null };
+  });
+  res.json(comments);
 });
 
 // POST a comment
@@ -1438,6 +1464,22 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
   db.comments[req.params.fileId].push(comment);
   saveDB(db);
   res.json(comment);
+});
+
+// GET unread comments count for multiple files
+app.post('/api/comments/unread', requireAuth, (req, res) => {
+  const { fileIds, lastSeen } = req.body; // lastSeen: { fileId: timestamp }
+  const db = loadDB();
+  if (!db.comments) return res.json({});
+  const result = {};
+  (fileIds || []).forEach(fileId => {
+    const comments = db.comments[fileId] || [];
+    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
+    result[fileId] = lastSeenAt
+      ? comments.filter(c => new Date(c.createdAt) > lastSeenAt).length
+      : comments.length;
+  });
+  res.json(result);
 });
 
 // DELETE a comment (admin or own comment)
@@ -1537,7 +1579,12 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 app.get('/api/comments/:fileId', requireAuth, (req, res) => {
   const db = loadDB();
   if (!db.comments) db.comments = {};
-  res.json(db.comments[req.params.fileId] || []);
+  const comments = (db.comments[req.params.fileId] || []).map(c => {
+    // Toujours récupérer l'avatar actuel de l'utilisateur
+    const user = db.users.find(u => u.id === c.userId);
+    return { ...c, userAvatar: user?.avatar || null };
+  });
+  res.json(comments);
 });
 
 // POST a comment
@@ -1561,6 +1608,22 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
   db.comments[req.params.fileId].push(comment);
   saveDB(db);
   res.json(comment);
+});
+
+// GET unread comments count for multiple files
+app.post('/api/comments/unread', requireAuth, (req, res) => {
+  const { fileIds, lastSeen } = req.body; // lastSeen: { fileId: timestamp }
+  const db = loadDB();
+  if (!db.comments) return res.json({});
+  const result = {};
+  (fileIds || []).forEach(fileId => {
+    const comments = db.comments[fileId] || [];
+    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
+    result[fileId] = lastSeenAt
+      ? comments.filter(c => new Date(c.createdAt) > lastSeenAt).length
+      : comments.length;
+  });
+  res.json(result);
 });
 
 // DELETE a comment (admin or own comment)
@@ -1657,7 +1720,12 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 app.get('/api/comments/:fileId', requireAuth, (req, res) => {
   const db = loadDB();
   if (!db.comments) db.comments = {};
-  res.json(db.comments[req.params.fileId] || []);
+  const comments = (db.comments[req.params.fileId] || []).map(c => {
+    // Toujours récupérer l'avatar actuel de l'utilisateur
+    const user = db.users.find(u => u.id === c.userId);
+    return { ...c, userAvatar: user?.avatar || null };
+  });
+  res.json(comments);
 });
 
 // POST a comment
@@ -1681,6 +1749,22 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
   db.comments[req.params.fileId].push(comment);
   saveDB(db);
   res.json(comment);
+});
+
+// GET unread comments count for multiple files
+app.post('/api/comments/unread', requireAuth, (req, res) => {
+  const { fileIds, lastSeen } = req.body; // lastSeen: { fileId: timestamp }
+  const db = loadDB();
+  if (!db.comments) return res.json({});
+  const result = {};
+  (fileIds || []).forEach(fileId => {
+    const comments = db.comments[fileId] || [];
+    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
+    result[fileId] = lastSeenAt
+      ? comments.filter(c => new Date(c.createdAt) > lastSeenAt).length
+      : comments.length;
+  });
+  res.json(result);
 });
 
 // DELETE a comment (admin or own comment)
