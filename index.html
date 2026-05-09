@@ -1194,9 +1194,10 @@ input[type="file"]{display:none;}
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
         Mes réglages
       </div>
-      <div class="nav-item" onclick="showPanel('users')" id="nav-users" style="display:none">
+      <div class="nav-item" onclick="showPanel('users')" id="nav-users" style="display:none;position:relative">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
         Gestion des comptes
+        <span id="admin-disc-badge" style="display:none;position:absolute;top:6px;right:10px;background:#ef5350;color:white;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;min-width:16px;text-align:center;line-height:16px"></span>
       </div>
       <div class="nav-item" onclick="showPanel('codes')" id="nav-codes" style="display:none">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
@@ -1407,6 +1408,8 @@ input[type="file"]{display:none;}
         <div class="section-header" style="margin-bottom:24px">
           <div><div class="section-title">Gestion des comptes</div><div class="section-sub">Créez et gérez les accès étudiants et administrateurs</div></div>
         </div>
+        <!-- Notifications admin -->
+        <div id="admin-notifications-list" style="display:none;background:white;border-radius:14px;border:1.5px solid var(--border);padding:16px;margin-bottom:20px"></div>
         <div class="users-grid" id="users-grid"></div>
         <div style="margin-top:32px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -1674,36 +1677,34 @@ input[type="file"]{display:none;}
   </div>
 </div>
 
-<!-- PANNEAU DISCUSSION -->
-<div id="discussion-panel" style="display:none;position:fixed;inset:0;z-index:500;background:var(--bg);overflow-y:auto">
-  <div style="max-width:720px;margin:0 auto;padding:24px 20px">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;padding-bottom:16px;border-bottom:1.5px solid var(--border)">
-      <button onclick="closeDiscussion()" style="width:38px;height:38px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface,white);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;color:var(--text2)"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-      </button>
-      <div style="min-width:0">
-        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;color:var(--text)" id="discussion-filename">Discussion</div>
-        <div style="font-size:12px;color:var(--text3)" id="discussion-count">0 message</div>
-      </div>
+<!-- PANNEAU DISCUSSION (inline, pleine largeur) -->
+<div id="discussion-panel" style="display:none;margin-top:16px;background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 4px 20px var(--shadow)">
+  <div style="display:flex;align-items:center;gap:14px;padding:18px 24px;border-bottom:1.5px solid var(--border);background:var(--bg)">
+    <button onclick="closeDiscussion()" style="width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface,white);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--text2)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+    <div style="min-width:0;flex:1">
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:800;color:var(--text)" id="discussion-filename">Discussion</div>
+      <div style="font-size:11px;color:var(--text3)" id="discussion-count">0 message</div>
     </div>
-
-    <!-- Messages -->
-    <div id="discussion-messages" style="margin-bottom:24px;display:flex;flex-direction:column;gap:12px"></div>
-
-    <!-- Formulaire -->
-    <div style="position:sticky;bottom:0;background:var(--bg);padding:16px 0 8px">
-      <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 4px 16px var(--shadow)">
-        <textarea id="discussion-input" placeholder="Pose ta question ou laisse un commentaire..." 
-          style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:80px;outline:none"
-          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
-          onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))postComment()"></textarea>
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid var(--border)">
-          <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée pour envoyer</span>
-          <button onclick="postComment()" style="padding:8px 20px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">
-            Envoyer
-          </button>
-        </div>
+  </div>
+  <div id="discussion-messages" style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;max-height:420px;overflow-y:auto"></div>
+  <div style="border-top:1.5px solid var(--border);padding:16px 24px;background:var(--bg)">
+    <textarea id="discussion-input" placeholder="Pose ta question ou laisse un commentaire..."
+      style="width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface,white);color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;margin-bottom:10px;box-sizing:border-box"
+      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+      onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))postComment()"></textarea>
+    <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="record-btn" onclick="toggleRecording()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 4.19-3.97 7-7.91 7s-7.42-2.81-7.91-7H0c.51 5.06 4.45 9 9 9.46V23h2v-2.54c4.55-.46 8.49-4.4 9-9.46h-2.09z"/></svg>
+          <span id="record-label">🎤 Vocal</span>
+        </button>
+        <span id="record-timer" style="display:none;font-size:12px;color:#ef5350;font-weight:700">⏺ 0:00</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée</span>
+        <button onclick="postComment()" style="padding:9px 22px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Envoyer</button>
       </div>
     </div>
   </div>
@@ -1914,12 +1915,32 @@ function setupApp(){
   updateAnnouncementsBadge();
   updateAvatarPreview();
   updateSidebarAvatar();
+  if (currentUser?.role === 'admin') {
+    checkAdminNotifications();
+    setInterval(checkAdminNotifications, 30000);
+  }
   // Vérifier la session toutes les 30 secondes (anti-partage de compte)
   startSessionPolling();
+  updateAdminDiscBadge();
   // Activer les notifications push (étudiants uniquement)
   if (currentUser?.role === 'student') {
     setTimeout(initPushNotifications, 2000);
   }
+}
+
+async function updateAdminDiscBadge() {
+  if (currentUser?.role !== 'admin') return;
+  try {
+    const { count } = await api('GET', '/comments/admin-unread');
+    const badge = document.getElementById('admin-disc-badge');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count > 9 ? '9+' : count;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(e) {}
 }
 
 function startSessionPolling() {
@@ -1950,7 +1971,7 @@ function showPanel(name){
   if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='favorites'){$('topbar-title').textContent='Mes favoris';loadFavorites();}
   if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
-  if(name==='users'){$('topbar-title').textContent='Gestion des comptes';loadUsers();}
+  if(name==='users'){$('topbar-title').textContent='Gestion des comptes';loadUsers();checkAdminNotifications();}
   if(name==='codes'){$('topbar-title').textContent="Codes d'invitation";loadCodes();}
   if(name==='settings'){$('topbar-title').textContent='Mes réglages';loadSettingsPanel();}
   // Afficher la barre de recherche uniquement sur le panel fichiers
@@ -2942,23 +2963,46 @@ async function updateDiscussionBadges(fileIds) {
 let _discussionFileName = null;
 
 async function openDiscussion(fileId, fileName) {
+  if (_discussionFileId === fileId) { closeDiscussion(); return; }
   _discussionFileId = fileId;
   _discussionFileName = fileName;
   const panel = document.getElementById('discussion-panel');
+  const fileRow = document.querySelector('.file-row[data-file-id="' + fileId + '"]');
+  if (fileRow && fileRow.parentNode) {
+    fileRow.parentNode.insertBefore(panel, fileRow.nextSibling);
+  }
   panel.style.display = 'block';
-  document.body.style.overflow = 'hidden';
   document.getElementById('discussion-filename').textContent = String.fromCharCode(0x1F4AC) + ' ' + fileName;
-  // Marquer comme vu
   saveLastSeen(fileId);
   const badge = document.getElementById('disc-badge-' + fileId);
   if (badge) badge.style.display = 'none';
   await loadDiscussion();
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function closeDiscussion() {
   document.getElementById('discussion-panel').style.display = 'none';
-  document.body.style.overflow = '';
   _discussionFileId = null;
+}
+
+
+let _replyTo = null; // { id, userName, message }
+
+function setReply(commentId, userName, message) {
+  _replyTo = { id: commentId, userName, message };
+  const preview = document.getElementById('reply-preview');
+  const author = document.getElementById('reply-author');
+  const text = document.getElementById('reply-text');
+  if (preview) preview.style.display = 'block';
+  if (author) author.textContent = 'Réponse à ' + userName;
+  if (text) text.textContent = message.substring(0, 80) + (message.length > 80 ? '...' : '');
+  document.getElementById('discussion-input').focus();
+}
+
+function cancelReply() {
+  _replyTo = null;
+  const preview = document.getElementById('reply-preview');
+  if (preview) preview.style.display = 'none';
 }
 
 async function loadDiscussion() {
@@ -2971,25 +3015,34 @@ async function loadDiscussion() {
       list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">💬</div><div>Aucun message pour l&#39;instant.</div><div style="font-size:12px;margin-top:4px">Sois le premier à poser une question !</div></div>';
       return;
     }
-    list.innerHTML = comments.map(c => {
-      const isAdmin = c.userRole === 'admin';
-      const isOwn = c.userId === currentUser?.id;
-      const date = new Date(c.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-      const initials = c.userName.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-      const canDelete = (currentUser?.role === 'admin') || isOwn;
+    list.innerHTML = comments.map(function(c) {
+      var isAdmin = c.userRole === 'admin';
+      var isOwn = c.userId === currentUser?.id;
+      var canDelete = (currentUser?.role === 'admin') || isOwn;
+      var date = new Date(c.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      var initials = c.userName.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+      var avatarHtml = c.userAvatar
+        ? '<img src="' + c.userAvatar + '" style="width:100%;height:100%;object-fit:cover">'
+        : initials;
+      var avatarBg = isAdmin ? 'linear-gradient(135deg,#004D61,#003340)' : 'linear-gradient(135deg,var(--teal),var(--teal-dark))';
+      var msgHtml = c.audio
+        ? '<audio controls src="' + c.audio + '" style="width:100%;max-width:280px;height:36px;margin-top:4px"></audio>'
+        : c.message.split('\n').join('<br>');
+
       return '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px">' +
-        '<div style="width:36px;height:36px;border-radius:50%;background:' + (isAdmin ? 'linear-gradient(135deg,#004D61,#003340)' : 'linear-gradient(135deg,var(--teal),var(--teal-dark))') + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;overflow:hidden">' + (c.userAvatar ? '<img src="' + c.userAvatar + '" style="width:100%;height:100%;object-fit:cover">' : initials) + '</div>' +
+        '<div style="width:36px;height:36px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;overflow:hidden">' + avatarHtml + '</div>' +
         '<div style="flex:1;min-width:0">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
             '<span style="font-weight:700;font-size:13px;color:var(--text)">' + c.userName + '</span>' +
             (isAdmin ? '<span style="background:#E8F5E9;color:#2E7D32;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700">Formateur</span>' : '') +
             '<span style="font-size:11px;color:var(--text3)">' + date + '</span>' +
           '</div>' +
-          '<div style="background:' + (isAdmin ? 'rgba(0,151,167,0.06)' : 'var(--bg)') + ';border-radius:12px;padding:10px 14px;font-size:13.5px;color:var(--text);line-height:1.6;border:1px solid var(--border)">' + c.message.split('\n').join('<br>') + '</div>' +
+          '<div style="background:' + (isAdmin ? 'rgba(0,151,167,0.06)' : 'var(--bg)') + ';border-radius:12px;padding:10px 14px;font-size:13.5px;color:var(--text);line-height:1.6;border:1px solid var(--border)">' + msgHtml + '</div>' +
         '</div>' +
         (canDelete ? '<button onclick="deleteComment(' + c.id + ')" style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(229,115,115,0.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:4px"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>' : '<div style="width:26px"></div>') +
       '</div>';
     }).join('');
+    list.scrollTop = list.scrollHeight;
   } catch(e) {
     list.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
   }
@@ -3000,9 +3053,10 @@ async function postComment() {
   const message = input.value.trim();
   if (!message || !_discussionFileId) return;
   try {
-    await api('POST', '/comments/' + _discussionFileId, { message });
+    await api('POST', '/comments/' + _discussionFileId, { message, replyTo: _replyTo });
     input.value = '';
     input.style.height = 'auto';
+    cancelReply();
     await loadDiscussion();
   } catch(e) { toast(e.message, 'error'); }
 }
@@ -3013,6 +3067,59 @@ async function deleteComment(commentId) {
     await api('DELETE', '/comments/' + _discussionFileId + '/' + commentId);
     await loadDiscussion();
   } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── NOTIFICATIONS ADMIN ──────────────────────────────────────────────────────
+async function checkAdminNotifications() {
+  if (currentUser?.role !== 'admin') return;
+  try {
+    const notifs = await api('GET', '/admin/notifications');
+    const unread = notifs.filter(n => !n.read).length;
+    let badge = document.getElementById('admin-notif-badge');
+    if (!badge) {
+      // Créer le badge sur l'item "Gestion des comptes"
+      const navUsers = document.getElementById('nav-users');
+      if (navUsers) {
+        badge = document.createElement('span');
+        badge.id = 'admin-notif-badge';
+        badge.style.cssText = 'position:absolute;top:6px;right:10px;background:#ef5350;color:white;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;min-width:16px;text-align:center;line-height:16px;display:none';
+        navUsers.style.position = 'relative';
+        navUsers.appendChild(badge);
+      }
+    }
+    if (badge) {
+      if (unread > 0) { badge.textContent = unread; badge.style.display = 'inline-block'; }
+      else { badge.style.display = 'none'; }
+    }
+    // Aussi afficher les notifs dans le panel users
+    renderAdminNotifications(notifs);
+  } catch(e) {}
+}
+
+function renderAdminNotifications(notifs) {
+  const container = document.getElementById('admin-notifications-list');
+  if (!container) return;
+  const unread = notifs.filter(n => !n.read);
+  if (!unread.length) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+  container.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+    '<div style="font-size:13px;font-weight:700;color:var(--text)">🔔 Nouvelles questions (' + unread.length + ')</div>' +
+    '<button onclick="markAdminNotifsRead()" style="font-size:11px;color:var(--teal-dark);border:none;background:none;cursor:pointer;font-weight:600">Tout marquer comme lu</button>' +
+  '</div>' +
+  unread.map(n => {
+    const date = new Date(n.at).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+    return '<div style="background:rgba(0,151,167,0.05);border-left:3px solid var(--teal);border-radius:8px;padding:10px 14px;margin-bottom:8px">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text)">' + n.userName + ' <span style="color:var(--text3);font-weight:400">· ' + date + '</span></div>' +
+      '<div style="font-size:12px;color:var(--text2);margin-top:3px">' + n.message + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function markAdminNotifsRead() {
+  try {
+    await api('POST', '/admin/notifications/read');
+    checkAdminNotifications();
+  } catch(e) {}
 }
 
 // ── BARRE DE PROGRESSION ─────────────────────────────────────────────────────
