@@ -94,8 +94,22 @@ function initDB() {
 }
 
 // ── Registre des sessions actives (déconnexion simultanée) ──────────────────
-// userId → sessionId actif
-const activeSessions = {};
+// Stocké en DB pour survivre aux redémarrages
+function getActiveSessions() {
+  const db = loadDB();
+  return db.activeSessions || {};
+}
+function setActiveSession(userId, sessionId) {
+  const db = loadDB();
+  if (!db.activeSessions) db.activeSessions = {};
+  db.activeSessions[userId] = sessionId;
+  saveDB(db);
+}
+function deleteActiveSession(userId) {
+  const db = loadDB();
+  if (db.activeSessions) delete db.activeSessions[userId];
+  saveDB(db);
+}
 
 // ── Reset tokens (en mémoire, valides 15 min) ────────────────────────────────
 const resetTokens = {};
@@ -150,7 +164,7 @@ app.use(express.static(publicDir));
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
   // Vérifier que c'est bien la session active (anti-partage de compte)
-  const activeSessionId = activeSessions[req.session.userId];
+  const activeSessionId = getActiveSessions()[req.session.userId];
   if (activeSessionId && activeSessionId !== req.sessionID) {
     console.log('[SECURITY] Session expirée pour userId:', req.session.userId, '— double connexion détectée');
     req.session.destroy(() => {});
@@ -407,8 +421,8 @@ app.post('/api/login', (req, res) => {
     else console.log('[SESSION] Saved — sessionID:', req.sessionID, '— userId:', user.id);
   });
   // Enregistrer la session active — déconnecter toute session précédente
-  const prevSession = activeSessions[user.id];
-  activeSessions[user.id] = req.sessionID;
+  const prevSession = getActiveSessions()[user.id];
+  setActiveSession(user.id, req.sessionID);
 
   // Log de connexion
   const dbLog = loadDB();
@@ -441,8 +455,8 @@ app.post('/api/login', (req, res) => {
   res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', registeredAt: user.registeredAt || '' });
 });
 app.post('/api/logout', (req, res) => {
-  if (req.session.userId && activeSessions[req.session.userId] === req.sessionID) {
-    delete activeSessions[req.session.userId];
+  if (req.session.userId && getActiveSessions()[req.session.userId] === req.sessionID) {
+    deleteActiveSession(req.session.userId);
   }
   req.session.destroy(() => res.json({ ok: true }));
 });
