@@ -2158,9 +2158,18 @@ function openPreview(fileId, filename, type) {
   if (!currentFolder) return;
   // Marquer comme lu
   markAsRead(fileId, currentFolder.id, currentFolder.subId);
-  // Refresh row styling
+  // Ajouter le badge "Lu" dynamiquement dans la ligne
   const row = document.querySelector(`.file-row[data-file-id="${fileId}"]`);
-  if (row) { row.classList.add('is-read'); const badge = row.querySelector('.file-unread-dot'); if(badge) badge.remove(); }
+  if (row) {
+    row.classList.add('is-read');
+    const fileName = row.querySelector('.file-name');
+    if (fileName && !fileName.querySelector('.file-read-badge')) {
+      const badge = document.createElement('span');
+      badge.className = 'file-read-badge';
+      badge.textContent = '✓ Lu';
+      fileName.appendChild(badge);
+    }
+  }
   const previewUrl = `/api/folders/${currentFolder.id}/files/${fileId}/preview`;
   const downloadUrl = `/api/folders/${currentFolder.id}/files/${fileId}/download`;
   const streamUrl = `/api/folders/${currentFolder.id}/files/${fileId}/stream`;
@@ -3447,6 +3456,19 @@ function openSubPreviewById(btn) {
   const parentId = btn.getAttribute('data-parentid');
   const file = currentFiles.find(f => f.id === fileId);
   const filename = file ? file.name : 'Fichier';
+  // Marquer comme lu
+  markAsRead(fileId, parentId, subId);
+  const row = document.querySelector(`.file-row[data-file-id="${fileId}"]`);
+  if (row) {
+    row.classList.add('is-read');
+    const fileNameEl = row.querySelector('.file-name');
+    if (fileNameEl && !fileNameEl.querySelector('.file-read-badge')) {
+      const badge = document.createElement('span');
+      badge.className = 'file-read-badge';
+      badge.textContent = '✓ Lu';
+      fileNameEl.appendChild(badge);
+    }
+  }
   const previewUrl = `/api/folders/${parentId}/subfolders/${subId}/files/${fileId}/preview`;
   const downloadUrl = `/api/folders/${parentId}/subfolders/${subId}/files/${fileId}/download`;
   openPreviewWithUrls(filename, type, previewUrl, downloadUrl);
