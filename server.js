@@ -10,6 +10,36 @@ const path = require('path');
 const crypto = require('crypto');
 const https = require('https');
 
+// ── Notifications Push (Web Push) ─────────────────────────────────────────────
+let webpush = null;
+try {
+  webpush = require('web-push');
+  const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || 'BPAm2u-DCWr3oUwEtnXoa2Yb3J1y2zxRigqtA5UadyOjy15CX_zdDqx7-cOseKC6VxAlfhVpkmmyT_TpORJ8JRM';
+  const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || 'pvIDK_3p5Jvc1PJzYNV8ftfxk_vh-yVR4UJHu2p6sBs';
+  webpush.setVapidDetails('mailto:masterpass.lille@gmail.com', VAPID_PUBLIC, VAPID_PRIVATE);
+  console.log('✅ Web Push activé');
+} catch(e) {
+  console.log('⚠️ Web Push non disponible (npm install web-push)');
+}
+
+async function sendPushToAll(title, body, url = '/') {
+  if (!webpush) return;
+  const db = loadDB();
+  const subs = db.pushSubscriptions || [];
+  const payload = JSON.stringify({ title, body, url });
+  await Promise.allSettled(subs.map(async (sub) => {
+    try {
+      await webpush.sendNotification(sub.subscription, payload);
+    } catch(e) {
+      if (e.statusCode === 410) {
+        // Subscription expirée — la supprimer
+        db.pushSubscriptions = (db.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== sub.subscription.endpoint);
+        saveDB(db);
+      }
+    }
+  }));
+}
+
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
 
 // ── Cloudflare R2 config ──────────────────────────────────────────────────────
@@ -766,6 +796,16 @@ app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (r
     added.push({ id: record.id, name: record.name, size: record.size, type: record.type, addedAt: record.addedAt });
   }
   saveDB(db);
+  // Envoyer notification push pour les nouveaux fichiers
+  if (added.length > 0) {
+    const folderName = db.folders.find(f=>f.id===parseInt(req.params.folderId))?.name || 'MasterPASS';
+    const fileNames = added.map(f=>f.name).join(', ');
+    sendPushToAll(
+      `📁 Nouveau fichier dans ${folderName}`,
+      added.length === 1 ? added[0].name : `${added.length} nouveaux fichiers`,
+      '/'
+    ).catch(()=>{});
+  }
   res.json(added);
 });
 
@@ -1063,6 +1103,37 @@ app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => 
   res.json({ ok: true });
 });
 
+// ── NOTIFICATIONS PUSH ───────────────────────────────────────────────────────
+// Clé publique VAPID pour le client
+app.get('/api/push/vapid-key', requireAuth, (req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY || 'BPAm2u-DCWr3oUwEtnXoa2Yb3J1y2zxRigqtA5UadyOjy15CX_zdDqx7-cOseKC6VxAlfhVpkmmyT_TpORJ8JRM';
+  res.json({ key });
+});
+
+// S'abonner aux notifications
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription) return res.status(400).json({ error: 'Subscription manquante' });
+  const db = loadDB();
+  if (!db.pushSubscriptions) db.pushSubscriptions = [];
+  // Éviter les doublons
+  const exists = db.pushSubscriptions.find(s => s.subscription.endpoint === subscription.endpoint);
+  if (!exists) {
+    db.pushSubscriptions.push({ userId: req.session.userId, subscription });
+    saveDB(db);
+  }
+  res.json({ ok: true });
+});
+
+// Se désabonner
+app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
+  const { endpoint } = req.body;
+  const db = loadDB();
+  db.pushSubscriptions = (db.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== endpoint);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
 app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
   const db = loadDB();
@@ -1206,6 +1277,37 @@ app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => 
   res.json({ ok: true });
 });
 
+// ── NOTIFICATIONS PUSH ───────────────────────────────────────────────────────
+// Clé publique VAPID pour le client
+app.get('/api/push/vapid-key', requireAuth, (req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY || 'BPAm2u-DCWr3oUwEtnXoa2Yb3J1y2zxRigqtA5UadyOjy15CX_zdDqx7-cOseKC6VxAlfhVpkmmyT_TpORJ8JRM';
+  res.json({ key });
+});
+
+// S'abonner aux notifications
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription) return res.status(400).json({ error: 'Subscription manquante' });
+  const db = loadDB();
+  if (!db.pushSubscriptions) db.pushSubscriptions = [];
+  // Éviter les doublons
+  const exists = db.pushSubscriptions.find(s => s.subscription.endpoint === subscription.endpoint);
+  if (!exists) {
+    db.pushSubscriptions.push({ userId: req.session.userId, subscription });
+    saveDB(db);
+  }
+  res.json({ ok: true });
+});
+
+// Se désabonner
+app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
+  const { endpoint } = req.body;
+  const db = loadDB();
+  db.pushSubscriptions = (db.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== endpoint);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
 app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
   const db = loadDB();
@@ -1233,6 +1335,8 @@ app.post('/api/announcements', requireSuperAdmin, (req, res) => {
   };
   db.announcements.unshift(ann);
   saveDB(db);
+  // Envoyer notification push
+  sendPushToAll('📢 Nouvelle annonce MasterPASS', ann.title, '/').catch(()=>{});
   res.json(ann);
 });
 
@@ -1254,6 +1358,37 @@ app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => 
   res.json({ ok: true });
 });
 
+// ── NOTIFICATIONS PUSH ───────────────────────────────────────────────────────
+// Clé publique VAPID pour le client
+app.get('/api/push/vapid-key', requireAuth, (req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY || 'BPAm2u-DCWr3oUwEtnXoa2Yb3J1y2zxRigqtA5UadyOjy15CX_zdDqx7-cOseKC6VxAlfhVpkmmyT_TpORJ8JRM';
+  res.json({ key });
+});
+
+// S'abonner aux notifications
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription) return res.status(400).json({ error: 'Subscription manquante' });
+  const db = loadDB();
+  if (!db.pushSubscriptions) db.pushSubscriptions = [];
+  // Éviter les doublons
+  const exists = db.pushSubscriptions.find(s => s.subscription.endpoint === subscription.endpoint);
+  if (!exists) {
+    db.pushSubscriptions.push({ userId: req.session.userId, subscription });
+    saveDB(db);
+  }
+  res.json({ ok: true });
+});
+
+// Se désabonner
+app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
+  const { endpoint } = req.body;
+  const db = loadDB();
+  db.pushSubscriptions = (db.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== endpoint);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
 app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
   const db = loadDB();
@@ -1266,6 +1401,37 @@ app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => 
   const user = db.users.find(u => u.id === parseInt(req.params.id));
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
   delete user.doubleConnectionAt;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── NOTIFICATIONS PUSH ───────────────────────────────────────────────────────
+// Clé publique VAPID pour le client
+app.get('/api/push/vapid-key', requireAuth, (req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY || 'BPAm2u-DCWr3oUwEtnXoa2Yb3J1y2zxRigqtA5UadyOjy15CX_zdDqx7-cOseKC6VxAlfhVpkmmyT_TpORJ8JRM';
+  res.json({ key });
+});
+
+// S'abonner aux notifications
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription) return res.status(400).json({ error: 'Subscription manquante' });
+  const db = loadDB();
+  if (!db.pushSubscriptions) db.pushSubscriptions = [];
+  // Éviter les doublons
+  const exists = db.pushSubscriptions.find(s => s.subscription.endpoint === subscription.endpoint);
+  if (!exists) {
+    db.pushSubscriptions.push({ userId: req.session.userId, subscription });
+    saveDB(db);
+  }
+  res.json({ ok: true });
+});
+
+// Se désabonner
+app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
+  const { endpoint } = req.body;
+  const db = loadDB();
+  db.pushSubscriptions = (db.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== endpoint);
   saveDB(db);
   res.json({ ok: true });
 });
@@ -1303,6 +1469,18 @@ function getFileType(ext) {
   if (['zip','rar','7z','tar'].includes(ext)) return 'zip';
   return 'other';
 }
+
+// Servir le service worker
+app.get('/sw.js', (req, res) => {
+  const swPath = path.join(__dirname, 'sw.js');
+  if (fs.existsSync(swPath)) {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.sendFile(swPath);
+  } else {
+    res.status(404).send('// sw.js not found');
+  }
+});
 
 app.get('*', (req, res) => {
   const indexPath = fs.existsSync(path.join(__dirname, 'public', 'index.html'))
