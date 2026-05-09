@@ -1177,8 +1177,8 @@ app.get('/api/comments/:fileId', requireAuth, (req, res) => {
 
 // POST a comment
 app.post('/api/comments/:fileId', requireAuth, (req, res) => {
-  const { message } = req.body;
-  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const { message, replyTo, audio, audioDuration } = req.body;
+  if (!message?.trim() && !audio) return res.status(400).json({ error: 'Message vide' });
   const db = loadDB();
   if (!db.comments) db.comments = {};
   if (!db.comments[req.params.fileId]) db.comments[req.params.fileId] = [];
@@ -1190,10 +1190,32 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
     userName: user.name,
     userRole: user.role,
     userAvatar: user.avatar || null,
-    message: message.trim(),
+    message: message?.trim() || '',
+    audio: audio || null,
+    audioDuration: audioDuration || null,
+    replyTo: replyTo || null,
     createdAt: new Date().toISOString(),
   };
   db.comments[req.params.fileId].push(comment);
+
+  // Notifier l'admin si c'est un étudiant qui commente
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + (message?.trim() ? ': ' + message.trim().substring(0, 60) : ' a envoyé un vocal'), '/').catch(()=>{});
+    if (!db.adminNotifications) db.adminNotifications = [];
+    db.adminNotifications.unshift({
+      id: db.nextId++,
+      type: 'comment',
+      fileId: req.params.fileId,
+      userName: user.name,
+      message: message.trim().substring(0, 100),
+      at: new Date().toISOString(),
+      read: false,
+    });
+    if (db.adminNotifications.length > 50) db.adminNotifications = db.adminNotifications.slice(0, 50);
+  }
+
   saveDB(db);
   res.json(comment);
 });
@@ -1214,6 +1236,18 @@ app.post('/api/comments/unread', requireAuth, (req, res) => {
   res.json(result);
 });
 
+// Admin notifications
+app.get('/api/admin/notifications', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json(db.adminNotifications || []);
+});
+app.post('/api/admin/notifications/read', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (db.adminNotifications) db.adminNotifications.forEach(n => n.read = true);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // DELETE a comment (admin or own comment)
 app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
   const db = loadDB();
@@ -1224,6 +1258,18 @@ app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
   if (comment.userId !== req.session.userId && user.role !== 'admin')
     return res.status(403).json({ error: 'Accès refusé' });
   db.comments[req.params.fileId] = db.comments[req.params.fileId].filter(c => c.id !== parseInt(req.params.commentId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Badge discussions non lues (admin)
+app.get('/api/comments/admin-unread', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json({ count: db.adminUnreadDiscussions || 0 });
+});
+app.post('/api/comments/admin-unread/reset', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  db.adminUnreadDiscussions = 0;
   saveDB(db);
   res.json({ ok: true });
 });
@@ -1445,7 +1491,7 @@ app.get('/api/comments/:fileId', requireAuth, (req, res) => {
 
 // POST a comment
 app.post('/api/comments/:fileId', requireAuth, (req, res) => {
-  const { message } = req.body;
+  const { message, replyTo } = req.body;
   if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
   const db = loadDB();
   if (!db.comments) db.comments = {};
@@ -1459,9 +1505,26 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
     userRole: user.role,
     userAvatar: user.avatar || null,
     message: message.trim(),
+    replyTo: replyTo || null,
     createdAt: new Date().toISOString(),
   };
   db.comments[req.params.fileId].push(comment);
+
+  // Notifier l'admin si c'est un étudiant qui commente
+  if (user.role !== 'admin') {
+    if (!db.adminNotifications) db.adminNotifications = [];
+    db.adminNotifications.unshift({
+      id: db.nextId++,
+      type: 'comment',
+      fileId: req.params.fileId,
+      userName: user.name,
+      message: message.trim().substring(0, 100),
+      at: new Date().toISOString(),
+      read: false,
+    });
+    if (db.adminNotifications.length > 50) db.adminNotifications = db.adminNotifications.slice(0, 50);
+  }
+
   saveDB(db);
   res.json(comment);
 });
@@ -1482,6 +1545,18 @@ app.post('/api/comments/unread', requireAuth, (req, res) => {
   res.json(result);
 });
 
+// Admin notifications
+app.get('/api/admin/notifications', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json(db.adminNotifications || []);
+});
+app.post('/api/admin/notifications/read', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (db.adminNotifications) db.adminNotifications.forEach(n => n.read = true);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // DELETE a comment (admin or own comment)
 app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
   const db = loadDB();
@@ -1492,6 +1567,14 @@ app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
   if (comment.userId !== req.session.userId && user.role !== 'admin')
     return res.status(403).json({ error: 'Accès refusé' });
   db.comments[req.params.fileId] = db.comments[req.params.fileId].filter(c => c.id !== parseInt(req.params.commentId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Badge discussions non lues (admin)
+app.post('/api/comments/admin-unread/reset', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  db.adminUnreadDiscussions = 0;
   saveDB(db);
   res.json({ ok: true });
 });
@@ -1589,7 +1672,7 @@ app.get('/api/comments/:fileId', requireAuth, (req, res) => {
 
 // POST a comment
 app.post('/api/comments/:fileId', requireAuth, (req, res) => {
-  const { message } = req.body;
+  const { message, replyTo } = req.body;
   if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
   const db = loadDB();
   if (!db.comments) db.comments = {};
@@ -1603,27 +1686,42 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
     userRole: user.role,
     userAvatar: user.avatar || null,
     message: message.trim(),
+    replyTo: replyTo || null,
     createdAt: new Date().toISOString(),
   };
   db.comments[req.params.fileId].push(comment);
+
+  // Notifier l'admin si c'est un étudiant qui commente
+  if (user.role !== 'admin') {
+    if (!db.adminNotifications) db.adminNotifications = [];
+    db.adminNotifications.unshift({
+      id: db.nextId++,
+      type: 'comment',
+      fileId: req.params.fileId,
+      userName: user.name,
+      message: message.trim().substring(0, 100),
+      at: new Date().toISOString(),
+      read: false,
+    });
+    if (db.adminNotifications.length > 50) db.adminNotifications = db.adminNotifications.slice(0, 50);
+  }
+
   saveDB(db);
   res.json(comment);
 });
 
 // GET unread comments count for multiple files
-app.post('/api/comments/unread', requireAuth, (req, res) => {
-  const { fileIds, lastSeen } = req.body; // lastSeen: { fileId: timestamp }
+
+// Admin notifications
+app.get('/api/admin/notifications', requireSuperAdmin, (req, res) => {
   const db = loadDB();
-  if (!db.comments) return res.json({});
-  const result = {};
-  (fileIds || []).forEach(fileId => {
-    const comments = db.comments[fileId] || [];
-    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
-    result[fileId] = lastSeenAt
-      ? comments.filter(c => new Date(c.createdAt) > lastSeenAt).length
-      : comments.length;
-  });
-  res.json(result);
+  res.json(db.adminNotifications || []);
+});
+app.post('/api/admin/notifications/read', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (db.adminNotifications) db.adminNotifications.forEach(n => n.read = true);
+  saveDB(db);
+  res.json({ ok: true });
 });
 
 // DELETE a comment (admin or own comment)
@@ -1636,6 +1734,14 @@ app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
   if (comment.userId !== req.session.userId && user.role !== 'admin')
     return res.status(403).json({ error: 'Accès refusé' });
   db.comments[req.params.fileId] = db.comments[req.params.fileId].filter(c => c.id !== parseInt(req.params.commentId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Badge discussions non lues (admin)
+app.post('/api/comments/admin-unread/reset', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  db.adminUnreadDiscussions = 0;
   saveDB(db);
   res.json({ ok: true });
 });
@@ -1730,7 +1836,7 @@ app.get('/api/comments/:fileId', requireAuth, (req, res) => {
 
 // POST a comment
 app.post('/api/comments/:fileId', requireAuth, (req, res) => {
-  const { message } = req.body;
+  const { message, replyTo } = req.body;
   if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
   const db = loadDB();
   if (!db.comments) db.comments = {};
@@ -1744,27 +1850,42 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
     userRole: user.role,
     userAvatar: user.avatar || null,
     message: message.trim(),
+    replyTo: replyTo || null,
     createdAt: new Date().toISOString(),
   };
   db.comments[req.params.fileId].push(comment);
+
+  // Notifier l'admin si c'est un étudiant qui commente
+  if (user.role !== 'admin') {
+    if (!db.adminNotifications) db.adminNotifications = [];
+    db.adminNotifications.unshift({
+      id: db.nextId++,
+      type: 'comment',
+      fileId: req.params.fileId,
+      userName: user.name,
+      message: message.trim().substring(0, 100),
+      at: new Date().toISOString(),
+      read: false,
+    });
+    if (db.adminNotifications.length > 50) db.adminNotifications = db.adminNotifications.slice(0, 50);
+  }
+
   saveDB(db);
   res.json(comment);
 });
 
 // GET unread comments count for multiple files
-app.post('/api/comments/unread', requireAuth, (req, res) => {
-  const { fileIds, lastSeen } = req.body; // lastSeen: { fileId: timestamp }
+
+// Admin notifications
+app.get('/api/admin/notifications', requireSuperAdmin, (req, res) => {
   const db = loadDB();
-  if (!db.comments) return res.json({});
-  const result = {};
-  (fileIds || []).forEach(fileId => {
-    const comments = db.comments[fileId] || [];
-    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
-    result[fileId] = lastSeenAt
-      ? comments.filter(c => new Date(c.createdAt) > lastSeenAt).length
-      : comments.length;
-  });
-  res.json(result);
+  res.json(db.adminNotifications || []);
+});
+app.post('/api/admin/notifications/read', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (db.adminNotifications) db.adminNotifications.forEach(n => n.read = true);
+  saveDB(db);
+  res.json({ ok: true });
 });
 
 // DELETE a comment (admin or own comment)
@@ -1777,6 +1898,14 @@ app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
   if (comment.userId !== req.session.userId && user.role !== 'admin')
     return res.status(403).json({ error: 'Accès refusé' });
   db.comments[req.params.fileId] = db.comments[req.params.fileId].filter(c => c.id !== parseInt(req.params.commentId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Badge discussions non lues (admin)
+app.post('/api/comments/admin-unread/reset', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  db.adminUnreadDiscussions = 0;
   saveDB(db);
   res.json({ ok: true });
 });
