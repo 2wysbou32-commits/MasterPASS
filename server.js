@@ -1316,37 +1316,6 @@ app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
 
 // ── ANNONCES ─────────────────────────────────────────────────────────────────
 
-app.get('/api/announcements', requireAuth, (req, res) => {
-  const db = loadDB();
-  res.json((db.announcements || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-});
-
-app.post('/api/announcements', requireSuperAdmin, (req, res) => {
-  const { title, message, color } = req.body;
-  if (!title?.trim() || !message?.trim()) return res.status(400).json({ error: 'Titre et message requis' });
-  const db = loadDB();
-  if (!db.announcements) db.announcements = [];
-  const ann = {
-    id: db.nextId++,
-    title: title.trim(),
-    message: message.trim(),
-    color: color || 'info',
-    createdAt: new Date().toISOString(),
-  };
-  db.announcements.unshift(ann);
-  saveDB(db);
-  // Envoyer notification push
-  sendPushToAll('📢 Nouvelle annonce MasterPASS', ann.title, '/').catch(()=>{});
-  res.json(ann);
-});
-
-app.delete('/api/announcements/:id', requireSuperAdmin, (req, res) => {
-  const db = loadDB();
-  if (!db.announcements) db.announcements = [];
-  db.announcements = db.announcements.filter(a => a.id !== parseInt(req.params.id));
-  saveDB(db);
-  res.json({ ok: true });
-});
 
 // ── CLEAR DOUBLE CONNECTION FLAG ─────────────────────────────────────────────
 app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => {
