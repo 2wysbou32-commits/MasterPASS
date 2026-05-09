@@ -2652,17 +2652,25 @@ async function deleteAnnouncement(id) {
 }
 
 // ── PROGRESSION DE LECTURE ───────────────────────────────────────────────────
+function getReadKey() {
+  // Utilise l'userId stocké en localStorage pour persister après déconnexion/reconnexion
+  if (currentUser) localStorage.setItem('mp_last_uid', currentUser.id);
+  const uid = currentUser ? currentUser.id : localStorage.getItem('mp_last_uid');
+  return uid ? 'mp_read_' + uid : null;
+}
 function getReadFiles() {
-  if (!currentUser) return new Set();
-  try { return new Set(JSON.parse(localStorage.getItem('mp_read_' + currentUser.id) || '[]')); }
+  const key = getReadKey();
+  if (!key) return new Set();
+  try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')); }
   catch { return new Set(); }
 }
 function markAsRead(fileId, folderId, subId) {
-  if (!currentUser) return;
-  const key = `${folderId}_${subId||''}_${fileId}`;
+  const key = getReadKey();
+  if (!key) return;
+  const readKey = `${folderId}_${subId||''}_${fileId}`;
   const read = getReadFiles();
-  read.add(key);
-  localStorage.setItem('mp_read_' + currentUser.id, JSON.stringify([...read]));
+  read.add(readKey);
+  localStorage.setItem(key, JSON.stringify([...read]));
 }
 function isRead(fileId, folderId, subId) {
   const key = `${folderId}_${subId||''}_${fileId}`;
