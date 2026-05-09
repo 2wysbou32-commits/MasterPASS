@@ -2767,16 +2767,20 @@ function urlBase64ToUint8Array(base64String) {
 // ── BARRE DE PROGRESSION ─────────────────────────────────────────────────────
 function updateFolderProgress(files) {
   const bar = $('folder-progress-bar');
-  if (!bar || !currentFolder) return;
-  if (!files || !files.length || currentUser?.role === 'admin') {
+  if (!bar) return;
+  if (!files || !files.length || currentUser?.role === 'admin' || currentUser?.role === 'subadmin') {
     bar.style.display = 'none';
     return;
   }
+  // Déterminer le dossier courant (folder ou subfolder)
+  const fId = currentSubfolder ? (currentSubfolder.parentId || currentFolder?.id) : currentFolder?.id;
+  const sId = currentSubfolder ? currentSubfolder.id : '';
+  if (!fId) { bar.style.display = 'none'; return; }
   const total = files.length;
   const read = getReadFiles();
   let readCount = 0;
   files.forEach(f => {
-    const key = `${currentFolder.id}_${currentFolder.subId||''}_${f.id}`;
+    const key = `${fId}_${sId||''}_${f.id}`;
     if (read.has(key)) readCount++;
   });
   const pct = Math.round(readCount / total * 100);
