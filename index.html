@@ -24,6 +24,42 @@
   --shadow: rgba(0,151,167,0.14);
   --shadow2: rgba(0,151,167,0.07);
 }
+
+[data-theme="dark"] {
+  --bg: #0F1A1C;
+  --surface: #182628;
+  --surface2: #1E3032;
+  --text: #E0F2F3;
+  --text2: #9ECDD1;
+  --text3: #5A8A8E;
+  --border: #1E3A3E;
+  --shadow: rgba(0,0,0,0.3);
+  --shadow2: rgba(0,0,0,0.2);
+  --teal: #00BCD4;
+  --teal-dark: #0097A7;
+}
+[data-theme="dark"] body { background: var(--bg); color: var(--text); }
+[data-theme="dark"] .main-content { background: var(--bg); }
+[data-theme="dark"] .topbar { background: rgba(15,26,28,0.96) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .sidebar { background: linear-gradient(180deg,#0A1416 0%,#060E10 100%) !important; }
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .folder-card,
+[data-theme="dark"] .announcement-card { background: var(--surface) !important; border-color: var(--border) !important; color: var(--text) !important; }
+[data-theme="dark"] .files-list-wrap { background: var(--surface) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .file-row { border-color: var(--border) !important; }
+[data-theme="dark"] .file-row:hover { background: var(--surface2) !important; }
+[data-theme="dark"] .file-name { color: var(--text) !important; }
+[data-theme="dark"] .sort-btn { background: var(--surface) !important; color: var(--text2) !important; border-color: var(--border) !important; }
+[data-theme="dark"] input, [data-theme="dark"] textarea { background: var(--surface2) !important; color: var(--text) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .btn-action { background: var(--surface) !important; color: var(--text2) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .search-input-wrap { background: var(--surface) !important; border-color: var(--border) !important; }
+[data-theme="dark"] .section-sub { color: var(--text3) !important; }
+[data-theme="dark"] .breadcrumb-item { color: var(--text3) !important; }
+[data-theme="dark"] .modal-card, [data-theme="dark"] .modal-content { background: var(--surface) !important; }
+[data-theme="dark"] .files-list-header { border-color: var(--border) !important; }
+[data-theme="dark"] .auth-card { background: var(--surface) !important; }
+[data-theme="dark"] .settings-card { background: var(--surface) !important; border-color: var(--border) !important; }
+
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 
@@ -638,6 +674,20 @@ input[type="file"]{display:none;}
 .announcement-new-badge { display:inline-block; background:#ef5350; color:white; border-radius:10px; padding:1px 7px; font-size:10px; font-weight:700; margin-left:8px; vertical-align:middle; }
 
 /* ── LECTURE & PROGRESSION ──────────────────────────────────────────────────── */
+.progress-wrap {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 6px; font-size: 11px; color: var(--text3);
+}
+.progress-track {
+  flex: 1; height: 5px; background: var(--border);
+  border-radius: 99px; overflow: hidden; max-width: 120px;
+}
+.progress-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--teal), var(--teal-dark));
+  transition: width 0.4s ease;
+}
+.progress-done { color: #2E7D32 !important; font-weight: 600; }
 .file-read-badge {
   display:inline-flex;align-items:center;gap:3px;
   background:#E8F5E9;color:#2E7D32;
@@ -1145,6 +1195,9 @@ input[type="file"]{display:none;}
       <button class="btn-help" id="btn-help" onclick="openTutorial()" style="display:none;width:100%;margin-bottom:8px">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
         Revoir le tutoriel
+      </button>
+      <button onclick="toggleDarkMode()" id="dark-mode-btn" style="width:100%;margin-bottom:8px;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.7);cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px">
+        <span id="dark-mode-icon">🌙</span> <span id="dark-mode-label">Mode sombre</span>
       </button>
       <button class="btn-logout" onclick="doLogout()">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
@@ -1777,6 +1830,10 @@ function setupApp(){
   updateAnnouncementsBadge();
   // Vérifier la session toutes les 30 secondes (anti-partage de compte)
   startSessionPolling();
+  // Activer les notifications push (étudiants uniquement)
+  if (currentUser?.role === 'student') {
+    setTimeout(initPushNotifications, 2000);
+  }
 }
 
 function startSessionPolling() {
@@ -1887,6 +1944,19 @@ function renderFolders(folders){
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>
           ${f.fileCount} fichier${f.fileCount!==1?'s':''}${f.totalSize>0?' · '+formatSize(f.totalSize):''}
         </div>
+        ${(()=>{
+          if(!f.fileCount || currentUser?.role==='admin') return '';
+          // Compter les fichiers lus dans ce dossier
+          const read = getReadFiles();
+          let readCount = 0;
+          if(f.files) f.files.forEach(file => { if(read.has(`${f.id}__${file.id}`)) readCount++; });
+          const pct = f.fileCount > 0 ? Math.round(readCount/f.fileCount*100) : 0;
+          const done = readCount === f.fileCount && f.fileCount > 0;
+          return `<div class="progress-wrap${done?' progress-done':''}">
+            <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+            <span>${done?'✓ Terminé':readCount+'/'+f.fileCount+' lus'}</span>
+          </div>`;
+        })()}
       </div>
     </div>`).join('');
 }
@@ -2651,6 +2721,62 @@ async function deleteAnnouncement(id) {
   } catch(e) { toast(e.message, 'error'); }
 }
 
+// ── NOTIFICATIONS PUSH ───────────────────────────────────────────────────────
+async function initPushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    // Enregistrer le service worker
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    console.log('[PUSH] Service Worker enregistré');
+
+    // Vérifier la permission
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+
+    // Récupérer la clé VAPID
+    const { key } = await api('GET', '/push/vapid-key');
+
+    // S'abonner
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key)
+    });
+
+    // Envoyer la subscription au serveur
+    await api('POST', '/push/subscribe', { subscription: sub.toJSON() });
+    console.log('[PUSH] Abonné aux notifications');
+  } catch(e) {
+    console.log('[PUSH] Non disponible:', e.message);
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  return new Uint8Array([...rawData].map(c => c.charCodeAt(0)));
+}
+
+// ── MODE SOMBRE ──────────────────────────────────────────────────────────────
+function initDarkMode() {
+  const saved = localStorage.getItem('mp_dark_mode');
+  if (saved === 'dark') applyDarkMode(true);
+}
+function applyDarkMode(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : '');
+  const icon = document.getElementById('dark-mode-icon');
+  const label = document.getElementById('dark-mode-label');
+  if (icon) icon.textContent = dark ? '☀️' : '🌙';
+  if (label) label.textContent = dark ? 'Mode clair' : 'Mode sombre';
+  localStorage.setItem('mp_dark_mode', dark ? 'dark' : 'light');
+}
+function toggleDarkMode() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  applyDarkMode(!isDark);
+}
+// Init au chargement
+initDarkMode();
+
 // ── PROGRESSION DE LECTURE ───────────────────────────────────────────────────
 function getReadKey() {
   // Utilise l'userId stocké en localStorage pour persister après déconnexion/reconnexion
@@ -3314,6 +3440,18 @@ function renderSubfolders(subs, parentId, parentName) {
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
           <div style="font-size:12px;color:var(--text3)">${s.fileCount} fichier${s.fileCount!==1?'s':''}</div>
+          ${(()=>{
+            if(!s.fileCount || currentUser?.role==='admin') return '';
+            const read = getReadFiles();
+            let rc=0;
+            if(s.files) s.files.forEach(f=>{if(read.has(parentId+'_'+s.id+'_'+f.id))rc++;});
+            const pct = s.fileCount>0?Math.round(rc/s.fileCount*100):0;
+            const done = rc===s.fileCount && s.fileCount>0;
+            return `<div class="progress-wrap${done?' progress-done':''}" style="margin-top:3px">
+              <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+              <span>${done?'✓':rc+'/'+s.fileCount}</span>
+            </div>`;
+          })()}
         </div>
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--text3);flex-shrink:0"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
         ${isSuperAdmin ? `<button onclick="event.stopPropagation();deleteSubfolder(${parentId},${s.id})" title="Supprimer" style="width:26px;height:26px;border-radius:7px;border:none;background:rgba(229,115,115,0.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px">
