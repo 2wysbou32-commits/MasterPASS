@@ -143,7 +143,7 @@ select.field-input{cursor:pointer;}
 .btn-logout svg{width:15px;height:15px;}
 
 /* ── MAIN ── */
-.main-content{margin-left:260px;min-height:100vh;}
+.main-content{margin-left:260px;min-height:100vh;background:var(--bg);}
 .topbar{
   height:64px;background:rgba(255,255,255,0.94);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);display:flex;align-items:center;
@@ -151,8 +151,8 @@ select.field-input{cursor:pointer;}
 }
 .topbar-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:21px;font-weight:800;color:var(--teal-dark);flex:1;letter-spacing:-0.3px;}
 .topbar-actions{display:flex;gap:10px;align-items:center;}
-.content-area{padding:36px 60px 36px 60px;}
-.panel{display:none;}.panel.active{display:block;max-width:960px;}
+.content-area{padding:36px 60px 36px 60px !important;max-width:1200px;box-sizing:border-box;}
+.panel{display:none;}.panel.active{display:block;}
 
 /* ── STATS ── */
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px;}
