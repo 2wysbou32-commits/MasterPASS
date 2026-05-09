@@ -149,7 +149,7 @@ select.field-input{cursor:pointer;}
   border-bottom:1px solid var(--border);display:flex;align-items:center;
   padding:0 32px;gap:16px;position:sticky;top:0;z-index:50;
 }
-.topbar-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:var(--text);flex:1;letter-spacing:-0.3px;}
+.topbar-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:21px;font-weight:800;color:var(--teal-dark);flex:1;letter-spacing:-0.3px;}
 .topbar-actions{display:flex;gap:10px;align-items:center;}
 .content-area{padding:28px 32px;}
 .panel{display:none;}.panel.active{display:block;}
@@ -169,7 +169,7 @@ select.field-input{cursor:pointer;}
 
 /* ── FOLDERS NEW DA ── */
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
-.section-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;color:var(--text);letter-spacing:-0.4px;}
+.section-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;color:var(--text);letter-spacing:-0.5px;}
 .section-sub{font-size:12px;color:var(--text3);margin-top:2px;}
 
 .folders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:28px;}
@@ -1139,8 +1139,9 @@ input[type="file"]{display:none;}
         </div>
 
         <div id="view-files" style="display:none">
+          <div id="folder-page-title" style="display:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:32px;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:-0.5px;line-height:1.1"></div>
           <div class="section-header">
-            <div><div class="section-title" id="current-folder-name">Dossier</div><div class="section-sub" id="files-count-sub">—</div></div>
+            <div><div class="section-title" id="current-folder-name" style="display:none">Dossier</div><div class="section-sub" id="files-count-sub">—</div></div>
           </div>
           <div class="files-list-wrap">
             <div class="files-list-header">
@@ -1735,13 +1736,17 @@ async function openFolder(id,name){
   currentFolder={id,name};
   $('view-folders').style.display='none';
   $('view-files').style.display='';
-  // Mettre le nom du dossier dans la topbar ET dans le titre de page
+  // Mettre le nom du dossier dans la topbar
   $('topbar-title').textContent=name;
+  // Afficher le titre en grand dans la page
   const folderTitle = document.getElementById('folder-page-title');
   if(folderTitle){ folderTitle.textContent=name; folderTitle.style.display='block'; }
-  // Masquer le banner étudiant et les stats dans le dossier
+  // Masquer le banner étudiant et les stats
   if($('student-banner')) $('student-banner').style.display='none';
   if($('admin-stats')) $('admin-stats').style.display='none';
+  // Vider le container de sous-dossiers AVANT de charger les nouveaux
+  const subContainerOld = document.getElementById('subfolders-container');
+  if(subContainerOld) subContainerOld.innerHTML = '';
   updateBreadcrumb();updateTopbar();
   // Load subfolders and files
   const [subs] = await Promise.all([loadSubfolders(id), loadFiles()]);
@@ -1752,7 +1757,13 @@ async function openFolder(id,name){
   if (!subContainer) {
     subContainer = document.createElement('div');
     subContainer.id = 'subfolders-container';
-    container.insertBefore(subContainer, container.firstChild);
+    // Insert after folder-page-title
+    const ft = document.getElementById('folder-page-title');
+    if(ft && ft.nextSibling) {
+      container.insertBefore(subContainer, ft.nextSibling);
+    } else {
+      container.insertBefore(subContainer, container.firstChild);
+    }
   }
   subContainer.innerHTML = subHtml;
 }
@@ -2779,7 +2790,7 @@ function renderCodesTab() {
     return;
   }
   if (!codes.length) {
-    const msg = _codesTab === 'available' ? 'Tous les codes ont été utilisés.' : 'Aucun code utilisé pour l'instant.';
+    const msg = _codesTab === 'available' ? 'Tous les codes ont été utilisés.' : "Aucun code utilisé pour l'instant.";
     body.innerHTML = `<div style="padding:48px;text-align:center;color:var(--text3)">${msg}</div>`;
     return;
   }
@@ -2988,6 +2999,9 @@ async function openSubfolder(subId, subName, parentId, parentName) {
   $('topbar-title').textContent = subName;
   const folderTitle2 = document.getElementById('folder-page-title');
   if(folderTitle2){ folderTitle2.textContent=subName; folderTitle2.style.display='block'; }
+  // Vider le container de sous-dossiers
+  const sc = document.getElementById('subfolders-container');
+  if(sc) sc.innerHTML = '';
   // Masquer le banner étudiant et les stats
   if($('student-banner')) $('student-banner').style.display='none';
   if($('admin-stats')) $('admin-stats').style.display='none';
