@@ -885,23 +885,13 @@ input[type="file"]{display:none;}
         <label class="field-label">Mot de passe</label>
         <input type="password" class="field-input" id="password-input" placeholder="••••••••" autocomplete="current-password">
       </div>
-      <div style="font-size:11.5px;color:var(--text3);text-align:center;margin-bottom:12px;line-height:1.6;padding:8px 12px;background:rgba(239,83,80,0.05);border-radius:8px;border:1px solid rgba(239,83,80,0.12)">
-        🔒 Le partage de compte est <strong style="color:#c62828">strictement interdit</strong>. Toute connexion simultanée entraîne une déconnexion automatique.
-      </div>
+      <div style="font-size:11.5px;color:#c62828;text-align:center;margin-top:8px;margin-bottom:4px;font-weight:600">🔒 Accès personnel — le partage de compte entraîne la suppression de l'accès.</div>
       <button class="btn-primary" id="login-btn" onclick="doLogin()">Se connecter</button>
       <div class="error-msg" id="login-error" style="display:none"></div>
       <div class="error-msg" id="auth-error">Identifiant ou mot de passe incorrect.</div>
       <div class="success-msg" id="auth-success"></div>
       <div class="auth-link"><a onclick="showForgotForm()">Mot de passe oublié ?</a></div>
       <div class="auth-link" style="margin-top:8px"><a onclick="showRegisterForm()">Créer mon compte avec un code d'invitation</a></div>
-      <div style="margin-top:16px;padding:10px 14px;background:rgba(239,83,80,0.06);border-radius:10px;border:1px solid rgba(239,83,80,0.2)">
-        <p style="font-size:11px;color:#c62828;line-height:1.5;margin:0;text-align:center">
-          🔒 <strong>Accès strictement personnel.</strong> Le partage de compte est interdit et entraîne la suppression immédiate de l'accès. Toute connexion simultanée sera automatiquement détectée.
-        </p>
-      </div>
-      <div style="margin-top:16px;padding:10px 14px;background:rgba(239,83,80,0.06);border-radius:10px;border:1px solid rgba(239,83,80,0.2);font-size:11.5px;color:#C62828;line-height:1.5;text-align:center">
-        🔒 Ce compte est strictement personnel. Le partage de compte ou de contenu est interdit et entraîne la suppression immédiate de l'accès.
-      </div>
     </div>
 
     <!-- FORMULAIRE MOT DE PASSE OUBLIÉ -->
@@ -2403,6 +2393,35 @@ async function loadConnectionLogs() {
   }
 }
 
+// ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
+async function loadConnectionLogs() {
+  const list = $('connection-logs-list');
+  if (!list) return;
+  list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
+  try {
+    const logs = await api('GET', '/connection-logs');
+    if (!logs.length) {
+      list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3)">Aucun log disponible.</div>';
+      return;
+    }
+    list.innerHTML = logs.map((l, i) => {
+      const date = new Date(l.at).toLocaleString('fr-FR');
+      const border = i < logs.length-1 ? 'border-bottom:1px solid rgba(178,223,219,0.3)' : '';
+      const replacedBadge = l.replaced ? '<span style="background:#FFF3E0;color:#E65100;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;margin-left:8px">⚠️ Double connexion</span>' : '';
+      const device = l.ua.includes('Mobile') ? '📱' : '💻';
+      return `<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;${border}">
+        <div style="font-size:18px">${device}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;color:var(--text)">${l.name} <span style="color:var(--text3);font-weight:400">(${l.login})</span>${replacedBadge}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${date} · IP: ${l.ip}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<div style="padding:20px;color:var(--danger)">Erreur: ${e.message}</div>`;
+  }
+}
+
 // ── ANNONCES ──────────────────────────────────────────────────────────────────
 function getSeenAnnouncements() {
   if (!currentUser) return [];
@@ -3394,6 +3413,41 @@ function addWatermark(container) {
   wm.innerHTML = svg;
   container.style.position = 'relative';
   container.appendChild(wm);
+}
+
+function addPDFWatermark(iframe) {
+  // Overlay canvas watermark on top of PDF iframe
+  if (!currentUser) return;
+  const wrap = iframe.parentElement;
+  if (!wrap) return;
+  const existing = wrap.querySelector('.pdf-watermark');
+  if (existing) existing.remove();
+  const canvas = document.createElement('canvas');
+  canvas.className = 'pdf-watermark';
+  canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;opacity:0.12';
+  wrap.style.position = 'relative';
+  wrap.appendChild(canvas);
+  const resize = () => {
+    canvas.width = wrap.offsetWidth;
+    canvas.height = wrap.offsetHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.font = 'bold 18px Inter, sans-serif';
+    ctx.fillStyle = '#004D61';
+    ctx.translate(canvas.width/2, canvas.height/2);
+    ctx.rotate(-Math.PI/5);
+    const text = `MasterPASS · ${currentUser.name} · ${currentUser.login}`;
+    const step = 180;
+    for (let y = -canvas.height; y < canvas.height; y += step) {
+      for (let x = -canvas.width; x < canvas.width; x += 380) {
+        ctx.fillText(text, x, y);
+      }
+    }
+    ctx.restore();
+  };
+  resize();
+  window.addEventListener('resize', resize);
 }
 
 function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl) {
