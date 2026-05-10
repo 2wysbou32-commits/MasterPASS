@@ -1406,6 +1406,44 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   res.json(reply);
 });
 
+// EDIT a reply
+app.patch('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId]||[]).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (reply.userId !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  reply.message = message.trim();
+  reply.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// REACT to a reply
+app.post('/api/threads/:fileId/:threadId/replies/:replyId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId]||[]).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  if (!reply.reactions) reply.reactions = {};
+  if (!reply.reactions[emoji]) reply.reactions[emoji] = [];
+  const uid = req.session.userId;
+  const idx = reply.reactions[emoji].indexOf(uid);
+  if (idx !== -1) reply.reactions[emoji].splice(idx, 1);
+  else reply.reactions[emoji].push(uid);
+  if (!reply.reactions[emoji].length) delete reply.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: reply.reactions });
+});
+
 // DELETE a reply
 app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
   const db = loadDB();
@@ -1932,6 +1970,44 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   res.json(reply);
 });
 
+// EDIT a reply
+app.patch('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId]||[]).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (reply.userId !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  reply.message = message.trim();
+  reply.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// REACT to a reply
+app.post('/api/threads/:fileId/:threadId/replies/:replyId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId]||[]).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  if (!reply.reactions) reply.reactions = {};
+  if (!reply.reactions[emoji]) reply.reactions[emoji] = [];
+  const uid = req.session.userId;
+  const idx = reply.reactions[emoji].indexOf(uid);
+  if (idx !== -1) reply.reactions[emoji].splice(idx, 1);
+  else reply.reactions[emoji].push(uid);
+  if (!reply.reactions[emoji].length) delete reply.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: reply.reactions });
+});
+
 // DELETE a reply
 app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
   const db = loadDB();
@@ -2322,6 +2398,44 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   res.json(reply);
 });
 
+// EDIT a reply
+app.patch('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId]||[]).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (reply.userId !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  reply.message = message.trim();
+  reply.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// REACT to a reply
+app.post('/api/threads/:fileId/:threadId/replies/:replyId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId]||[]).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  if (!reply.reactions) reply.reactions = {};
+  if (!reply.reactions[emoji]) reply.reactions[emoji] = [];
+  const uid = req.session.userId;
+  const idx = reply.reactions[emoji].indexOf(uid);
+  if (idx !== -1) reply.reactions[emoji].splice(idx, 1);
+  else reply.reactions[emoji].push(uid);
+  if (!reply.reactions[emoji].length) delete reply.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: reply.reactions });
+});
+
 // DELETE a reply
 app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
   const db = loadDB();
@@ -2693,6 +2807,44 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   }
   saveDB(db);
   res.json(reply);
+});
+
+// EDIT a reply
+app.patch('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId]||[]).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (reply.userId !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  reply.message = message.trim();
+  reply.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// REACT to a reply
+app.post('/api/threads/:fileId/:threadId/replies/:replyId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId]||[]).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  if (!reply.reactions) reply.reactions = {};
+  if (!reply.reactions[emoji]) reply.reactions[emoji] = [];
+  const uid = req.session.userId;
+  const idx = reply.reactions[emoji].indexOf(uid);
+  if (idx !== -1) reply.reactions[emoji].splice(idx, 1);
+  else reply.reactions[emoji].push(uid);
+  if (!reply.reactions[emoji].length) delete reply.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: reply.reactions });
 });
 
 // DELETE a reply
