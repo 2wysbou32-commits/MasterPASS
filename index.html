@@ -3252,6 +3252,16 @@ function renameFile(e, fileId, currentName, folderId, subId) {
   openFileModal(e, fileId, currentName, folderId, subId);
 }
 
+// ── EXTRAIRE UN SOUS-DOSSIER VERS LA RACINE ──────────────────────────────────
+async function extractSubfolder(parentId, subId) {
+  if (!confirm('Extraire ce dossier vers la racine ?')) return;
+  try {
+    await api('POST', '/folders/' + parentId + '/subfolders/' + subId + '/extract');
+    toast('Dossier extrait vers la racine ✅');
+    await loadFolders();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 // ── DÉPLACER UN DOSSIER ──────────────────────────────────────────────────────
 let _moveFolderId = null;
 
@@ -3394,7 +3404,7 @@ async function updateDiscussionBadges(fileIds) {
   if (!fileIds || !fileIds.length) return;
   _lastSeenComments = loadLastSeen();
   try {
-    const unread = await api('POST', '/comments/unread', { fileIds, lastSeen: _lastSeenComments });
+    const unread = await api('POST', '/threads/unread', { fileIds, lastSeen: _lastSeenComments });
     fileIds.forEach(id => {
       const badge = document.getElementById('disc-badge-' + id);
       if (!badge) return;
@@ -3826,6 +3836,16 @@ function renameFile(e, fileId, currentName, folderId, subId) {
   openFileModal(e, fileId, currentName, folderId, subId);
 }
 
+// ── EXTRAIRE UN SOUS-DOSSIER VERS LA RACINE ──────────────────────────────────
+async function extractSubfolder(parentId, subId) {
+  if (!confirm('Extraire ce dossier vers la racine ?')) return;
+  try {
+    await api('POST', '/folders/' + parentId + '/subfolders/' + subId + '/extract');
+    toast('Dossier extrait vers la racine ✅');
+    await loadFolders();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 // ── DÉPLACER UN DOSSIER ──────────────────────────────────────────────────────
 
 
@@ -3967,7 +3987,7 @@ async function updateDiscussionBadges(fileIds) {
   if (!fileIds || !fileIds.length) return;
   _lastSeenComments = loadLastSeen();
   try {
-    const unread = await api('POST', '/comments/unread', { fileIds, lastSeen: _lastSeenComments });
+    const unread = await api('POST', '/threads/unread', { fileIds, lastSeen: _lastSeenComments });
     fileIds.forEach(id => {
       const badge = document.getElementById('disc-badge-' + id);
       if (!badge) return;
@@ -4993,6 +5013,9 @@ function renderSubfolders(subs, parentId, parentName) {
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
           <div style="font-size:12px;color:var(--text3)">${s.fileCount} fichier${s.fileCount!==1?'s':''}</div>
+          ${isAdmin ? `<div style="margin-top:4px;display:flex;gap:6px">
+            <button onclick="event.stopPropagation();extractSubfolder(${parentId||id},${s.id})" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer">↑ Vers racine</button>
+          </div>` : ''}
 
         </div>
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--text3);flex-shrink:0"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
