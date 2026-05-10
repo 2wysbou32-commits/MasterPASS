@@ -1162,6 +1162,50 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
+app.patch('/api/folders/:folderId/files/:fileId/rename', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+app.patch('/api/folders/:parentId/subfolders/:subId/files/:fileId/rename', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+// ── RÉORGANISER LES DOSSIERS ──────────────────────────────────────────────────
+app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
+  const { order } = req.body; // array of folder ids in new order
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'Order invalide' });
+  const db = loadDB();
+  const reordered = [];
+  order.forEach(id => {
+    const f = db.folders.find(f => f.id === parseInt(id));
+    if (f) reordered.push(f);
+  });
+  // Add any folders not in the order array
+  db.folders.forEach(f => { if (!order.includes(f.id) && !order.includes(String(f.id))) reordered.push(f); });
+  db.folders = reordered;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── COMMENTAIRES ─────────────────────────────────────────────────────────────
 // GET comments for a file
 app.get('/api/comments/:fileId', requireAuth, (req, res) => {
@@ -1479,6 +1523,50 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
+app.patch('/api/folders/:folderId/files/:fileId/rename', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+app.patch('/api/folders/:parentId/subfolders/:subId/files/:fileId/rename', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+// ── RÉORGANISER LES DOSSIERS ──────────────────────────────────────────────────
+app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
+  const { order } = req.body; // array of folder ids in new order
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'Order invalide' });
+  const db = loadDB();
+  const reordered = [];
+  order.forEach(id => {
+    const f = db.folders.find(f => f.id === parseInt(id));
+    if (f) reordered.push(f);
+  });
+  // Add any folders not in the order array
+  db.folders.forEach(f => { if (!order.includes(f.id) && !order.includes(String(f.id))) reordered.push(f); });
+  db.folders = reordered;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── COMMENTAIRES ─────────────────────────────────────────────────────────────
 // GET comments for a file
 app.get('/api/comments/:fileId', requireAuth, (req, res) => {
@@ -1660,6 +1748,50 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
+app.patch('/api/folders/:folderId/files/:fileId/rename', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+app.patch('/api/folders/:parentId/subfolders/:subId/files/:fileId/rename', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+// ── RÉORGANISER LES DOSSIERS ──────────────────────────────────────────────────
+app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
+  const { order } = req.body; // array of folder ids in new order
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'Order invalide' });
+  const db = loadDB();
+  const reordered = [];
+  order.forEach(id => {
+    const f = db.folders.find(f => f.id === parseInt(id));
+    if (f) reordered.push(f);
+  });
+  // Add any folders not in the order array
+  db.folders.forEach(f => { if (!order.includes(f.id) && !order.includes(String(f.id))) reordered.push(f); });
+  db.folders = reordered;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── COMMENTAIRES ─────────────────────────────────────────────────────────────
 // GET comments for a file
 app.get('/api/comments/:fileId', requireAuth, (req, res) => {
@@ -1824,6 +1956,50 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
+app.patch('/api/folders/:folderId/files/:fileId/rename', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+app.patch('/api/folders/:parentId/subfolders/:subId/files/:fileId/rename', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+// ── RÉORGANISER LES DOSSIERS ──────────────────────────────────────────────────
+app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
+  const { order } = req.body; // array of folder ids in new order
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'Order invalide' });
+  const db = loadDB();
+  const reordered = [];
+  order.forEach(id => {
+    const f = db.folders.find(f => f.id === parseInt(id));
+    if (f) reordered.push(f);
+  });
+  // Add any folders not in the order array
+  db.folders.forEach(f => { if (!order.includes(f.id) && !order.includes(String(f.id))) reordered.push(f); });
+  db.folders = reordered;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── COMMENTAIRES ─────────────────────────────────────────────────────────────
 // GET comments for a file
 app.get('/api/comments/:fileId', requireAuth, (req, res) => {
