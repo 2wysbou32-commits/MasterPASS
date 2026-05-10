@@ -3523,9 +3523,13 @@ function isRead(fileId, folderId, subId) {
 // ── TRI DES FICHIERS ──────────────────────────────────────────────────────────
 let _currentSort = 'date-desc';
 let _currentFiles = [];
+let _currentSubId = '';
+let _currentParentId = '';
 
-function renderFilesSorted(files) {
+function renderFilesSorted(files, subId, parentId) {
   _currentFiles = files;
+  _currentSubId = subId || '';
+  _currentParentId = parentId || '';
   applySort();
 }
 function applySort() {
@@ -3536,7 +3540,8 @@ function applySort() {
   else if (_currentSort === 'size-desc') sorted.sort((a,b) => (b.size||0) - (a.size||0));
   else if (_currentSort === 'date-desc') sorted.sort((a,b) => new Date(b.addedAt) - new Date(a.addedAt));
   else if (_currentSort === 'date-asc') sorted.sort((a,b) => new Date(a.addedAt) - new Date(b.addedAt));
-  renderFiles(sorted);
+  if (_currentSubId) renderSubfolderFiles(sorted, _currentSubId, _currentParentId);
+  else renderFiles(sorted);
 }
 function setSort(val) {
   _currentSort = val;
@@ -4270,7 +4275,7 @@ async function loadSubfolderFiles(subId, parentId) {
   if(container) container.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-state-title">Chargement...</div></div>';
   try {
     const files = await api('GET', `/folders/${parentId}/subfolders/${subId}/files`);
-    renderSubfolderFiles(files, subId, parentId);
+    renderFilesSorted(files, subId, parentId);
   } catch(e) {
     if(container) container.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-state-title">Erreur</div></div>';
   }
@@ -4278,6 +4283,14 @@ async function loadSubfolderFiles(subId, parentId) {
 
 function renderSubfolderFiles(files, subId, parentId) {
   const isAdmin = currentUser?.role === 'admin';
+  // Show sort bar
+  const sortBar = document.getElementById('sort-bar');
+  if (sortBar) sortBar.style.display = files.length > 0 ? 'flex' : 'none';
+  // Update progress bar
+  updateFolderProgress(files);
+  if (files.length && currentUser?.role !== 'admin') {
+    setTimeout(() => updateDiscussionBadges(files.map(f => String(f.id))), 300);
+  }
   const container = document.getElementById('files-list-body');
   document.getElementById('files-count-sub').textContent = `${files.length} fichier${files.length!==1?'s':''}`;
   document.getElementById('files-count-tag').textContent = files.length;
