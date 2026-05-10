@@ -1193,6 +1193,9 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
     message: message?.trim() || '',
     audio: audio || null,
     audioDuration: audioDuration || null,
+    replyToId: req.body.replyToId || null,
+    replyToName: req.body.replyToName || null,
+    replyToPreview: req.body.replyToPreview || null,
     replyTo: replyTo || null,
     createdAt: new Date().toISOString(),
   };
