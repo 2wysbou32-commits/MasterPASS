@@ -3131,8 +3131,9 @@ function ctxEdit() {
   if (!_ctxComment) return;
   const newMsg = prompt('Modifier le message :', _ctxComment.message);
   if (!newMsg || newMsg.trim() === _ctxComment.message) return;
-  api('PATCH', '/comments/' + _discussionFileId + '/' + _ctxComment.id, { message: newMsg.trim() })
-    .then(() => loadDiscussion(false))
+  // Edit reply in thread
+  api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id, { message: newMsg.trim() })
+    .then(() => loadThreadReplies(true))
     .catch(e => toast(e.message, 'error'));
 }
 
@@ -3148,11 +3149,10 @@ function ctxDelete() {
 async function reactMsg(emoji, commentId) {
   closeMsgContextMenu();
   var cid = commentId || (_ctxComment && _ctxComment.id);
-  if (!cid || !_discussionFileId) return;
-  // If called from context menu, update _ctxComment so it uses right id
+  if (!cid || !_discussionFileId || !_currentThreadId) return;
   try {
-    await api('POST', '/comments/' + _discussionFileId + '/' + cid + '/react', { emoji });
-    await loadDiscussion(true);
+    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid + '/react', { emoji });
+    await loadThreadReplies(true);
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -3593,6 +3593,18 @@ async function loadThreadReplies(silent) {
         (isMine?'':'<div style="width:32px;height:32px;border-radius:50%;background:'+avatarBg+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">'+avatarHtml+'</div>')+
         '<div><div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+'">'+msgHtml+'</div>'+
         (isMine?'<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">'+date+'</div>':'')+
+        // Reactions
+        (function(){
+          if (!r.reactions || !Object.keys(r.reactions).length) return '';
+          var rhtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+          Object.entries(r.reactions).forEach(function(e) {
+            var em=e[0], users=e[1];
+            if (!users.length) return;
+            var iReacted = users.indexOf(currentUser?currentUser.id:-1) !== -1;
+            rhtml += '<button onclick="reactMsg('+JSON.stringify(em)+','+r.id+')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid '+(iReacted?'var(--teal)':'var(--border)')+';background:'+(iReacted?'rgba(0,151,167,0.1)':'var(--surface,white)')+';cursor:pointer;font-size:12px">'+em+' '+users.length+'</button>';
+          });
+          return rhtml + '</div>';
+        })()+
         (canDelete?'<div style="margin-top:4px;'+(isMine?'text-align:right':'')+'"><button onclick="deleteReply('+r.id+')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑 Supprimer</button></div>':'')+
         '</div></div></div>';
       return row;
