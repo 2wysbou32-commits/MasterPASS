@@ -537,6 +537,10 @@ app.get('/api/folders', requireAuth, (req, res) => {
     id: f.id, name: f.name, createdAt: f.createdAt,
     fileCount: (f.files||[]).length,
     totalSize: (f.files||[]).reduce((s,fi) => s+fi.size, 0),
+    subfolders: (f.subfolders||[]).map(s => ({
+      id: s.id, name: s.name,
+      fileCount: (s.files||[]).length
+    }))
   })));
 });
 app.post('/api/folders', requireAdmin, (req, res) => {
@@ -1162,6 +1166,32 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── DÉPLACER UN DOSSIER ──────────────────────────────────────────────────────
+app.post('/api/folders/:folderId/move', requireAdmin, (req, res) => {
+  const { toFolderId } = req.body;
+  const db = loadDB();
+  const folderId = parseInt(req.params.folderId);
+  const targetId = parseInt(toFolderId);
+  
+  if (folderId === targetId) return res.status(400).json({ error: 'Impossible de déplacer un dossier dans lui-même' });
+  
+  // Find the folder to move
+  const folderIdx = db.folders.findIndex(f => f.id === folderId);
+  if (folderIdx === -1) return res.status(404).json({ error: 'Dossier introuvable' });
+  const folder = db.folders[folderIdx];
+  
+  // Find the target folder
+  const targetFolder = db.folders.find(f => f.id === targetId);
+  if (!targetFolder) return res.status(404).json({ error: 'Dossier cible introuvable' });
+  
+  // Move: remove from root folders, add as subfolder of target
+  db.folders.splice(folderIdx, 1);
+  if (!targetFolder.subfolders) targetFolder.subfolders = [];
+  targetFolder.subfolders.push(folder);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── DÉPLACER UN FICHIER ──────────────────────────────────────────────────────
 app.post('/api/files/:fileId/move', requireAdmin, (req, res) => {
   const { fromFolderId, fromSubId, toFolderId, toSubId } = req.body;
@@ -1745,6 +1775,32 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── DÉPLACER UN DOSSIER ──────────────────────────────────────────────────────
+app.post('/api/folders/:folderId/move', requireAdmin, (req, res) => {
+  const { toFolderId } = req.body;
+  const db = loadDB();
+  const folderId = parseInt(req.params.folderId);
+  const targetId = parseInt(toFolderId);
+  
+  if (folderId === targetId) return res.status(400).json({ error: 'Impossible de déplacer un dossier dans lui-même' });
+  
+  // Find the folder to move
+  const folderIdx = db.folders.findIndex(f => f.id === folderId);
+  if (folderIdx === -1) return res.status(404).json({ error: 'Dossier introuvable' });
+  const folder = db.folders[folderIdx];
+  
+  // Find the target folder
+  const targetFolder = db.folders.find(f => f.id === targetId);
+  if (!targetFolder) return res.status(404).json({ error: 'Dossier cible introuvable' });
+  
+  // Move: remove from root folders, add as subfolder of target
+  db.folders.splice(folderIdx, 1);
+  if (!targetFolder.subfolders) targetFolder.subfolders = [];
+  targetFolder.subfolders.push(folder);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── DÉPLACER UN FICHIER ──────────────────────────────────────────────────────
 app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
   const { order } = req.body; // array of folder ids in new order
@@ -2109,6 +2165,32 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── DÉPLACER UN DOSSIER ──────────────────────────────────────────────────────
+app.post('/api/folders/:folderId/move', requireAdmin, (req, res) => {
+  const { toFolderId } = req.body;
+  const db = loadDB();
+  const folderId = parseInt(req.params.folderId);
+  const targetId = parseInt(toFolderId);
+  
+  if (folderId === targetId) return res.status(400).json({ error: 'Impossible de déplacer un dossier dans lui-même' });
+  
+  // Find the folder to move
+  const folderIdx = db.folders.findIndex(f => f.id === folderId);
+  if (folderIdx === -1) return res.status(404).json({ error: 'Dossier introuvable' });
+  const folder = db.folders[folderIdx];
+  
+  // Find the target folder
+  const targetFolder = db.folders.find(f => f.id === targetId);
+  if (!targetFolder) return res.status(404).json({ error: 'Dossier cible introuvable' });
+  
+  // Move: remove from root folders, add as subfolder of target
+  db.folders.splice(folderIdx, 1);
+  if (!targetFolder.subfolders) targetFolder.subfolders = [];
+  targetFolder.subfolders.push(folder);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── DÉPLACER UN FICHIER ──────────────────────────────────────────────────────
 app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
   const { order } = req.body; // array of folder ids in new order
@@ -2456,6 +2538,32 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── DÉPLACER UN DOSSIER ──────────────────────────────────────────────────────
+app.post('/api/folders/:folderId/move', requireAdmin, (req, res) => {
+  const { toFolderId } = req.body;
+  const db = loadDB();
+  const folderId = parseInt(req.params.folderId);
+  const targetId = parseInt(toFolderId);
+  
+  if (folderId === targetId) return res.status(400).json({ error: 'Impossible de déplacer un dossier dans lui-même' });
+  
+  // Find the folder to move
+  const folderIdx = db.folders.findIndex(f => f.id === folderId);
+  if (folderIdx === -1) return res.status(404).json({ error: 'Dossier introuvable' });
+  const folder = db.folders[folderIdx];
+  
+  // Find the target folder
+  const targetFolder = db.folders.find(f => f.id === targetId);
+  if (!targetFolder) return res.status(404).json({ error: 'Dossier cible introuvable' });
+  
+  // Move: remove from root folders, add as subfolder of target
+  db.folders.splice(folderIdx, 1);
+  if (!targetFolder.subfolders) targetFolder.subfolders = [];
+  targetFolder.subfolders.push(folder);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── DÉPLACER UN FICHIER ──────────────────────────────────────────────────────
 app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
   const { order } = req.body; // array of folder ids in new order
