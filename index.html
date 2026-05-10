@@ -2411,24 +2411,14 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
         </svg>
       </button>
-      <div style="position:relative">
-        <button class="file-menu-btn" onclick="toggleFileMenu(event,'menu-${f.id}')" title="Actions">⋮</button>
+      <div style="position:relative;flex-shrink:0">
+        <button class="file-menu-btn" data-menu="menu-${f.id}" onclick="toggleFileMenu(event,this)" title="Actions">⋮</button>
         <div id="menu-${f.id}" class="file-action-menu">
-          ${previewBtn ? `<button class="file-action-item" onclick="closeAllFileMenus();${previewFn ? previewFn.replace(/"/g,'&quot;') : ''}">
-            <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;flex-shrink:0"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-            Visualiser</button>` : ''}
-          ${f.downloadable !== false && downloadUrl ? `<button class="file-action-item" onclick="closeAllFileMenus();window.open('${downloadUrl}','_blank')">
-            <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;flex-shrink:0"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-            Télécharger</button>` : ''}
-          ${isAdmin ? `<button class="file-action-item" onclick="closeAllFileMenus();openFileModal(event,${f.id},'${f.name.replace(/'/g,'').replace(/"/g,'')}','${folderId}','${subId||''}')">
-            <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;flex-shrink:0"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-            Renommer / Déplacer</button>` : ''}
-          ${isAdmin ? `<button class="file-action-item" onclick="closeAllFileMenus();${toggleFn}">
-            <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;flex-shrink:0"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-            ${dlAllowed ? '🔒 Bloquer téléchargement' : '✅ Autoriser téléchargement'}</button>` : ''}
-          ${isAdmin ? `<button class="file-action-item danger" onclick="closeAllFileMenus();${deleteFn}">
-            <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;flex-shrink:0"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-            Supprimer</button>` : ''}
+          ${canPreview ? `<div class="file-action-item" onclick="closeAllFileMenus();${previewFn}">👁 Visualiser</div>` : ''}
+          ${dlAllowed && downloadUrl ? `<div class="file-action-item" onclick="closeAllFileMenus();window.location.href='${downloadUrl}'">⬇️ Télécharger</div>` : ''}
+          ${isAdmin ? `<div class="file-action-item" onclick="closeAllFileMenus();openFileModal(event,${f.id},'${f.name.replace(/'/g,'\'').replace(/"/g,'')}','${folderId}','${subId||''}')">✏️ Renommer / Déplacer</div>` : ''}
+          ${isAdmin ? `<div class="file-action-item" onclick="closeAllFileMenus();${toggleFn}">${dlAllowed ? '🔒 Bloquer DL' : '✅ Autoriser DL'}</div>` : ''}
+          ${isAdmin ? `<div class="file-action-item danger" onclick="closeAllFileMenus();${deleteFn}">🗑 Supprimer</div>` : ''}
         </div>
       </div>
     </div>
@@ -3350,9 +3340,10 @@ async function doMoveFile(toFolderId, toSubId) {
 
 // Remove old renameFile duplicate
 // ── MENU ACTIONS FICHIER ──────────────────────────────────────────────────────
-function toggleFileMenu(e, menuId) {
+function toggleFileMenu(e, btn) {
   e.stopPropagation();
   closeAllFileMenus();
+  const menuId = btn.getAttribute('data-menu');
   const menu = document.getElementById(menuId);
   if (menu) {
     menu.classList.add('open');
@@ -3955,9 +3946,10 @@ async function doMoveFile(toFolderId, toSubId) {
 
 // Remove old renameFile duplicate
 // ── MENU ACTIONS FICHIER ──────────────────────────────────────────────────────
-function toggleFileMenu(e, menuId) {
+function toggleFileMenu(e, btn) {
   e.stopPropagation();
   closeAllFileMenus();
+  const menuId = btn.getAttribute('data-menu');
   const menu = document.getElementById(menuId);
   if (menu) {
     menu.classList.add('open');
