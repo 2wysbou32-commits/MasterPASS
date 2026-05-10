@@ -689,6 +689,7 @@ input[type="file"]{display:none;}
 .announcement-delete { position:absolute; top:12px; right:12px; width:26px; height:26px; border-radius:8px; border:none; background:rgba(229,115,115,0.1); color:var(--danger); cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .announcement-new-badge { display:inline-block; background:#ef5350; color:white; border-radius:10px; padding:1px 7px; font-size:10px; font-weight:700; margin-left:8px; vertical-align:middle; }
 
+.disc-search-item:hover { background: var(--bg); }
 /* ── LECTURE & PROGRESSION ──────────────────────────────────────────────────── */
 .progress-wrap {
   display: flex; align-items: center; gap: 8px;
@@ -1465,6 +1466,18 @@ input[type="file"]{display:none;}
 
   <!-- Formulaire -->
   <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 2px 12px var(--shadow2)">
+    <!-- Barre de recherche dans la discussion -->
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg)">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--surface,white);border:1.5px solid var(--border);border-radius:10px;padding:6px 12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--text3);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="discussion-search" placeholder="Chercher si cette question a déjà été posée..." 
+          style="border:none;background:transparent;font-size:13px;color:var(--text);outline:none;width:100%;font-family:'Inter',sans-serif"
+          oninput="searchDiscussion(this.value)">
+        <button id="discussion-search-clear" onclick="clearDiscussionSearch()" style="display:none;background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;line-height:1">×</button>
+      </div>
+      <div id="discussion-search-results" style="display:none;margin-top:8px;max-height:180px;overflow-y:auto;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white)"></div>
+    </div>
+
     <!-- Reply bar -->
     <div id="reply-bar" style="display:none;align-items:center;gap:8px;padding:8px 14px;background:rgba(0,151,167,0.06);border-bottom:1px solid var(--border)">
       <div style="flex:1;min-width:0">
@@ -3199,6 +3212,67 @@ let _discussionFileName = null;
 
 let _discussionRefreshTimer = null;
 
+// ── RECHERCHE DANS LA DISCUSSION ─────────────────────────────────────────────
+let _discussionAllComments = [];
+
+function searchDiscussion(query) {
+  const resultsEl = document.getElementById('discussion-search-results');
+  const clearBtn = document.getElementById('discussion-search-clear');
+  if (!query.trim()) {
+    resultsEl.style.display = 'none';
+    if (clearBtn) clearBtn.style.display = 'none';
+    return;
+  }
+  if (clearBtn) clearBtn.style.display = 'block';
+  const q = query.toLowerCase();
+  const matches = _discussionAllComments.filter(c =>
+    c.message && c.message.toLowerCase().includes(q)
+  );
+  if (!matches.length) {
+    resultsEl.style.display = 'block';
+    resultsEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:13px">Aucune question similaire — tu peux la poser !</div>';
+    return;
+  }
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '<div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border)">Questions similaires (' + matches.length + ')</div>' +
+    matches.map(function(c) {
+      var date = new Date(c.createdAt).toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
+      var isAdmin = c.userRole === 'admin';
+      return '<div onclick="handleSearchResult(' + c.id + ')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border)" class="disc-search-item">' +
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">' +
+          '<span style="font-size:11px;font-weight:700;color:' + (isAdmin ? 'var(--teal-dark)' : 'var(--text2)') + '">' + c.userName + (isAdmin ? ' 👨‍🏫' : '') + '</span>' +
+          '<span style="font-size:10px;color:var(--text3)">' + date + '</span>' +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--text);line-height:1.4">' + highlightMatch(c.message, query) + '</div>' +
+      '</div>';
+    }).join('');
+}
+
+function highlightMatch(text, query) {
+  if (!text) return '';
+  var safe = text.substring(0, 120);
+  var idx = safe.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return safe;
+  return safe.substring(0, idx) +
+    '<mark style="background:rgba(0,151,167,0.15);color:var(--teal-dark);border-radius:3px">' +
+    safe.substring(idx, idx + query.length) + '</mark>' +
+    safe.substring(idx + query.length);
+}
+
+function handleSearchResult(commentId) {
+  scrollToComment(commentId);
+  clearDiscussionSearch();
+}
+
+function clearDiscussionSearch() {
+  const input = document.getElementById('discussion-search');
+  const results = document.getElementById('discussion-search-results');
+  const clear = document.getElementById('discussion-search-clear');
+  if (input) input.value = '';
+  if (results) results.style.display = 'none';
+  if (clear) clear.style.display = 'none';
+}
+
 function startDiscussionRefresh() {
   stopDiscussionRefresh();
   _discussionRefreshTimer = setInterval(async function() {
@@ -3224,6 +3298,7 @@ async function openDiscussion(fileId, fileName) {
   panel.style.display = 'block';
 
   document.getElementById('discussion-filename').textContent = String.fromCharCode(0x1F4AC) + ' ' + fileName;
+  clearDiscussionSearch();
   saveLastSeen(fileId);
   const badge = document.getElementById('disc-badge-' + fileId);
   if (badge) badge.style.display = 'none';
@@ -3345,6 +3420,8 @@ async function loadDiscussion(silent) {
       return row;
     }).join('');
 
+    // Store all comments for search
+    _discussionAllComments = comments;
     // Store comment data for context menu
     _commentDataMap = {};
     comments.forEach(function(c) {
