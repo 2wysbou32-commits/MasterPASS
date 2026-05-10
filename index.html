@@ -1427,7 +1427,7 @@ input[type="file"]{display:none;}
       </div>
 
 <!-- MENU CONTEXTUEL MESSAGE -->
-<div id="msg-context-menu" style="display:none;position:fixed;z-index:9999;background:var(--surface,white);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1px solid var(--border);overflow:hidden;min-width:200px">
+<div id="msg-context-menu" onclick="event.stopPropagation()" style="display:none;position:fixed;z-index:9999;background:var(--surface,white);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1px solid var(--border);overflow:hidden;min-width:200px">
   <div style="display:flex;gap:4px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg)">
     <button onclick="reactMsg('👍')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">👍</button>
     <button onclick="reactMsg('❤️')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">❤️</button>
@@ -2993,7 +2993,7 @@ function showMsgContextMenu(e, commentId) {
   setTimeout(function() {
     _menuJustOpened = false;
     document.addEventListener('click', closeMsgContextMenu, { once: true });
-  }, 300);
+  }, 600);
 }
 
 function closeMsgContextMenu() {
@@ -3197,6 +3197,22 @@ async function updateDiscussionBadges(fileIds) {
 }
 let _discussionFileName = null;
 
+let _discussionRefreshTimer = null;
+
+function startDiscussionRefresh() {
+  stopDiscussionRefresh();
+  _discussionRefreshTimer = setInterval(async function() {
+    if (_discussionFileId) await loadDiscussion(true);
+  }, 5000);
+}
+
+function stopDiscussionRefresh() {
+  if (_discussionRefreshTimer) {
+    clearInterval(_discussionRefreshTimer);
+    _discussionRefreshTimer = null;
+  }
+}
+
 async function openDiscussion(fileId, fileName) {
   _discussionFileId = fileId;
   _discussionFileName = fileName;
@@ -3221,7 +3237,7 @@ function closeDiscussion() {
   cancelReply();
   document.getElementById('discussion-panel').style.display = 'none';
   const viewFiles = document.getElementById('view-files');
-  if (viewFiles) viewFiles.style.display = '';
+  if (viewFiles) viewFiles.style.display = 'block';
   _discussionFileId = null;
 }
 
