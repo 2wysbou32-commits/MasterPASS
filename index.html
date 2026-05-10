@@ -1444,6 +1444,14 @@ input[type="file"]{display:none;}
 
   <!-- Formulaire -->
   <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 2px 12px var(--shadow2)">
+    <!-- Reply bar -->
+    <div id="reply-bar" style="display:none;align-items:center;gap:8px;padding:8px 14px;background:rgba(0,151,167,0.06);border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:700;color:var(--teal-dark)" id="reply-name"></div>
+        <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="reply-preview"></div>
+      </div>
+      <button onclick="cancelReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1">×</button>
+    </div>
     <textarea id="discussion-input" placeholder="Pose ta question ou laisse un commentaire..."
       style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:80px;outline:none;box-sizing:border-box"
       oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
@@ -2987,9 +2995,12 @@ async function openDiscussion(fileId, fileName) {
   if (badge) badge.style.display = 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
   await loadDiscussion();
+  startDiscussionRefresh();
 }
 
 function closeDiscussion() {
+  stopDiscussionRefresh();
+  cancelReply();
   document.getElementById('discussion-panel').style.display = 'none';
   const viewFiles = document.getElementById('view-files');
   if (viewFiles) viewFiles.style.display = '';
@@ -2997,98 +3008,45 @@ function closeDiscussion() {
 }
 
 
-let _replyTo = null; // { id, userName, message }
-
-function setReply(commentId, userName, message) {
-  _replyTo = { id: commentId, userName, message };
-  const preview = document.getElementById('reply-preview');
-  const author = document.getElementById('reply-author');
-  const text = document.getElementById('reply-text');
-  if (preview) preview.style.display = 'block';
-  if (author) author.textContent = 'Réponse à ' + userName;
-  if (text) text.textContent = message.substring(0, 80) + (message.length > 80 ? '...' : '');
-  document.getElementById('discussion-input').focus();
-}
-
-function cancelReply() {
-  _replyTo = null;
-  const preview = document.getElementById('reply-preview');
-  if (preview) preview.style.display = 'none';
-}
-
-// ── VOCAUX ───────────────────────────────────────────────────────────────────
-let _mediaRecorder = null;
-let _audioChunks = [];
-let _recordTimer = null;
-let _recordSeconds = 0;
-
-async function toggleRecording() {
-  if (_mediaRecorder && _mediaRecorder.state === 'recording') {
-    _mediaRecorder.stop();
-    return;
-  }
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    _audioChunks = [];
-    _mediaRecorder = new MediaRecorder(stream);
-    _mediaRecorder.ondataavailable = function(e) { _audioChunks.push(e.data); };
-    _mediaRecorder.onstop = function() {
-      stream.getTracks().forEach(function(t) { t.stop(); });
-      var blob = new Blob(_audioChunks, { type: 'audio/webm' });
-      clearInterval(_recordTimer);
-      document.getElementById('record-timer').style.display = 'none';
-      document.getElementById('record-label').textContent = '🎤 Vocal';
-      document.getElementById('record-btn').style.borderColor = 'var(--border)';
-      document.getElementById('record-btn').style.color = 'var(--text2)';
-      var reader = new FileReader();
-      reader.onload = async function() {
-        try {
-          await api('POST', '/comments/' + _discussionFileId, {
-            message: '', audio: reader.result, audioDuration: _recordSeconds
-          });
-          await loadDiscussion();
-        } catch(e) { toast(e.message, 'error'); }
-      };
-      reader.readAsDataURL(blob);
-    };
-    _mediaRecorder.start();
-    _recordSeconds = 0;
-    document.getElementById('record-timer').style.display = 'inline';
-    document.getElementById('record-label').textContent = '⏹ Stop';
-    document.getElementById('record-btn').style.borderColor = '#ef5350';
-    document.getElementById('record-btn').style.color = '#ef5350';
-    _recordTimer = setInterval(function() {
-      _recordSeconds++;
-      var m = Math.floor(_recordSeconds/60);
-      var s = _recordSeconds % 60;
-      document.getElementById('record-timer').textContent = '⏺ ' + m + ':' + (s<10?'0':'') + s;
-      if (_recordSeconds >= 120) _mediaRecorder.stop();
-    }, 1000);
-  } catch(e) {
-    toast('Micro non disponible: ' + e.message, 'error');
-  }
-}
-
-async function loadDiscussion() {
+async function loadDiscussion(silent) {
   const list = document.getElementById('discussion-messages');
-  list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
+  if (!silent) list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
+  const wasAtBottom = list.scrollHeight - list.clientHeight - list.scrollTop < 80;
   try {
     const comments = await api('GET', '/comments/' + _discussionFileId);
     document.getElementById('discussion-count').textContent = comments.length + ' message' + (comments.length > 1 ? 's' : '');
+
     if (!comments.length) {
-      list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">💬</div><div>Aucun message pour l&#39;instant.</div><div style="font-size:12px;margin-top:4px">Sois le premier à poser une question !</div></div>';
+      list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">💬</div><div>Aucun message pour l&#39;instant.</div></div>';
       return;
     }
+
+    // iMessage-style bubbles
     list.innerHTML = comments.map(function(c) {
       var isAdmin = c.userRole === 'admin';
       var isOwn = c.userId === currentUser?.id;
-      var canDelete = (currentUser?.role === 'admin') || isOwn;
+      var canDelete = currentUser?.role === 'admin' || isOwn;
+      var isMine = isOwn;
       var date = new Date(c.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       var initials = c.userName.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
-      var avatarHtml = c.userAvatar
-        ? '<img src="' + c.userAvatar + '" style="width:100%;height:100%;object-fit:cover">'
-        : initials;
+      var avatarHtml = c.userAvatar ? '<img src="' + c.userAvatar + '" style="width:100%;height:100%;object-fit:cover">' : initials;
       var avatarBg = isAdmin ? 'linear-gradient(135deg,#004D61,#003340)' : 'linear-gradient(135deg,var(--teal),var(--teal-dark))';
+
+      // Bubble colors: mine = teal, others = grey/light
+      var bubbleBg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : (isAdmin ? 'rgba(0,151,167,0.08)' : 'var(--bg)');
+      var bubbleColor = isMine ? 'white' : 'var(--text)';
+      var bubbleBorder = isMine ? 'none' : '1px solid var(--border)';
+
+      // Reply-to block
+      var replyHtml = '';
+      if (c.replyToId) {
+        replyHtml = '<div style="background:rgba(0,0,0,0.08);border-radius:8px;padding:6px 10px;margin-bottom:6px;border-left:3px solid ' + (isMine ? 'rgba(255,255,255,0.5)' : 'var(--teal)') + ';cursor:pointer" onclick="scrollToComment(' + c.replyToId + ')">' +
+          '<div style="font-size:11px;font-weight:700;color:' + (isMine ? 'rgba(255,255,255,0.8)' : 'var(--teal-dark)') + '">' + (c.replyToName || '') + '</div>' +
+          '<div style="font-size:11px;color:' + (isMine ? 'rgba(255,255,255,0.7)' : 'var(--text3)') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (c.replyToPreview || '') + '</div>' +
+        '</div>';
+      }
+
+      // Audio player
       var audioId = 'audio-' + c.id;
       var btnId = 'abtn-' + c.id;
       var barId = 'abar-' + c.id;
@@ -3097,30 +3055,63 @@ async function loadDiscussion() {
       var durStr = Math.floor(durSec/60) + ':' + (durSec%60<10?'0':'') + durSec%60;
       var msgHtml = c.audio
         ? ('<audio id="' + audioId + '" src="' + c.audio + '" style="display:none"></audio>' +
-           '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(0,151,167,0.08);border-radius:24px;width:240px;margin-top:4px">' +
-             '<button id="' + btnId + '" onclick="(function(){var a=document.getElementById(\''+audioId+'\');var b=this;if(a.paused){a.play();b.innerHTML=\'⏸\';}else{a.pause();b.innerHTML=\'▶\';}}).call(this)" style="width:32px;height:32px;border-radius:50%;background:var(--teal-dark);color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>' +
+           '<div style="display:flex;align-items:center;gap:10px;padding:4px 0;min-width:180px">' +
+             '<button id="' + btnId + '" style="width:32px;height:32px;border-radius:50%;background:' + (isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)') + ';color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>' +
              '<div style="flex:1">' +
-               '<div style="height:4px;background:rgba(0,151,167,0.2);border-radius:99px;overflow:hidden;margin-bottom:4px"><div id="' + barId + '" style="height:100%;width:0%;background:var(--teal-dark);border-radius:99px;transition:width 0.1s linear"></div></div>' +
-               '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3)"><span id="' + timeId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
+               '<div style="height:3px;background:' + (isMine?'rgba(255,255,255,0.3)':'rgba(0,151,167,0.2)') + ';border-radius:99px;overflow:hidden;margin-bottom:4px"><div id="' + barId + '" style="height:100%;width:0%;background:' + (isMine?'white':'var(--teal-dark)') + ';border-radius:99px"></div></div>' +
+               '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + timeId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
              '</div>' +
            '</div>')
         : c.message.split('\n').join('<br>');
-      return '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px">' +
-        '<div style="width:36px;height:36px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;overflow:hidden">' + avatarHtml + '</div>' +
-        '<div style="flex:1;min-width:0">' +
-          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
-            '<span style="font-weight:700;font-size:13px;color:var(--text)">' + c.userName + '</span>' +
-            (isAdmin ? '<span style="background:#E8F5E9;color:#2E7D32;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700">Formateur</span>' : '') +
-            '<span style="font-size:11px;color:var(--text3)">' + date + '</span>' +
-          '</div>' +
-          '<div style="background:' + (isAdmin ? 'rgba(0,151,167,0.06)' : 'var(--bg)') + ';border-radius:12px;padding:10px 14px;font-size:13.5px;color:var(--text);line-height:1.6;border:1px solid var(--border)">' + msgHtml + '</div>' +
-        '</div>' +
-        (canDelete ? '<button onclick="deleteComment(' + c.id + ')" style="width:26px;height:26px;border-radius:8px;border:none;background:rgba(229,115,115,0.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:4px"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>' : '<div style="width:26px"></div>') +
+
+      // Layout: mine = right, others = left
+      var row = '<div id="msg-' + c.id + '" style="display:flex;flex-direction:column;align-items:' + (isMine?'flex-end':'flex-start') + ';margin-bottom:12px">';
+
+      // Name + time (not for own messages)
+      if (!isMine) {
+        row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:42px">' +
+          '<span style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + '">' + c.userName + (isAdmin?' 👨‍🏫':'') + '</span>' +
+          '<span style="font-size:10px;color:var(--text3)">' + date + '</span>' +
+        '</div>';
+      }
+
+      // Message row
+      row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:75%;' + (isMine?'flex-direction:row-reverse':'') + '">';
+
+      // Avatar (not for own)
+      if (!isMine) {
+        row += '<div style="width:32px;height:32px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">' + avatarHtml + '</div>';
+      }
+
+      // Bubble
+      row += '<div style="position:relative">';
+      row += '<div style="background:' + bubbleBg + ';color:' + bubbleColor + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5;border:' + bubbleBorder + ';max-width:100%">' +
+        replyHtml + msgHtml +
       '</div>';
+
+      // Time for own messages
+      if (isMine) {
+        row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">' + date + '</div>';
+      }
+
+      // Actions: reply (admin only) + delete
+      var actions = '';
+      if (isAdmin || currentUser?.role === 'admin') {
+        actions += '<button onclick="setReply(' + c.id + ',encodeURIComponent(\'' + c.userName + '\'),encodeURIComponent(\'' + (c.message||'Vocal').substring(0,50) + '\'))" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px" title="R\u00e9pondre">\u21a9 R\u00e9pondre</button>\n';
+      }
+      if (canDelete) {
+        actions += '<button onclick="deleteComment(' + c.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;padding:2px 6px" title="Supprimer">🗑</button>';
+      }
+      if (actions) {
+        row += '<div style="margin-top:3px;' + (isMine?'text-align:right':'') + '">' + actions + '</div>';
+      }
+
+      row += '</div></div></div>';
+      return row;
     }).join('');
-    list.scrollTop = list.scrollHeight;
+
     // Init audio players
-    comments.filter(c => c.audio).forEach(function(c) {
+    comments.filter(function(c){return c.audio;}).forEach(function(c) {
       var audio = document.getElementById('audio-' + c.id);
       var btn = document.getElementById('abtn-' + c.id);
       var bar = document.getElementById('abar-' + c.id);
@@ -3139,23 +3130,40 @@ async function loadDiscussion() {
       };
       audio.onended = function() { btn.innerHTML = '▶'; bar.style.width = '0%'; timeEl.textContent = '0:00'; };
     });
+
+    if (!silent || wasAtBottom) list.scrollTop = list.scrollHeight;
   } catch(e) {
     list.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
   }
 }
 
+function scrollToComment(commentId) {
+  var el = document.getElementById('msg-' + commentId);
+  if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.transition = 'opacity 0.3s'; el.style.opacity = '0.4'; setTimeout(function(){el.style.opacity='1';}, 600); }
+}
+
 async function postComment() {
   const input = document.getElementById('discussion-input');
   const message = input.value.trim();
-  if (!message || !_discussionFileId) return;
+  if (!message && !_discussionFileId) return;
+  const btn = document.querySelector('#discussion-panel button[onclick="postComment()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
-    await api('POST', '/comments/' + _discussionFileId, { message, replyTo: _replyTo });
+    const body = { message };
+    if (_replyTo) {
+      body.replyToId = _replyTo.id;
+      body.replyToName = _replyTo.userName;
+      body.replyToPreview = _replyTo.msgPreview;
+    }
+    await api('POST', '/comments/' + _discussionFileId, body);
     input.value = '';
     input.style.height = 'auto';
     cancelReply();
-    await loadDiscussion();
+    await loadDiscussion(false);
   } catch(e) { toast(e.message, 'error'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = 'Envoyer'; } }
 }
+
 
 async function deleteComment(commentId) {
   if (!confirm('Supprimer ce message ?')) return;
