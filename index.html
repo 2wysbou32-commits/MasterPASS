@@ -2969,39 +2969,61 @@ function updateSidebarAvatar() {
 let _ctxComment = null; // { id, userId, userName, message, isOwn, canDelete }
 let _longPressTimer = null;
 
-function showMsgContextMenu(e, comment) {
-  e.preventDefault();
+// Map to store comment data by id
+var _commentDataMap = {};
+
+function showMsgContextMenu(e, commentId) {
+  var comment = _commentDataMap[commentId];
+  if (!comment) return;
   _ctxComment = comment;
   const menu = document.getElementById('msg-context-menu');
-  // Show/hide edit & delete based on permissions
   const canEdit = comment.isOwn;
   const canDelete = comment.canDelete;
   document.getElementById('ctx-edit').style.display = canEdit ? 'flex' : 'none';
   document.getElementById('ctx-delete').style.display = canDelete ? 'flex' : 'none';
-  // Position menu
-  const x = Math.min(e.clientX, window.innerWidth - 220);
-  const y = Math.min(e.clientY, window.innerHeight - 200);
+  var clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : window.innerWidth/2);
+  var clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : window.innerHeight/2);
+  var x = Math.min(clientX, window.innerWidth - 230);
+  var y = Math.min(clientY, window.innerHeight - 220);
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
   menu.style.display = 'block';
-  // Close on outside click
-  setTimeout(() => document.addEventListener('click', closeMsgContextMenu, { once: true }), 10);
+  setTimeout(function() { document.addEventListener('click', closeMsgContextMenu, { once: true }); }, 50);
 }
 
 function closeMsgContextMenu() {
   document.getElementById('msg-context-menu').style.display = 'none';
 }
 
-function msgLongPressStart(e, comment) {
-  _longPressTimer = setTimeout(() => {
-    // Haptic feedback on mobile
+function msgLongPressStart(e, commentId) {
+  _longPressTimer = setTimeout(function() {
     if (navigator.vibrate) navigator.vibrate(50);
-    showMsgContextMenu(e, comment);
+    showMsgContextMenu(e, commentId);
   }, 500);
 }
 
 function msgLongPressEnd() {
   clearTimeout(_longPressTimer);
+}
+
+// Event delegation for bubbles - attached after loadDiscussion renders
+function initBubbleEvents() {
+  var list = document.getElementById('discussion-messages');
+  if (!list) return;
+  list.onmousedown = function(e) {
+    var bubble = e.target.closest('.msg-bubble');
+    if (!bubble) return;
+    var cid = parseInt(bubble.getAttribute('data-cid'));
+    msgLongPressStart(e, cid);
+  };
+  list.onmouseup = list.onmouseleave = function() { msgLongPressEnd(); };
+  list.ontouchstart = function(e) {
+    var bubble = e.target.closest('.msg-bubble');
+    if (!bubble) return;
+    var cid = parseInt(bubble.getAttribute('data-cid'));
+    msgLongPressStart(e, cid);
+  };
+  list.ontouchend = list.ontouchmove = function() { msgLongPressEnd(); };
 }
 
 function ctxReply() {
@@ -3268,42 +3290,45 @@ async function loadDiscussion(silent) {
         row += '<div style="width:32px;height:32px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">' + avatarHtml + '</div>';
       }
 
-      // Build comment object for context menu
-      var commentObj = JSON.stringify({ id: c.id, userId: c.userId, userName: c.userName, message: c.message||'', isOwn: isOwn, canDelete: canDelete }).replace(/'/g,'&#39;');
 
-      // Bubble
-      row += '<div style="position:relative">';
-      row += '<div style="background:' + bubbleBg + ';color:' + bubbleColor + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5;border:' + bubbleBorder + ';max-width:100%;cursor:pointer;user-select:none"' +
-        ' onmousedown="msgLongPressStart(event,' + commentObj + ')"' +
-        ' onmouseup="msgLongPressEnd()"' +
-        ' onmouseleave="msgLongPressEnd()"' +
-        ' ontouchstart="msgLongPressStart(event,' + commentObj + ')"' +
-        ' ontouchend="msgLongPressEnd()"' +
-        ' ontouchmove="msgLongPressEnd()">' +
-        replyHtml + msgHtml +
-      '</div>' + reactHtml;
+      // Store comment data for context menu (no inline JSON)
+      var cId = c.id;
 
-      // Time for own messages
-      if (isMine) {
-        row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">' + date + '</div>';
-      }
-
-      // Réactions
+      // Réactions (compute BEFORE bubble)
       var reactHtml = '';
       if (c.reactions && Object.keys(c.reactions).length) {
-        reactHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+        reactHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
         Object.entries(c.reactions).forEach(function(entry) {
-          var emoji = entry[0], users = entry[1];
-          if (!users.length) return;
-          var iReacted = users.includes(currentUser?.id);
-          reactHtml += '<button onclick="reactMsg(' + JSON.stringify(emoji) + ',' + c.id + ')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid ' + (iReacted?'var(--teal)':'var(--border)') + ';background:' + (iReacted?'rgba(0,151,167,0.1)':'var(--surface,white)') + ';cursor:pointer;font-size:12px">' + emoji + ' ' + users.length + '</button>';
+          var em = entry[0], users = entry[1];
+          if (!users || !users.length) return;
+          var iReacted = users.indexOf(currentUser ? currentUser.id : -1) !== -1;
+          reactHtml += '<button onclick="reactMsg(' + JSON.stringify(em) + ',' + cId + ')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid ' + (iReacted ? 'var(--teal)' : 'var(--border)') + ';background:' + (iReacted ? 'rgba(0,151,167,0.1)' : 'var(--surface,white)') + ';cursor:pointer;font-size:12px">' + em + ' ' + users.length + '</button>';
         });
         reactHtml += '</div>';
       }
 
+      // Bubble
+      row += '<div style="position:relative">';
+      row += '<div data-cid="' + cId + '" style="background:' + bubbleBg + ';color:' + bubbleColor + ';border-radius:' + (isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5;border:' + bubbleBorder + ';max-width:100%;cursor:pointer;user-select:none" class="msg-bubble">' +
+        replyHtml + msgHtml +
+      '</div>' + reactHtml;
+
+
       row += '</div></div></div>';
       return row;
     }).join('');
+
+    // Store comment data for context menu
+    _commentDataMap = {};
+    comments.forEach(function(c) {
+      _commentDataMap[c.id] = {
+        id: c.id, userId: c.userId, userName: c.userName,
+        message: c.message || '', isOwn: c.userId === currentUser?.id,
+        canDelete: (currentUser?.role === 'admin') || c.userId === currentUser?.id
+      };
+    });
+    // Init event delegation for long press
+    initBubbleEvents();
 
     // Init audio players
     comments.filter(function(c){return c.audio;}).forEach(function(c) {
