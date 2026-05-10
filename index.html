@@ -1618,6 +1618,15 @@ input[type="file"]{display:none;}
     <div id="thread-replies" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;min-height:100px"></div>
 
     <!-- Formulaire réponse -->
+    <!-- Barre de réponse (citation) -->
+    <div id="reply-bar" style="display:none;align-items:center;gap:8px;padding:8px 14px;background:rgba(0,151,167,0.06);border-radius:12px;border:1.5px solid var(--teal);margin-bottom:10px">
+      <div style="flex:1;min-width:0;border-left:3px solid var(--teal);padding-left:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--teal-dark)" id="reply-name"></div>
+        <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="reply-preview"></div>
+      </div>
+      <button onclick="cancelReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1;flex-shrink:0">×</button>
+    </div>
+
     <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 2px 12px var(--shadow2)">
       <textarea id="reply-input" placeholder="Ajoute une réponse..."
         style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box"
@@ -3510,7 +3519,9 @@ async function updateDiscussionBadges(fileIds) {
   if (!fileIds || !fileIds.length) return;
   _lastSeenComments = loadLastSeen();
   try {
-    const unread = await api('POST', '/threads/unread', { fileIds, lastSeen: _lastSeenComments });
+    const validIds = fileIds.filter(id => id && id !== 'undefined');
+    if (!validIds.length) return;
+    const unread = await api('POST', '/threads/unread', { fileIds: validIds, lastSeen: _lastSeenComments });
     fileIds.forEach(id => {
       const badge = document.getElementById('disc-badge-' + id);
       if (!badge) return;
@@ -3759,8 +3770,11 @@ async function postReply() {
   const btn = document.querySelector('#thread-detail-view button[onclick="postReply()"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
-    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', { message });
+    const body = { message };
+    if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
+    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
+    cancelReply();
     await loadThreadReplies(false);
   } catch(e) { toast(e.message, 'error'); }
   finally { if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
@@ -3809,7 +3823,9 @@ async function updateDiscussionBadges(fileIds) {
   if (!fileIds || !fileIds.length) return;
   _lastSeenComments = loadLastSeen();
   try {
-    const unread = await api('POST', '/threads/unread', { fileIds, lastSeen: _lastSeenComments });
+    const validIds = fileIds.filter(id => id && id !== 'undefined');
+    if (!validIds.length) return;
+    const unread = await api('POST', '/threads/unread', { fileIds: validIds, lastSeen: _lastSeenComments });
     fileIds.forEach(function(id) {
       const badge = document.getElementById('disc-badge-' + id);
       if (!badge) return;
@@ -4107,7 +4123,9 @@ async function updateDiscussionBadges(fileIds) {
   if (!fileIds || !fileIds.length) return;
   _lastSeenComments = loadLastSeen();
   try {
-    const unread = await api('POST', '/threads/unread', { fileIds, lastSeen: _lastSeenComments });
+    const validIds = fileIds.filter(id => id && id !== 'undefined');
+    if (!validIds.length) return;
+    const unread = await api('POST', '/threads/unread', { fileIds: validIds, lastSeen: _lastSeenComments });
     fileIds.forEach(id => {
       const badge = document.getElementById('disc-badge-' + id);
       if (!badge) return;
