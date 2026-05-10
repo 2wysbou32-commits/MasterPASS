@@ -2971,14 +2971,15 @@ let _longPressTimer = null;
 
 // Map to store comment data by id
 var _commentDataMap = {};
+var _menuJustOpened = false;
 
 function showMsgContextMenu(e, commentId) {
   var comment = _commentDataMap[commentId];
   if (!comment) return;
   _ctxComment = comment;
   const menu = document.getElementById('msg-context-menu');
-  const canEdit = comment.isOwn;
-  const canDelete = comment.canDelete;
+  var canEdit = comment.isOwn && !comment.audio;
+  var canDelete = comment.canDelete;
   document.getElementById('ctx-edit').style.display = canEdit ? 'flex' : 'none';
   document.getElementById('ctx-delete').style.display = canDelete ? 'flex' : 'none';
   var clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : window.innerWidth/2);
@@ -2988,10 +2989,15 @@ function showMsgContextMenu(e, commentId) {
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
   menu.style.display = 'block';
-  setTimeout(function() { document.addEventListener('click', closeMsgContextMenu, { once: true }); }, 50);
+  _menuJustOpened = true;
+  setTimeout(function() {
+    _menuJustOpened = false;
+    document.addEventListener('click', closeMsgContextMenu, { once: true });
+  }, 300);
 }
 
 function closeMsgContextMenu() {
+  if (_menuJustOpened) return;
   document.getElementById('msg-context-menu').style.display = 'none';
 }
 
@@ -3016,14 +3022,19 @@ function initBubbleEvents() {
     var cid = parseInt(bubble.getAttribute('data-cid'));
     msgLongPressStart(e, cid);
   };
-  list.onmouseup = list.onmouseleave = function() { msgLongPressEnd(); };
+  list.onmouseup = function() { msgLongPressEnd(); };
+  list.onmouseleave = function() { msgLongPressEnd(); };
   list.ontouchstart = function(e) {
     var bubble = e.target.closest('.msg-bubble');
     if (!bubble) return;
     var cid = parseInt(bubble.getAttribute('data-cid'));
     msgLongPressStart(e, cid);
   };
-  list.ontouchend = list.ontouchmove = function() { msgLongPressEnd(); };
+  list.ontouchend = function(e) {
+    // Ne pas fermer le menu si c'est un vrai tap (le long press l'a déjà ouvert)
+    msgLongPressEnd();
+  };
+  list.ontouchmove = function() { msgLongPressEnd(); };
 }
 
 function ctxReply() {
