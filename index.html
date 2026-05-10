@@ -1426,6 +1426,46 @@ input[type="file"]{display:none;}
         </div>
       </div>
 
+<div id="discussion-panel" style="display:none">
+  <!-- Header avec bouton retour -->
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--border)">
+    <button onclick="closeDiscussion()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif">
+      <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      Retour
+    </button>
+    <div>
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:var(--text)" id="discussion-filename">Discussion</div>
+      <div style="font-size:12px;color:var(--text3)" id="discussion-count">0 message</div>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div id="discussion-messages" style="display:flex;flex-direction:column;gap:16px;margin-bottom:24px;min-height:200px"></div>
+
+  <!-- Formulaire -->
+  <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 2px 12px var(--shadow2)">
+    <textarea id="discussion-input" placeholder="Pose ta question ou laisse un commentaire..."
+      style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:80px;outline:none;box-sizing:border-box"
+      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+      onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))postComment()"></textarea>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="record-btn" onclick="toggleRecording()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 4.19-3.97 7-7.91 7s-7.42-2.81-7.91-7H0c.51 5.06 4.45 9 9 9.46V23h2v-2.54c4.55-.46 8.49-4.4 9-9.46h-2.09z"/></svg>
+          <span id="record-label">🎤 Vocal</span>
+        </button>
+        <span id="record-timer" style="display:none;font-size:12px;color:#ef5350;font-weight:700">⏺ 0:00</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée</span>
+        <button onclick="postComment()" style="padding:9px 22px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">
+          Envoyer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
       <!-- SEARCH RESULTS PANEL -->
       <div class="panel" id="panel-search" style="display:none">
         <div style="margin-bottom:20px">
@@ -1677,38 +1717,7 @@ input[type="file"]{display:none;}
   </div>
 </div>
 
-<!-- PANNEAU DISCUSSION (inline, pleine largeur) -->
-<div id="discussion-panel" style="display:none;margin-top:16px;background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 4px 20px var(--shadow)">
-  <div style="display:flex;align-items:center;gap:14px;padding:18px 24px;border-bottom:1.5px solid var(--border);background:var(--bg)">
-    <button onclick="closeDiscussion()" style="width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface,white);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-      <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--text2)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-    </button>
-    <div style="min-width:0;flex:1">
-      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:800;color:var(--text)" id="discussion-filename">Discussion</div>
-      <div style="font-size:11px;color:var(--text3)" id="discussion-count">0 message</div>
-    </div>
-  </div>
-  <div id="discussion-messages" style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;max-height:420px;overflow-y:auto"></div>
-  <div style="border-top:1.5px solid var(--border);padding:16px 24px;background:var(--bg)">
-    <textarea id="discussion-input" placeholder="Pose ta question ou laisse un commentaire..."
-      style="width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface,white);color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;margin-bottom:10px;box-sizing:border-box"
-      oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
-      onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))postComment()"></textarea>
-    <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:8px">
-        <button id="record-btn" onclick="toggleRecording()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 4.19-3.97 7-7.91 7s-7.42-2.81-7.91-7H0c.51 5.06 4.45 9 9 9.46V23h2v-2.54c4.55-.46 8.49-4.4 9-9.46h-2.09z"/></svg>
-          <span id="record-label">🎤 Vocal</span>
-        </button>
-        <span id="record-timer" style="display:none;font-size:12px;color:#ef5350;font-weight:700">⏺ 0:00</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée</span>
-        <button onclick="postComment()" style="padding:9px 22px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Envoyer</button>
-      </div>
-    </div>
-  </div>
-</div>
+
 
 <!-- MODALS -->
 <div class="modal-overlay" id="modal-folder">
@@ -2221,7 +2230,7 @@ function renderFiles(files){
   // Mettre à jour la barre de progression du dossier
   updateFolderProgress(files);
   // Charger les badges de discussion non lus
-  if (files.length && currentUser?.role !== 'admin') {
+  if (files.length) {
     setTimeout(() => updateDiscussionBadges(files.map(f => String(f.id))), 300);
   }
   if(!files.length){
@@ -2963,25 +2972,27 @@ async function updateDiscussionBadges(fileIds) {
 let _discussionFileName = null;
 
 async function openDiscussion(fileId, fileName) {
-  if (_discussionFileId === fileId) { closeDiscussion(); return; }
   _discussionFileId = fileId;
   _discussionFileName = fileName;
+
+  // Masquer view-files, afficher discussion comme un panel plein écran
+  const viewFiles = document.getElementById('view-files');
   const panel = document.getElementById('discussion-panel');
-  const fileRow = document.querySelector('.file-row[data-file-id="' + fileId + '"]');
-  if (fileRow && fileRow.parentNode) {
-    fileRow.parentNode.insertBefore(panel, fileRow.nextSibling);
-  }
+  if (viewFiles) viewFiles.style.display = 'none';
   panel.style.display = 'block';
+
   document.getElementById('discussion-filename').textContent = String.fromCharCode(0x1F4AC) + ' ' + fileName;
   saveLastSeen(fileId);
   const badge = document.getElementById('disc-badge-' + fileId);
   if (badge) badge.style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
   await loadDiscussion();
-  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function closeDiscussion() {
   document.getElementById('discussion-panel').style.display = 'none';
+  const viewFiles = document.getElementById('view-files');
+  if (viewFiles) viewFiles.style.display = '';
   _discussionFileId = null;
 }
 
