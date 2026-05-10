@@ -1426,6 +1426,27 @@ input[type="file"]{display:none;}
         </div>
       </div>
 
+<!-- MENU CONTEXTUEL MESSAGE -->
+<div id="msg-context-menu" style="display:none;position:fixed;z-index:9999;background:var(--surface,white);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1px solid var(--border);overflow:hidden;min-width:200px">
+  <div style="display:flex;gap:4px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg)">
+    <button onclick="reactMsg('👍')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">👍</button>
+    <button onclick="reactMsg('❤️')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">❤️</button>
+    <button onclick="reactMsg('😂')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">😂</button>
+    <button onclick="reactMsg('🔥')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">🔥</button>
+    <button onclick="reactMsg('😮')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">😮</button>
+    <button onclick="reactMsg('👏')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">👏</button>
+  </div>
+  <div id="ctx-reply" onclick="ctxReply()" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;font-size:14px;color:var(--text)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+    <span>↩</span> Répondre
+  </div>
+  <div id="ctx-edit" onclick="ctxEdit()" style="display:none;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;font-size:14px;color:var(--text)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+    <span>✏️</span> Modifier
+  </div>
+  <div id="ctx-delete" onclick="ctxDelete()" style="display:none;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;font-size:14px;color:var(--danger);border-top:1px solid var(--border)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+    <span>🗑</span> Supprimer
+  </div>
+</div>
+
 <div id="discussion-panel" style="display:none">
   <!-- Header avec bouton retour -->
   <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--border)">
@@ -2944,6 +2965,79 @@ function updateSidebarAvatar() {
   }
 }
 
+// ── MENU CONTEXTUEL MESSAGES ─────────────────────────────────────────────────
+let _ctxComment = null; // { id, userId, userName, message, isOwn, canDelete }
+let _longPressTimer = null;
+
+function showMsgContextMenu(e, comment) {
+  e.preventDefault();
+  _ctxComment = comment;
+  const menu = document.getElementById('msg-context-menu');
+  // Show/hide edit & delete based on permissions
+  const canEdit = comment.isOwn;
+  const canDelete = comment.canDelete;
+  document.getElementById('ctx-edit').style.display = canEdit ? 'flex' : 'none';
+  document.getElementById('ctx-delete').style.display = canDelete ? 'flex' : 'none';
+  // Position menu
+  const x = Math.min(e.clientX, window.innerWidth - 220);
+  const y = Math.min(e.clientY, window.innerHeight - 200);
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.style.display = 'block';
+  // Close on outside click
+  setTimeout(() => document.addEventListener('click', closeMsgContextMenu, { once: true }), 10);
+}
+
+function closeMsgContextMenu() {
+  document.getElementById('msg-context-menu').style.display = 'none';
+}
+
+function msgLongPressStart(e, comment) {
+  _longPressTimer = setTimeout(() => {
+    // Haptic feedback on mobile
+    if (navigator.vibrate) navigator.vibrate(50);
+    showMsgContextMenu(e, comment);
+  }, 500);
+}
+
+function msgLongPressEnd() {
+  clearTimeout(_longPressTimer);
+}
+
+function ctxReply() {
+  closeMsgContextMenu();
+  if (!_ctxComment) return;
+  setReply(_ctxComment.id, _ctxComment.userName, _ctxComment.message || 'Vocal');
+}
+
+function ctxEdit() {
+  closeMsgContextMenu();
+  if (!_ctxComment) return;
+  const newMsg = prompt('Modifier le message :', _ctxComment.message);
+  if (!newMsg || newMsg.trim() === _ctxComment.message) return;
+  api('PATCH', '/comments/' + _discussionFileId + '/' + _ctxComment.id, { message: newMsg.trim() })
+    .then(() => loadDiscussion(false))
+    .catch(e => toast(e.message, 'error'));
+}
+
+function ctxDelete() {
+  closeMsgContextMenu();
+  if (!_ctxComment) return;
+  if (!confirm('Supprimer ce message ?')) return;
+  deleteComment(_ctxComment.id);
+}
+
+async function reactMsg(emoji, commentId) {
+  closeMsgContextMenu();
+  var cid = commentId || (_ctxComment && _ctxComment.id);
+  if (!cid || !_discussionFileId) return;
+  // If called from context menu, update _ctxComment so it uses right id
+  try {
+    await api('POST', '/comments/' + _discussionFileId + '/' + cid + '/react', { emoji });
+    await loadDiscussion(true);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 // ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
 function renameFile(e, fileId, currentName, folderId, subId) {
   e.stopPropagation();
@@ -3174,27 +3268,37 @@ async function loadDiscussion(silent) {
         row += '<div style="width:32px;height:32px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">' + avatarHtml + '</div>';
       }
 
+      // Build comment object for context menu
+      var commentObj = JSON.stringify({ id: c.id, userId: c.userId, userName: c.userName, message: c.message||'', isOwn: isOwn, canDelete: canDelete }).replace(/'/g,'&#39;');
+
       // Bubble
       row += '<div style="position:relative">';
-      row += '<div style="background:' + bubbleBg + ';color:' + bubbleColor + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5;border:' + bubbleBorder + ';max-width:100%">' +
+      row += '<div style="background:' + bubbleBg + ';color:' + bubbleColor + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5;border:' + bubbleBorder + ';max-width:100%;cursor:pointer;user-select:none"' +
+        ' onmousedown="msgLongPressStart(event,' + commentObj + ')"' +
+        ' onmouseup="msgLongPressEnd()"' +
+        ' onmouseleave="msgLongPressEnd()"' +
+        ' ontouchstart="msgLongPressStart(event,' + commentObj + ')"' +
+        ' ontouchend="msgLongPressEnd()"' +
+        ' ontouchmove="msgLongPressEnd()">' +
         replyHtml + msgHtml +
-      '</div>';
+      '</div>' + reactHtml;
 
       // Time for own messages
       if (isMine) {
         row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">' + date + '</div>';
       }
 
-      // Actions: reply (admin only) + delete
-      var actions = '';
-      if (isAdmin || currentUser?.role === 'admin') {
-        actions += '<button data-reply-id="' + c.id + '" data-reply-user="' + c.userName.replace(/"/g,'') + '" data-reply-msg="' + (c.message||'Vocal').replace(/"/g,'').substring(0,50) + '" onclick="handleReply(this)" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px">↩ Répondre</button>';
-      }
-      if (canDelete) {
-        actions += '<button onclick="deleteComment(' + c.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;padding:2px 6px" title="Supprimer">🗑</button>';
-      }
-      if (actions) {
-        row += '<div style="margin-top:3px;' + (isMine?'text-align:right':'') + '">' + actions + '</div>';
+      // Réactions
+      var reactHtml = '';
+      if (c.reactions && Object.keys(c.reactions).length) {
+        reactHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+        Object.entries(c.reactions).forEach(function(entry) {
+          var emoji = entry[0], users = entry[1];
+          if (!users.length) return;
+          var iReacted = users.includes(currentUser?.id);
+          reactHtml += '<button onclick="reactMsg(' + JSON.stringify(emoji) + ',' + c.id + ')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid ' + (iReacted?'var(--teal)':'var(--border)') + ';background:' + (iReacted?'rgba(0,151,167,0.1)':'var(--surface,white)') + ';cursor:pointer;font-size:12px">' + emoji + ' ' + users.length + '</button>';
+        });
+        reactHtml += '</div>';
       }
 
       row += '</div></div></div>';
