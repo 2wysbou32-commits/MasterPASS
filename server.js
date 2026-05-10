@@ -1295,6 +1295,40 @@ app.post('/api/admin/notifications/read', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// EDIT a comment
+app.patch('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const comments = db.comments?.[req.params.fileId] || [];
+  const comment = comments.find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Commentaire introuvable' });
+  if (comment.userId !== req.session.userId && db.users.find(u=>u.id===req.session.userId)?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  comment.message = message.trim();
+  comment.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ADD/REMOVE reaction
+app.post('/api/comments/:fileId/:commentId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  const comment = (db.comments?.[req.params.fileId] || []).find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Introuvable' });
+  if (!comment.reactions) comment.reactions = {};
+  if (!comment.reactions[emoji]) comment.reactions[emoji] = [];
+  const userId = req.session.userId;
+  const idx = comment.reactions[emoji].indexOf(userId);
+  if (idx !== -1) comment.reactions[emoji].splice(idx, 1);
+  else comment.reactions[emoji].push(userId);
+  if (!comment.reactions[emoji].length) delete comment.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: comment.reactions });
+});
+
 // DELETE a comment (admin or own comment)
 app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
   const db = loadDB();
@@ -1648,6 +1682,40 @@ app.post('/api/admin/notifications/read', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// EDIT a comment
+app.patch('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const comments = db.comments?.[req.params.fileId] || [];
+  const comment = comments.find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Commentaire introuvable' });
+  if (comment.userId !== req.session.userId && db.users.find(u=>u.id===req.session.userId)?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  comment.message = message.trim();
+  comment.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ADD/REMOVE reaction
+app.post('/api/comments/:fileId/:commentId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  const comment = (db.comments?.[req.params.fileId] || []).find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Introuvable' });
+  if (!comment.reactions) comment.reactions = {};
+  if (!comment.reactions[emoji]) comment.reactions[emoji] = [];
+  const userId = req.session.userId;
+  const idx = comment.reactions[emoji].indexOf(userId);
+  if (idx !== -1) comment.reactions[emoji].splice(idx, 1);
+  else comment.reactions[emoji].push(userId);
+  if (!comment.reactions[emoji].length) delete comment.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: comment.reactions });
+});
+
 // DELETE a comment (admin or own comment)
 app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
   const db = loadDB();
@@ -1859,6 +1927,40 @@ app.post('/api/admin/notifications/read', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// EDIT a comment
+app.patch('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const comments = db.comments?.[req.params.fileId] || [];
+  const comment = comments.find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Commentaire introuvable' });
+  if (comment.userId !== req.session.userId && db.users.find(u=>u.id===req.session.userId)?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  comment.message = message.trim();
+  comment.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ADD/REMOVE reaction
+app.post('/api/comments/:fileId/:commentId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  const comment = (db.comments?.[req.params.fileId] || []).find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Introuvable' });
+  if (!comment.reactions) comment.reactions = {};
+  if (!comment.reactions[emoji]) comment.reactions[emoji] = [];
+  const userId = req.session.userId;
+  const idx = comment.reactions[emoji].indexOf(userId);
+  if (idx !== -1) comment.reactions[emoji].splice(idx, 1);
+  else comment.reactions[emoji].push(userId);
+  if (!comment.reactions[emoji].length) delete comment.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: comment.reactions });
+});
+
 // DELETE a comment (admin or own comment)
 app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
   const db = loadDB();
@@ -2065,6 +2167,40 @@ app.post('/api/admin/notifications/read', requireSuperAdmin, (req, res) => {
   if (db.adminNotifications) db.adminNotifications.forEach(n => n.read = true);
   saveDB(db);
   res.json({ ok: true });
+});
+
+// EDIT a comment
+app.patch('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const comments = db.comments?.[req.params.fileId] || [];
+  const comment = comments.find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Commentaire introuvable' });
+  if (comment.userId !== req.session.userId && db.users.find(u=>u.id===req.session.userId)?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  comment.message = message.trim();
+  comment.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ADD/REMOVE reaction
+app.post('/api/comments/:fileId/:commentId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  const comment = (db.comments?.[req.params.fileId] || []).find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Introuvable' });
+  if (!comment.reactions) comment.reactions = {};
+  if (!comment.reactions[emoji]) comment.reactions[emoji] = [];
+  const userId = req.session.userId;
+  const idx = comment.reactions[emoji].indexOf(userId);
+  if (idx !== -1) comment.reactions[emoji].splice(idx, 1);
+  else comment.reactions[emoji].push(userId);
+  if (!comment.reactions[emoji].length) delete comment.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: comment.reactions });
 });
 
 // DELETE a comment (admin or own comment)
