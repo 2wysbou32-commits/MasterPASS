@@ -1162,6 +1162,45 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── DÉPLACER UN FICHIER ──────────────────────────────────────────────────────
+app.post('/api/files/:fileId/move', requireAdmin, (req, res) => {
+  const { fromFolderId, fromSubId, toFolderId, toSubId } = req.body;
+  const db = loadDB();
+  
+  // Find source file
+  let sourceList, file;
+  if (fromSubId) {
+    const folder = db.folders.find(f => f.id === parseInt(fromFolderId));
+    const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(fromSubId));
+    sourceList = sub?.files;
+  } else {
+    const folder = db.folders.find(f => f.id === parseInt(fromFolderId));
+    sourceList = folder?.files;
+  }
+  if (!sourceList) return res.status(404).json({ error: 'Source introuvable' });
+  const fileIdx = sourceList.findIndex(f => f.id === parseInt(req.params.fileId));
+  if (fileIdx === -1) return res.status(404).json({ error: 'Fichier introuvable' });
+  file = sourceList[fileIdx];
+  
+  // Find destination
+  let destList;
+  if (toSubId) {
+    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
+    const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(toSubId));
+    destList = sub?.files;
+  } else {
+    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
+    destList = folder?.files;
+  }
+  if (!destList) return res.status(404).json({ error: 'Destination introuvable' });
+  
+  // Move
+  sourceList.splice(fileIdx, 1);
+  destList.push(file);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
 app.patch('/api/folders/:folderId/files/:fileId/rename', requireAdmin, (req, res) => {
   const { name } = req.body;
@@ -1689,6 +1728,45 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── DÉPLACER UN FICHIER ──────────────────────────────────────────────────────
+app.post('/api/files/:fileId/move', requireAdmin, (req, res) => {
+  const { fromFolderId, fromSubId, toFolderId, toSubId } = req.body;
+  const db = loadDB();
+  
+  // Find source file
+  let sourceList, file;
+  if (fromSubId) {
+    const folder = db.folders.find(f => f.id === parseInt(fromFolderId));
+    const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(fromSubId));
+    sourceList = sub?.files;
+  } else {
+    const folder = db.folders.find(f => f.id === parseInt(fromFolderId));
+    sourceList = folder?.files;
+  }
+  if (!sourceList) return res.status(404).json({ error: 'Source introuvable' });
+  const fileIdx = sourceList.findIndex(f => f.id === parseInt(req.params.fileId));
+  if (fileIdx === -1) return res.status(404).json({ error: 'Fichier introuvable' });
+  file = sourceList[fileIdx];
+  
+  // Find destination
+  let destList;
+  if (toSubId) {
+    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
+    const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(toSubId));
+    destList = sub?.files;
+  } else {
+    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
+    destList = folder?.files;
+  }
+  if (!destList) return res.status(404).json({ error: 'Destination introuvable' });
+  
+  // Move
+  sourceList.splice(fileIdx, 1);
+  destList.push(file);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
 app.patch('/api/folders/:folderId/files/:fileId/rename', requireAdmin, (req, res) => {
   const { name } = req.body;
@@ -2080,6 +2158,45 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── DÉPLACER UN FICHIER ──────────────────────────────────────────────────────
+app.post('/api/files/:fileId/move', requireAdmin, (req, res) => {
+  const { fromFolderId, fromSubId, toFolderId, toSubId } = req.body;
+  const db = loadDB();
+  
+  // Find source file
+  let sourceList, file;
+  if (fromSubId) {
+    const folder = db.folders.find(f => f.id === parseInt(fromFolderId));
+    const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(fromSubId));
+    sourceList = sub?.files;
+  } else {
+    const folder = db.folders.find(f => f.id === parseInt(fromFolderId));
+    sourceList = folder?.files;
+  }
+  if (!sourceList) return res.status(404).json({ error: 'Source introuvable' });
+  const fileIdx = sourceList.findIndex(f => f.id === parseInt(req.params.fileId));
+  if (fileIdx === -1) return res.status(404).json({ error: 'Fichier introuvable' });
+  file = sourceList[fileIdx];
+  
+  // Find destination
+  let destList;
+  if (toSubId) {
+    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
+    const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(toSubId));
+    destList = sub?.files;
+  } else {
+    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
+    destList = folder?.files;
+  }
+  if (!destList) return res.status(404).json({ error: 'Destination introuvable' });
+  
+  // Move
+  sourceList.splice(fileIdx, 1);
+  destList.push(file);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
 app.patch('/api/folders/:folderId/files/:fileId/rename', requireAdmin, (req, res) => {
   const { name } = req.body;
@@ -2454,6 +2571,45 @@ app.get('/api/avatar/:userId', requireAuth, (req, res) => {
 });
 
 // Inclure l'avatar dans /me
+// ── DÉPLACER UN FICHIER ──────────────────────────────────────────────────────
+app.post('/api/files/:fileId/move', requireAdmin, (req, res) => {
+  const { fromFolderId, fromSubId, toFolderId, toSubId } = req.body;
+  const db = loadDB();
+  
+  // Find source file
+  let sourceList, file;
+  if (fromSubId) {
+    const folder = db.folders.find(f => f.id === parseInt(fromFolderId));
+    const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(fromSubId));
+    sourceList = sub?.files;
+  } else {
+    const folder = db.folders.find(f => f.id === parseInt(fromFolderId));
+    sourceList = folder?.files;
+  }
+  if (!sourceList) return res.status(404).json({ error: 'Source introuvable' });
+  const fileIdx = sourceList.findIndex(f => f.id === parseInt(req.params.fileId));
+  if (fileIdx === -1) return res.status(404).json({ error: 'Fichier introuvable' });
+  file = sourceList[fileIdx];
+  
+  // Find destination
+  let destList;
+  if (toSubId) {
+    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
+    const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(toSubId));
+    destList = sub?.files;
+  } else {
+    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
+    destList = folder?.files;
+  }
+  if (!destList) return res.status(404).json({ error: 'Destination introuvable' });
+  
+  // Move
+  sourceList.splice(fileIdx, 1);
+  destList.push(file);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
 app.patch('/api/folders/:folderId/files/:fileId/rename', requireAdmin, (req, res) => {
   const { name } = req.body;
