@@ -1206,17 +1206,149 @@ app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── COMMENTAIRES ─────────────────────────────────────────────────────────────
-// GET comments for a file
-app.get('/api/comments/:fileId', requireAuth, (req, res) => {
+// ── FILS DE DISCUSSION (THREADS) ────────────────────────────────────────────
+// Structure: db.threads = { fileId: [ { id, title, createdBy, createdAt, replies: [...] } ] }
+
+// GET all threads for a file
+app.get('/api/threads/:fileId', requireAuth, (req, res) => {
   const db = loadDB();
-  if (!db.comments) db.comments = {};
-  const comments = (db.comments[req.params.fileId] || []).map(c => {
-    // Toujours récupérer l'avatar actuel de l'utilisateur
-    const user = db.users.find(u => u.id === c.userId);
-    return { ...c, userAvatar: user?.avatar || null };
+  if (!db.threads) db.threads = {};
+  const threads = (db.threads[req.params.fileId] || []).map(t => {
+    const creator = db.users.find(u => u.id === t.createdBy);
+    return {
+      ...t,
+      creatorName: creator?.name || 'Inconnu',
+      creatorAvatar: creator?.avatar || null,
+      creatorRole: creator?.role || 'student',
+      replyCount: (t.replies || []).length,
+      lastReplyAt: t.replies?.length ? t.replies[t.replies.length-1].createdAt : t.createdAt
+    };
   });
-  res.json(comments);
+  res.json(threads);
+});
+
+// CREATE a thread
+app.post('/api/threads/:fileId', requireAuth, (req, res) => {
+  const { title } = req.body;
+  if (!title?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const db = loadDB();
+  if (!db.threads) db.threads = {};
+  if (!db.threads[req.params.fileId]) db.threads[req.params.fileId] = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const thread = {
+    id: db.nextId++,
+    fileId: req.params.fileId,
+    title: title.trim(),
+    createdBy: user.id,
+    createdAt: new Date().toISOString(),
+    replies: [],
+    resolved: false
+  };
+  db.threads[req.params.fileId].push(thread);
+  // Notif admin
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + ': ' + title.trim().substring(0, 80), '/').catch(()=>{});
+  }
+  saveDB(db);
+  res.json(thread);
+});
+
+// DELETE a thread (admin or creator)
+app.delete('/api/threads/:fileId/:threadId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const threads = db.threads?.[req.params.fileId] || [];
+  const thread = threads.find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (thread.createdBy !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  db.threads[req.params.fileId] = threads.filter(t => t.id !== parseInt(req.params.threadId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// MARK thread as resolved (admin only)
+app.patch('/api/threads/:fileId/:threadId/resolve', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  thread.resolved = !thread.resolved;
+  saveDB(db);
+  res.json({ ok: true, resolved: thread.resolved });
+});
+
+// GET replies for a thread
+app.get('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const replies = (thread.replies || []).map(r => {
+    const user = db.users.find(u => u.id === r.userId);
+    return { ...r, userAvatar: user?.avatar || null };
+  });
+  res.json({ thread: { id: thread.id, title: thread.title, resolved: thread.resolved }, replies });
+});
+
+// POST a reply to a thread
+app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
+  const { message, audio, audioDuration } = req.body;
+  if (!message?.trim() && !audio) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const reply = {
+    id: db.nextId++,
+    userId: user.id,
+    userName: user.name,
+    userRole: user.role,
+    message: message?.trim() || '',
+    audio: audio || null,
+    audioDuration: audioDuration || null,
+    createdAt: new Date().toISOString()
+  };
+  if (!thread.replies) thread.replies = [];
+  thread.replies.push(reply);
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/').catch(()=>{});
+  }
+  saveDB(db);
+  res.json(reply);
+});
+
+// DELETE a reply
+app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  if (reply.userId !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  thread.replies = thread.replies.filter(r => r.id !== parseInt(req.params.replyId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Unread threads count
+app.post('/api/threads/unread', requireAuth, (req, res) => {
+  const { fileIds, lastSeen } = req.body;
+  const db = loadDB();
+  if (!db.threads) return res.json({});
+  const result = {};
+  (fileIds || []).forEach(fileId => {
+    const threads = db.threads[fileId] || [];
+    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
+    result[fileId] = lastSeenAt
+      ? threads.filter(t => new Date(t.createdAt) > lastSeenAt).length
+      : threads.length;
+  });
+  res.json(result);
 });
 
 // POST a comment
@@ -1601,17 +1733,149 @@ app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── COMMENTAIRES ─────────────────────────────────────────────────────────────
-// GET comments for a file
-app.get('/api/comments/:fileId', requireAuth, (req, res) => {
+// ── FILS DE DISCUSSION (THREADS) ────────────────────────────────────────────
+// Structure: db.threads = { fileId: [ { id, title, createdBy, createdAt, replies: [...] } ] }
+
+// GET all threads for a file
+app.get('/api/threads/:fileId', requireAuth, (req, res) => {
   const db = loadDB();
-  if (!db.comments) db.comments = {};
-  const comments = (db.comments[req.params.fileId] || []).map(c => {
-    // Toujours récupérer l'avatar actuel de l'utilisateur
-    const user = db.users.find(u => u.id === c.userId);
-    return { ...c, userAvatar: user?.avatar || null };
+  if (!db.threads) db.threads = {};
+  const threads = (db.threads[req.params.fileId] || []).map(t => {
+    const creator = db.users.find(u => u.id === t.createdBy);
+    return {
+      ...t,
+      creatorName: creator?.name || 'Inconnu',
+      creatorAvatar: creator?.avatar || null,
+      creatorRole: creator?.role || 'student',
+      replyCount: (t.replies || []).length,
+      lastReplyAt: t.replies?.length ? t.replies[t.replies.length-1].createdAt : t.createdAt
+    };
   });
-  res.json(comments);
+  res.json(threads);
+});
+
+// CREATE a thread
+app.post('/api/threads/:fileId', requireAuth, (req, res) => {
+  const { title } = req.body;
+  if (!title?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const db = loadDB();
+  if (!db.threads) db.threads = {};
+  if (!db.threads[req.params.fileId]) db.threads[req.params.fileId] = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const thread = {
+    id: db.nextId++,
+    fileId: req.params.fileId,
+    title: title.trim(),
+    createdBy: user.id,
+    createdAt: new Date().toISOString(),
+    replies: [],
+    resolved: false
+  };
+  db.threads[req.params.fileId].push(thread);
+  // Notif admin
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + ': ' + title.trim().substring(0, 80), '/').catch(()=>{});
+  }
+  saveDB(db);
+  res.json(thread);
+});
+
+// DELETE a thread (admin or creator)
+app.delete('/api/threads/:fileId/:threadId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const threads = db.threads?.[req.params.fileId] || [];
+  const thread = threads.find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (thread.createdBy !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  db.threads[req.params.fileId] = threads.filter(t => t.id !== parseInt(req.params.threadId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// MARK thread as resolved (admin only)
+app.patch('/api/threads/:fileId/:threadId/resolve', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  thread.resolved = !thread.resolved;
+  saveDB(db);
+  res.json({ ok: true, resolved: thread.resolved });
+});
+
+// GET replies for a thread
+app.get('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const replies = (thread.replies || []).map(r => {
+    const user = db.users.find(u => u.id === r.userId);
+    return { ...r, userAvatar: user?.avatar || null };
+  });
+  res.json({ thread: { id: thread.id, title: thread.title, resolved: thread.resolved }, replies });
+});
+
+// POST a reply to a thread
+app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
+  const { message, audio, audioDuration } = req.body;
+  if (!message?.trim() && !audio) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const reply = {
+    id: db.nextId++,
+    userId: user.id,
+    userName: user.name,
+    userRole: user.role,
+    message: message?.trim() || '',
+    audio: audio || null,
+    audioDuration: audioDuration || null,
+    createdAt: new Date().toISOString()
+  };
+  if (!thread.replies) thread.replies = [];
+  thread.replies.push(reply);
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/').catch(()=>{});
+  }
+  saveDB(db);
+  res.json(reply);
+});
+
+// DELETE a reply
+app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  if (reply.userId !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  thread.replies = thread.replies.filter(r => r.id !== parseInt(req.params.replyId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Unread threads count
+app.post('/api/threads/unread', requireAuth, (req, res) => {
+  const { fileIds, lastSeen } = req.body;
+  const db = loadDB();
+  if (!db.threads) return res.json({});
+  const result = {};
+  (fileIds || []).forEach(fileId => {
+    const threads = db.threads[fileId] || [];
+    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
+    result[fileId] = lastSeenAt
+      ? threads.filter(t => new Date(t.createdAt) > lastSeenAt).length
+      : threads.length;
+  });
+  res.json(result);
 });
 
 // POST a comment
@@ -1860,17 +2124,149 @@ app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── COMMENTAIRES ─────────────────────────────────────────────────────────────
-// GET comments for a file
-app.get('/api/comments/:fileId', requireAuth, (req, res) => {
+// ── FILS DE DISCUSSION (THREADS) ────────────────────────────────────────────
+// Structure: db.threads = { fileId: [ { id, title, createdBy, createdAt, replies: [...] } ] }
+
+// GET all threads for a file
+app.get('/api/threads/:fileId', requireAuth, (req, res) => {
   const db = loadDB();
-  if (!db.comments) db.comments = {};
-  const comments = (db.comments[req.params.fileId] || []).map(c => {
-    // Toujours récupérer l'avatar actuel de l'utilisateur
-    const user = db.users.find(u => u.id === c.userId);
-    return { ...c, userAvatar: user?.avatar || null };
+  if (!db.threads) db.threads = {};
+  const threads = (db.threads[req.params.fileId] || []).map(t => {
+    const creator = db.users.find(u => u.id === t.createdBy);
+    return {
+      ...t,
+      creatorName: creator?.name || 'Inconnu',
+      creatorAvatar: creator?.avatar || null,
+      creatorRole: creator?.role || 'student',
+      replyCount: (t.replies || []).length,
+      lastReplyAt: t.replies?.length ? t.replies[t.replies.length-1].createdAt : t.createdAt
+    };
   });
-  res.json(comments);
+  res.json(threads);
+});
+
+// CREATE a thread
+app.post('/api/threads/:fileId', requireAuth, (req, res) => {
+  const { title } = req.body;
+  if (!title?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const db = loadDB();
+  if (!db.threads) db.threads = {};
+  if (!db.threads[req.params.fileId]) db.threads[req.params.fileId] = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const thread = {
+    id: db.nextId++,
+    fileId: req.params.fileId,
+    title: title.trim(),
+    createdBy: user.id,
+    createdAt: new Date().toISOString(),
+    replies: [],
+    resolved: false
+  };
+  db.threads[req.params.fileId].push(thread);
+  // Notif admin
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + ': ' + title.trim().substring(0, 80), '/').catch(()=>{});
+  }
+  saveDB(db);
+  res.json(thread);
+});
+
+// DELETE a thread (admin or creator)
+app.delete('/api/threads/:fileId/:threadId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const threads = db.threads?.[req.params.fileId] || [];
+  const thread = threads.find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (thread.createdBy !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  db.threads[req.params.fileId] = threads.filter(t => t.id !== parseInt(req.params.threadId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// MARK thread as resolved (admin only)
+app.patch('/api/threads/:fileId/:threadId/resolve', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  thread.resolved = !thread.resolved;
+  saveDB(db);
+  res.json({ ok: true, resolved: thread.resolved });
+});
+
+// GET replies for a thread
+app.get('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const replies = (thread.replies || []).map(r => {
+    const user = db.users.find(u => u.id === r.userId);
+    return { ...r, userAvatar: user?.avatar || null };
+  });
+  res.json({ thread: { id: thread.id, title: thread.title, resolved: thread.resolved }, replies });
+});
+
+// POST a reply to a thread
+app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
+  const { message, audio, audioDuration } = req.body;
+  if (!message?.trim() && !audio) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const reply = {
+    id: db.nextId++,
+    userId: user.id,
+    userName: user.name,
+    userRole: user.role,
+    message: message?.trim() || '',
+    audio: audio || null,
+    audioDuration: audioDuration || null,
+    createdAt: new Date().toISOString()
+  };
+  if (!thread.replies) thread.replies = [];
+  thread.replies.push(reply);
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/').catch(()=>{});
+  }
+  saveDB(db);
+  res.json(reply);
+});
+
+// DELETE a reply
+app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  if (reply.userId !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  thread.replies = thread.replies.filter(r => r.id !== parseInt(req.params.replyId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Unread threads count
+app.post('/api/threads/unread', requireAuth, (req, res) => {
+  const { fileIds, lastSeen } = req.body;
+  const db = loadDB();
+  if (!db.threads) return res.json({});
+  const result = {};
+  (fileIds || []).forEach(fileId => {
+    const threads = db.threads[fileId] || [];
+    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
+    result[fileId] = lastSeenAt
+      ? threads.filter(t => new Date(t.createdAt) > lastSeenAt).length
+      : threads.length;
+  });
+  res.json(result);
 });
 
 // POST a comment
@@ -2102,17 +2498,149 @@ app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── COMMENTAIRES ─────────────────────────────────────────────────────────────
-// GET comments for a file
-app.get('/api/comments/:fileId', requireAuth, (req, res) => {
+// ── FILS DE DISCUSSION (THREADS) ────────────────────────────────────────────
+// Structure: db.threads = { fileId: [ { id, title, createdBy, createdAt, replies: [...] } ] }
+
+// GET all threads for a file
+app.get('/api/threads/:fileId', requireAuth, (req, res) => {
   const db = loadDB();
-  if (!db.comments) db.comments = {};
-  const comments = (db.comments[req.params.fileId] || []).map(c => {
-    // Toujours récupérer l'avatar actuel de l'utilisateur
-    const user = db.users.find(u => u.id === c.userId);
-    return { ...c, userAvatar: user?.avatar || null };
+  if (!db.threads) db.threads = {};
+  const threads = (db.threads[req.params.fileId] || []).map(t => {
+    const creator = db.users.find(u => u.id === t.createdBy);
+    return {
+      ...t,
+      creatorName: creator?.name || 'Inconnu',
+      creatorAvatar: creator?.avatar || null,
+      creatorRole: creator?.role || 'student',
+      replyCount: (t.replies || []).length,
+      lastReplyAt: t.replies?.length ? t.replies[t.replies.length-1].createdAt : t.createdAt
+    };
   });
-  res.json(comments);
+  res.json(threads);
+});
+
+// CREATE a thread
+app.post('/api/threads/:fileId', requireAuth, (req, res) => {
+  const { title } = req.body;
+  if (!title?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const db = loadDB();
+  if (!db.threads) db.threads = {};
+  if (!db.threads[req.params.fileId]) db.threads[req.params.fileId] = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const thread = {
+    id: db.nextId++,
+    fileId: req.params.fileId,
+    title: title.trim(),
+    createdBy: user.id,
+    createdAt: new Date().toISOString(),
+    replies: [],
+    resolved: false
+  };
+  db.threads[req.params.fileId].push(thread);
+  // Notif admin
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + ': ' + title.trim().substring(0, 80), '/').catch(()=>{});
+  }
+  saveDB(db);
+  res.json(thread);
+});
+
+// DELETE a thread (admin or creator)
+app.delete('/api/threads/:fileId/:threadId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const threads = db.threads?.[req.params.fileId] || [];
+  const thread = threads.find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (thread.createdBy !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  db.threads[req.params.fileId] = threads.filter(t => t.id !== parseInt(req.params.threadId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// MARK thread as resolved (admin only)
+app.patch('/api/threads/:fileId/:threadId/resolve', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  thread.resolved = !thread.resolved;
+  saveDB(db);
+  res.json({ ok: true, resolved: thread.resolved });
+});
+
+// GET replies for a thread
+app.get('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const replies = (thread.replies || []).map(r => {
+    const user = db.users.find(u => u.id === r.userId);
+    return { ...r, userAvatar: user?.avatar || null };
+  });
+  res.json({ thread: { id: thread.id, title: thread.title, resolved: thread.resolved }, replies });
+});
+
+// POST a reply to a thread
+app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
+  const { message, audio, audioDuration } = req.body;
+  if (!message?.trim() && !audio) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const reply = {
+    id: db.nextId++,
+    userId: user.id,
+    userName: user.name,
+    userRole: user.role,
+    message: message?.trim() || '',
+    audio: audio || null,
+    audioDuration: audioDuration || null,
+    createdAt: new Date().toISOString()
+  };
+  if (!thread.replies) thread.replies = [];
+  thread.replies.push(reply);
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/').catch(()=>{});
+  }
+  saveDB(db);
+  res.json(reply);
+});
+
+// DELETE a reply
+app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  if (reply.userId !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  thread.replies = thread.replies.filter(r => r.id !== parseInt(req.params.replyId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Unread threads count
+app.post('/api/threads/unread', requireAuth, (req, res) => {
+  const { fileIds, lastSeen } = req.body;
+  const db = loadDB();
+  if (!db.threads) return res.json({});
+  const result = {};
+  (fileIds || []).forEach(fileId => {
+    const threads = db.threads[fileId] || [];
+    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
+    result[fileId] = lastSeenAt
+      ? threads.filter(t => new Date(t.createdAt) > lastSeenAt).length
+      : threads.length;
+  });
+  res.json(result);
 });
 
 // POST a comment
