@@ -95,6 +95,14 @@ function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
   };
 }
 
+// ── Vider les sessions actives au démarrage (évite les blocages après redéploiement) ──
+try {
+  const _startupDb = loadDB();
+  _startupDb.activeSessions = {};
+  saveDB(_startupDb);
+  console.log('✅ Sessions actives réinitialisées au démarrage');
+} catch(e) { console.error('Erreur reset sessions:', e.message); }
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
