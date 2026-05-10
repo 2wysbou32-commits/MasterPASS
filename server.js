@@ -95,14 +95,6 @@ function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
   };
 }
 
-// ── Vider les sessions actives au démarrage (évite les blocages après redéploiement) ──
-try {
-  const _startupDb = loadDB();
-  _startupDb.activeSessions = {};
-  saveDB(_startupDb);
-  console.log('✅ Sessions actives réinitialisées au démarrage');
-} catch(e) { console.error('Erreur reset sessions:', e.message); }
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -151,6 +143,14 @@ function deleteActiveSession(userId) {
 
 // ── Reset tokens (en mémoire, valides 15 min) ────────────────────────────────
 const resetTokens = {};
+
+// ── Vider les sessions actives au démarrage ───────────────────────────────────
+try {
+  const _startupDb = loadDB();
+  _startupDb.activeSessions = {};
+  saveDB(_startupDb);
+  console.log('✅ Sessions actives réinitialisées au démarrage');
+} catch(e) { console.error('Erreur reset sessions:', e.message); }
 
 function generateToken() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
