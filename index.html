@@ -1982,6 +1982,8 @@ function setupApp(){
   $('panel-files').classList.add('active');$('panel-files').style.display='';
   $('panel-users').style.display=isAdmin?'':'none';
   $('view-folders').style.display='';$('view-files').style.display='none';
+  // Hide discussion panel when navigating back
+  const dp = document.getElementById('discussion-panel'); if(dp) dp.style.display='none';
   currentFolder=null;
   $('nav-avatar').textContent=initials;$('nav-username').textContent=currentUser.name;
   $('nav-role-badge').textContent=isAdmin?'Admin':isSubAdmin?'Sous-admin':'Étudiant';
@@ -2052,6 +2054,11 @@ function startSessionPolling() {
 
 function showPanel(name){
   if((name==='users'||name==='codes')&&currentUser?.role!=='admin')return;
+  // Always hide discussion when switching panels
+  const dp = document.getElementById('discussion-panel');
+  if (dp) dp.style.display = 'none';
+  const vf = document.getElementById('view-files');
+  if (vf && name !== 'files') vf.style.display = 'none';
   // Cacher tous les panels (style inline nécessaire car il écrase le CSS)
   document.querySelectorAll('.panel').forEach(p=>{
     p.classList.remove('active');
@@ -2160,6 +2167,7 @@ function backToRoot(){
   currentFolder=null;
   $('view-folders').style.display='';
   $('view-files').style.display='none';
+  const dp2 = document.getElementById('discussion-panel'); if(dp2) dp2.style.display='none';
   $('topbar-title').textContent='Espace documentaire';
   const topbarEl = document.querySelector('.topbar');
   if(topbarEl) topbarEl.style.display = 'flex';
@@ -3159,15 +3167,23 @@ async function doRenameFile() {
   const newName = document.getElementById('rename-input').value.trim();
   if (!newName || newName === _fileModalData.currentName) { closeFileModal(); return; }
   const { fileId, folderId, subId } = _fileModalData;
-  const route = subId
-    ? '/folders/' + folderId + '/subfolders/' + subId + '/files/' + fileId + '/rename'
-    : '/folders/' + folderId + '/files/' + fileId + '/rename';
+  // Always use folder route (server searches subfolders too)
+  const route = '/folders/' + folderId + '/files/' + fileId + '/rename';
   try {
     await api('PATCH', route, { name: newName });
     closeFileModal();
     toast('Fichier renommé ✅');
-    if (subId) await loadSubfolderFiles(subId, folderId);
-    else await loadFiles();
+    // Update DOM directly without full reload
+    const nameEl = document.querySelector('.file-row[data-file-id="' + fileId + '"] .file-name');
+    if (nameEl) {
+      // Keep read badge if present
+      const readBadge = nameEl.querySelector('.file-read-badge');
+      nameEl.textContent = newName;
+      if (readBadge) nameEl.appendChild(readBadge);
+    }
+    // Also reload to ensure consistency
+    if (subId) setTimeout(() => loadSubfolderFiles(subId, folderId), 200);
+    else setTimeout(() => loadFiles(), 200);
   } catch(err) { toast(err.message, 'error'); }
 }
 
@@ -3363,7 +3379,7 @@ async function openDiscussion(fileId, fileName) {
   const badge = document.getElementById('disc-badge-' + fileId);
   if (badge) badge.style.display = 'none';
   showView('threads-list-view');
-  await loadThreads();
+  await loadThreads(false);
   startDiscussionRefresh();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -3698,15 +3714,23 @@ async function doRenameFile() {
   const newName = document.getElementById('rename-input').value.trim();
   if (!newName || newName === _fileModalData.currentName) { closeFileModal(); return; }
   const { fileId, folderId, subId } = _fileModalData;
-  const route = subId
-    ? '/folders/' + folderId + '/subfolders/' + subId + '/files/' + fileId + '/rename'
-    : '/folders/' + folderId + '/files/' + fileId + '/rename';
+  // Always use folder route (server searches subfolders too)
+  const route = '/folders/' + folderId + '/files/' + fileId + '/rename';
   try {
     await api('PATCH', route, { name: newName });
     closeFileModal();
     toast('Fichier renommé ✅');
-    if (subId) await loadSubfolderFiles(subId, folderId);
-    else await loadFiles();
+    // Update DOM directly without full reload
+    const nameEl = document.querySelector('.file-row[data-file-id="' + fileId + '"] .file-name');
+    if (nameEl) {
+      // Keep read badge if present
+      const readBadge = nameEl.querySelector('.file-read-badge');
+      nameEl.textContent = newName;
+      if (readBadge) nameEl.appendChild(readBadge);
+    }
+    // Also reload to ensure consistency
+    if (subId) setTimeout(() => loadSubfolderFiles(subId, folderId), 200);
+    else setTimeout(() => loadFiles(), 200);
   } catch(err) { toast(err.message, 'error'); }
 }
 
