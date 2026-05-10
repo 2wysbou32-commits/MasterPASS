@@ -1523,7 +1523,7 @@ input[type="file"]{display:none;}
         <div style="font-size:12px;color:var(--text3);margin-top:4px" id="thread-meta-display"></div>
       </div>
       <div id="thread-admin-actions" style="display:none;flex-shrink:0">
-        <button onclick="toggleResolve()" id="resolve-btn" style="padding:9px 18px;border-radius:10px;border:2px solid #2E7D32;background:#2E7D32;color:white;cursor:pointer;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">✓ Marquer résolu</button>
+        <button onclick="toggleResolve()" id="resolve-btn" style="padding:9px 18px;border-radius:10px;border:2px solid #2E7D32;background:#2E7D32;color:#ffffff !important;cursor:pointer;font-size:13px;font-weight:700;font-family:'Inter',sans-serif;-webkit-text-fill-color:#ffffff">✓ Marquer résolu</button>
       </div>
     </div>
 
@@ -3919,26 +3919,6 @@ function stopDiscussionRefresh() {
   }
 }
 
-async function openDiscussion(fileId, fileName) {
-  _discussionFileId = fileId;
-  _discussionFileName = fileName;
-
-  // Masquer view-files, afficher discussion comme un panel plein écran
-  const viewFiles = document.getElementById('view-files');
-  const panel = document.getElementById('discussion-panel');
-  if (viewFiles) viewFiles.style.display = 'none';
-  panel.style.display = 'block';
-
-  document.getElementById('discussion-filename').textContent = String.fromCharCode(0x1F4AC) + ' ' + fileName;
-  clearDiscussionSearch();
-  saveLastSeen(fileId);
-  const badge = document.getElementById('disc-badge-' + fileId);
-  if (badge) badge.style.display = 'none';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  await loadDiscussion();
-  startDiscussionRefresh();
-}
-
 function closeDiscussion() {
   stopDiscussionRefresh();
   cancelReply();
@@ -3951,8 +3931,9 @@ function closeDiscussion() {
 
 async function loadDiscussion(silent) {
   const list = document.getElementById('discussion-messages');
+  if (!list) return; // Panel replaced by thread system
   if (!silent) list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
-  const wasAtBottom = list.scrollHeight - list.clientHeight - list.scrollTop < 80;
+  const wasAtBottom = list ? (list.scrollHeight - list.clientHeight - list.scrollTop < 80) : false;
   try {
     const comments = await api('GET', '/comments/' + _discussionFileId);
     document.getElementById('discussion-count').textContent = comments.length + ' message' + (comments.length > 1 ? 's' : '');
