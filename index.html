@@ -2941,6 +2941,34 @@ function updateSidebarAvatar() {
 
 // ── DISCUSSION ───────────────────────────────────────────────────────────────
 let _discussionFileId = null;
+let _replyTo = null;
+
+function setReply(commentId, userName, msgPreview) {
+  try { userName = decodeURIComponent(userName); } catch(e) {}
+  try { msgPreview = decodeURIComponent(msgPreview); } catch(e) {}
+  _replyTo = { id: commentId, userName: userName, msgPreview: msgPreview };
+  var replyBar = document.getElementById('reply-bar');
+  if (replyBar) {
+    replyBar.style.display = 'flex';
+    document.getElementById('reply-name').textContent = userName;
+    document.getElementById('reply-preview').textContent = msgPreview.substring(0, 60);
+    document.getElementById('discussion-input').focus();
+  }
+}
+
+function cancelReply() {
+  _replyTo = null;
+  var replyBar = document.getElementById('reply-bar');
+  if (replyBar) replyBar.style.display = 'none';
+}
+
+function handleReply(btn) {
+  var id = parseInt(btn.getAttribute('data-reply-id'));
+  var user = btn.getAttribute('data-reply-user');
+  var msg = btn.getAttribute('data-reply-msg');
+  setReply(id, user, msg);
+}
+
 let _lastSeenComments = {}; // fileId -> ISO timestamp
 
 function getLastSeenKey() {
@@ -3097,7 +3125,7 @@ async function loadDiscussion(silent) {
       // Actions: reply (admin only) + delete
       var actions = '';
       if (isAdmin || currentUser?.role === 'admin') {
-        actions += '<button onclick="setReply(' + c.id + ',encodeURIComponent(\'' + c.userName + '\'),encodeURIComponent(\'' + (c.message||'Vocal').substring(0,50) + '\'))" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px" title="R\u00e9pondre">\u21a9 R\u00e9pondre</button>\n';
+        actions += '<button data-reply-id="' + c.id + '" data-reply-user="' + c.userName.replace(/"/g,'') + '" data-reply-msg="' + (c.message||'Vocal').replace(/"/g,'').substring(0,50) + '" onclick="handleReply(this)" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 6px">↩ Répondre</button>';
       }
       if (canDelete) {
         actions += '<button onclick="deleteComment(' + c.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;padding:2px 6px" title="Supprimer">🗑</button>';
