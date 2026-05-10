@@ -2057,7 +2057,12 @@ function renderFolders(folders){
     </div>`;return;
   }
   grid.innerHTML=folders.map(f=>`
-    <div class="folder-card" onclick="openFolder(${f.id},'${f.name.replace(/'/g,"\\'")}')">
+    <div class="folder-card" draggable="${isAdmin?'true':'false'}" data-folder-id="${f.id}"
+      onclick="openFolder(${f.id},'${f.name.replace(/'/g,"\\'")}' )"
+      ondragstart="dragFolderStart(event,${f.id})"
+      ondragover="dragFolderOver(event)"
+      ondrop="dragFolderDrop(event,${f.id})"
+      ondragend="dragFolderEnd(event)">
       ${isAdmin?`<div class="folder-actions"><button class="icon-btn" onclick="event.stopPropagation();deleteFolder(${f.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></div>`:''}
       <div class="folder-card-inner">
         <div class="folder-icon-wrap">
@@ -2937,6 +2942,64 @@ function updateSidebarAvatar() {
     avatarEl.style.padding = '0';
     avatarEl.style.fontSize = '0';
   }
+}
+
+// ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
+function renameFile(e, fileId, currentName, folderId, subId) {
+  e.stopPropagation();
+  const newName = prompt('Nouveau nom du fichier :', currentName);
+  if (!newName || newName.trim() === currentName) return;
+  const route = subId
+    ? '/folders/' + folderId + '/subfolders/' + subId + '/files/' + fileId + '/rename'
+    : '/folders/' + folderId + '/files/' + fileId + '/rename';
+  api('PATCH', route, { name: newName.trim() })
+    .then(() => { loadFiles(); toast('Fichier renommé ✅'); })
+    .catch(e => toast(e.message, 'error'));
+}
+
+// ── DRAG & DROP DOSSIERS ──────────────────────────────────────────────────────
+let _dragFolderId = null;
+
+function dragFolderStart(e, folderId) {
+  _dragFolderId = folderId;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.style.opacity = '0.5';
+}
+
+function dragFolderOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.style.outline = '2px dashed var(--teal)';
+  e.currentTarget.style.outlineOffset = '2px';
+}
+
+function dragFolderDrop(e, targetFolderId) {
+  e.preventDefault();
+  e.currentTarget.style.outline = '';
+  if (!_dragFolderId || _dragFolderId === targetFolderId) return;
+
+  // Get current order from DOM
+  const cards = document.querySelectorAll('.folder-card[data-folder-id]');
+  const order = [...cards].map(c => c.getAttribute('data-folder-id'));
+
+  // Swap positions
+  const fromIdx = order.indexOf(String(_dragFolderId));
+  const toIdx = order.indexOf(String(targetFolderId));
+  if (fromIdx === -1 || toIdx === -1) return;
+  order.splice(fromIdx, 1);
+  order.splice(toIdx, 0, String(_dragFolderId));
+
+  api('PATCH', '/folders/reorder', { order })
+    .then(() => loadFolders())
+    .catch(e => toast(e.message, 'error'));
+}
+
+function dragFolderEnd(e) {
+  e.currentTarget.style.opacity = '';
+  e.currentTarget.style.outline = '';
+  _dragFolderId = null;
+  // Remove all outlines
+  document.querySelectorAll('.folder-card').forEach(c => { c.style.outline = ''; });
 }
 
 // ── DISCUSSION ───────────────────────────────────────────────────────────────
