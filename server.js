@@ -1520,6 +1520,17 @@ app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req,
   res.json({ ok: true });
 });
 
+// Debug endpoint
+app.get('/api/debug/db-state', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json({
+    threadsKeys: Object.keys(db.threads||{}),
+    commentsKeys: Object.keys(db.comments||{}),
+    threadCount: Object.values(db.threads||{}).flat().length,
+    commentCount: Object.values(db.comments||{}).flat().length
+  });
+});
+
 // GET all threads across all files (for notification center)
 app.get('/api/threads/all', requireAuth, (req, res) => {
   const db = loadDB();
