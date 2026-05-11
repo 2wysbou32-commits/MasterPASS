@@ -1255,6 +1255,11 @@ input[type="file"]{display:none;}
         Annonces
         <span id="announcements-badge" style="display:none;position:absolute;top:6px;right:10px;background:#ef5350;color:white;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;min-width:16px;text-align:center;line-height:16px"></span>
       </div>
+      <div class="nav-item" onclick="showPanel('discussions-center')" id="nav-discussions-center" style="position:relative">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+        Discussions
+        <span id="disc-center-badge" style="display:none;position:absolute;top:6px;right:10px;background:#ef5350;color:white;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700;min-width:16px;text-align:center;line-height:16px"></span>
+      </div>
       <div class="nav-item" onclick="showPanel('favorites')" id="nav-favorites">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
         Mes favoris
@@ -1667,6 +1672,23 @@ input[type="file"]{display:none;}
     </div>
   </div>
 </div>
+
+      <!-- DISCUSSIONS CENTER PANEL -->
+      <div class="panel" id="panel-discussions-center" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div class="section-title">Toutes les discussions</div>
+          <button onclick="loadDiscussionsCenter()" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif">↻ Actualiser</button>
+        </div>
+        <!-- Filtres -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+          <button onclick="filterDiscCenter('all')" id="disc-filter-all" class="sort-btn" style="background:var(--teal-dark);color:white">Tous</button>
+          <button onclick="filterDiscCenter('open')" id="disc-filter-open" class="sort-btn">💬 Ouverts</button>
+          <button onclick="filterDiscCenter('resolved')" id="disc-filter-resolved" class="sort-btn">✓ Résolus</button>
+        </div>
+        <div id="disc-center-list">
+          <div style="padding:40px;text-align:center;color:var(--text3)">Chargement...</div>
+        </div>
+      </div>
 
       <!-- SEARCH RESULTS PANEL -->
       <div class="panel" id="panel-search" style="display:none">
@@ -2126,6 +2148,11 @@ function setupApp(){
   if(annAdminActions) annAdminActions.style.display = isAdmin ? 'flex' : 'none';
   checkAndShowTutorial();
   updateAnnouncementsBadge();
+  // Load discussions center badge
+  api('GET', '/threads/all').then(function(threads) {
+    _allThreads = threads;
+    updateDiscCenterBadge();
+  }).catch(function(){});
   updateAvatarPreview();
   updateSidebarAvatar();
   if (currentUser?.role === 'admin') {
@@ -2187,6 +2214,7 @@ function showPanel(name){
   if(name==='files'){$('topbar-title').textContent='Espace documentaire';backToRoot();clearSearch();}
   if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='favorites'){$('topbar-title').textContent='Mes favoris';loadFavorites();}
+  if(name==='discussions-center'){$('topbar-title').textContent='Discussions';loadDiscussionsCenter();}
   if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='users'){
     $('topbar-title').textContent='Gestion des comptes';
@@ -2462,7 +2490,8 @@ function renderFiles(files){
   updateFolderProgress(files);
   // Charger les badges de discussion non lus
   if (files.length) {
-    setTimeout(() => updateDiscussionBadges(files.map(f => String(f.id))), 300);
+    const validFileIds = files.map(f => String(f.id)).filter(id => id && id !== 'undefined');
+    if (validFileIds.length) setTimeout(() => updateDiscussionBadges(validFileIds), 300);
   }
   if(!files.length){
     if(container) container.innerHTML=`<div class="empty-state" style="padding:40px">
@@ -3388,6 +3417,115 @@ async function doMoveFile(toFolderId, toSubId) {
 }
 
 // Remove old renameFile duplicate
+// ── CENTRE DE DISCUSSIONS ────────────────────────────────────────────────────
+let _allThreads = [];
+let _discCenterFilter = 'all';
+
+async function loadDiscussionsCenter() {
+  const list = document.getElementById('disc-center-list');
+  list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Chargement...</div>';
+  try {
+    _allThreads = await api('GET', '/threads/all');
+    renderDiscCenter();
+    // Update global badge
+    updateDiscCenterBadge();
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
+  }
+}
+
+function filterDiscCenter(filter) {
+  _discCenterFilter = filter;
+  ['all','open','resolved'].forEach(f => {
+    const btn = document.getElementById('disc-filter-' + f);
+    if (btn) {
+      btn.style.background = f === filter ? 'var(--teal-dark)' : '';
+      btn.style.color = f === filter ? 'white' : '';
+    }
+  });
+  renderDiscCenter();
+}
+
+function renderDiscCenter() {
+  const list = document.getElementById('disc-center-list');
+  let threads = _allThreads;
+  if (_discCenterFilter === 'open') threads = threads.filter(t => !t.resolved);
+  if (_discCenterFilter === 'resolved') threads = threads.filter(t => t.resolved);
+
+  if (!threads.length) {
+    list.innerHTML = '<div style="padding:48px;text-align:center;color:var(--text3)"><div style="font-size:32px;margin-bottom:12px">💬</div><div>Aucune discussion</div></div>';
+    return;
+  }
+
+  const _lastSeen = loadLastSeen();
+
+  list.innerHTML = threads.map(function(t) {
+    const date = new Date(t.lastActivity).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+    const isNew = _lastSeen[t.fileId] ? new Date(t.lastActivity) > new Date(_lastSeen[t.fileId]) : true;
+    return renderThreadCard(t, isNew);
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
+        (isNew ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0;display:inline-block"></span>' : '') +
+        (t.resolved ? '<span style="background:#2E7D32;color:white;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">✓ Résolu</span>' : '<span style="background:rgba(0,151,167,0.1);color:var(--teal-dark);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">💬 Ouvert</span>') +
+        '<span style="font-size:11px;color:var(--text3)">' + t.folderName + '</span>' +
+      '</div>' +
+      '<div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px">' + t.title + '</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text3)">' +
+        '<span>📄 ' + t.fileName + '</span>' +
+        '<span>' + t.replyCount + ' rép. · ' + date + '</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderThreadCard(t, isNew) {
+  var date = new Date(t.lastActivity).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+  var div = document.createElement('div');
+  div.style.cssText = 'padding:14px 16px;border-radius:12px;border:1.5px solid ' + (isNew ? 'var(--teal)' : 'var(--border)') + ';background:' + (isNew ? 'rgba(0,151,167,0.04)' : 'var(--surface,white)') + ';margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s';
+  div.onmouseover = function() { this.style.boxShadow = '0 4px 12px var(--shadow)'; };
+  div.onmouseout = function() { this.style.boxShadow = ''; };
+  div.onclick = function() { goToThread(t.fileId, t.fileName, t.threadId); };
+  div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
+    (isNew ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0;display:inline-block"></span>' : '') +
+    (t.resolved ? '<span style="background:#2E7D32;color:white;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">✓ Résolu</span>' : '<span style="background:rgba(0,151,167,0.1);color:var(--teal-dark);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">💬 Ouvert</span>') +
+    '<span style="font-size:11px;color:var(--text3)">' + (t.folderName || '') + '</span>' +
+    '</div>' +
+    '<div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px">' + t.title + '</div>' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text3)">' +
+      '<span>📄 ' + t.fileName + '</span>' +
+      '<span>' + t.replyCount + ' rép. · ' + date + '</span>' +
+    '</div>';
+  return div.outerHTML;
+}
+
+function goToThreadEl(el) {
+  var fid = el.getAttribute('data-fid');
+  var fname = el.getAttribute('data-fname');
+  var tid = parseInt(el.getAttribute('data-tid'));
+  goToThread(fid, fname, tid);
+}
+
+async function goToThread(fileId, fileName, threadId) {
+  // Navigate to the file's discussion and open the specific thread
+  await openDiscussion(fileId, fileName);
+  if (threadId) {
+    setTimeout(async function() {
+      await openThread(threadId);
+    }, 300);
+  }
+}
+
+function updateDiscCenterBadge() {
+  const _lastSeen = loadLastSeen();
+  const newCount = _allThreads.filter(t =>
+    _lastSeen[t.fileId] ? new Date(t.lastActivity) > new Date(_lastSeen[t.fileId]) : true
+  ).length;
+  const badge = document.getElementById('disc-center-badge');
+  if (badge) {
+    badge.textContent = newCount > 9 ? '9+' : newCount;
+    badge.style.display = newCount > 0 ? 'inline-block' : 'none';
+  }
+}
+
 // ── MENU ACTIONS FICHIER ──────────────────────────────────────────────────────
 function toggleFileMenu(e, btn) {
   e.stopPropagation();
@@ -4016,6 +4154,84 @@ async function doMoveFile(toFolderId, toSubId) {
 }
 
 // Remove old renameFile duplicate
+// ── CENTRE DE DISCUSSIONS ────────────────────────────────────────────────────
+
+
+
+async function loadDiscussionsCenter() {
+  const list = document.getElementById('disc-center-list');
+  list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Chargement...</div>';
+  try {
+    _allThreads = await api('GET', '/threads/all');
+    renderDiscCenter();
+    // Update global badge
+    updateDiscCenterBadge();
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
+  }
+}
+
+function filterDiscCenter(filter) {
+  _discCenterFilter = filter;
+  ['all','open','resolved'].forEach(f => {
+    const btn = document.getElementById('disc-filter-' + f);
+    if (btn) {
+      btn.style.background = f === filter ? 'var(--teal-dark)' : '';
+      btn.style.color = f === filter ? 'white' : '';
+    }
+  });
+  renderDiscCenter();
+}
+
+function renderThreadCard(t, isNew) {
+  var date = new Date(t.lastActivity).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+  var div = document.createElement('div');
+  div.style.cssText = 'padding:14px 16px;border-radius:12px;border:1.5px solid ' + (isNew ? 'var(--teal)' : 'var(--border)') + ';background:' + (isNew ? 'rgba(0,151,167,0.04)' : 'var(--surface,white)') + ';margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s';
+  div.onmouseover = function() { this.style.boxShadow = '0 4px 12px var(--shadow)'; };
+  div.onmouseout = function() { this.style.boxShadow = ''; };
+  div.onclick = function() { goToThread(t.fileId, t.fileName, t.threadId); };
+  div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
+    (isNew ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0;display:inline-block"></span>' : '') +
+    (t.resolved ? '<span style="background:#2E7D32;color:white;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">✓ Résolu</span>' : '<span style="background:rgba(0,151,167,0.1);color:var(--teal-dark);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">💬 Ouvert</span>') +
+    '<span style="font-size:11px;color:var(--text3)">' + (t.folderName || '') + '</span>' +
+    '</div>' +
+    '<div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px">' + t.title + '</div>' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text3)">' +
+      '<span>📄 ' + t.fileName + '</span>' +
+      '<span>' + t.replyCount + ' rép. · ' + date + '</span>' +
+    '</div>';
+  return div.outerHTML;
+}
+
+function goToThreadEl(el) {
+  var fid = el.getAttribute('data-fid');
+  var fname = el.getAttribute('data-fname');
+  var tid = parseInt(el.getAttribute('data-tid'));
+  goToThread(fid, fname, tid);
+}
+
+async function goToThread(fileId, fileName, threadId) {
+  // Navigate to the file's discussion and open the specific thread
+  await openDiscussion(fileId, fileName);
+  if (threadId) {
+    setTimeout(async function() {
+      await openThread(threadId);
+    }, 300);
+  }
+}
+
+function updateDiscCenterBadge() {
+  const _lastSeen = loadLastSeen();
+  const newCount = _allThreads.filter(t =>
+    _lastSeen[t.fileId] ? new Date(t.lastActivity) > new Date(_lastSeen[t.fileId]) : true
+  ).length;
+  const badge = document.getElementById('disc-center-badge');
+  if (badge) {
+    badge.textContent = newCount > 9 ? '9+' : newCount;
+    badge.style.display = newCount > 0 ? 'inline-block' : 'none';
+  }
+}
+
 // ── MENU ACTIONS FICHIER ──────────────────────────────────────────────────────
 function toggleFileMenu(e, btn) {
   e.stopPropagation();
@@ -5362,7 +5578,8 @@ function renderSubfolderFiles(files, subId, parentId) {
   // Update progress bar
   updateFolderProgress(files);
   if (files.length && currentUser?.role !== 'admin') {
-    setTimeout(() => updateDiscussionBadges(files.map(f => String(f.id))), 300);
+    const validFileIds = files.map(f => String(f.id)).filter(id => id && id !== 'undefined');
+    if (validFileIds.length) setTimeout(() => updateDiscussionBadges(validFileIds), 300);
   }
   const container = document.getElementById('files-list-body');
   document.getElementById('files-count-sub').textContent = `${files.length} fichier${files.length!==1?'s':''}`;
