@@ -2435,14 +2435,19 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
         </svg>
       </button>
-      <div style="position:relative;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        ${isAdmin ? `<button onclick="${toggleFn}" title="${dlAllowed ? 'Bloquer le téléchargement' : 'Autoriser le téléchargement'}"
+          style="display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;border:1.5px solid ${dlAllowed ? 'rgba(46,125,50,0.3)' : 'rgba(229,115,115,0.3)'};background:${dlAllowed ? 'rgba(46,125,50,0.06)' : 'rgba(229,115,115,0.06)'};color:${dlAllowed ? '#2E7D32' : 'var(--danger)'};cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif;white-space:nowrap">
+          ${dlAllowed ? '✅ DL on' : '🔒 DL off'}</button>` : ''}
+        <div style="position:relative">
         <button class="file-menu-btn" data-menu="menu-${f.id}" onclick="toggleFileMenu(event,this)" title="Actions">⋮</button>
         <div id="menu-${f.id}" class="file-action-menu">
           ${canPreview ? `<div class="file-action-item" onclick="closeAllFileMenus();${previewFn}">👁 Visualiser</div>` : ''}
           ${canDownload && downloadUrl ? `<div class="file-action-item" onclick="closeAllFileMenus();window.location.href='${downloadUrl}'">⬇️ Télécharger</div>` : ''}
           ${isAdmin ? `<div class="file-action-item" onclick="closeAllFileMenus();openFileModal(event,${f.id},'${f.name.replace(/'/g,'\'').replace(/"/g,'')}','${folderId}','${subId||''}')">✏️ Renommer / Déplacer</div>` : ''}
-          ${isAdmin ? `<div class="file-action-item" onclick="closeAllFileMenus();${toggleFn}">${dlAllowed ? '🔒 Bloquer DL' : '✅ Autoriser DL'}</div>` : ''}
+
           ${isAdmin ? `<div class="file-action-item danger" onclick="closeAllFileMenus();${deleteFn}">🗑 Supprimer</div>` : ''}
+        </div>
         </div>
       </div>
     </div>
