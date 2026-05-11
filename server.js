@@ -1559,8 +1559,9 @@ app.post('/api/admin/migrate-threads', requireSuperAdmin, (req, res) => {
 // GET all threads across all files (for notification center)
 app.get('/api/threads/all', requireAuth, (req, res) => {
   const db = loadDB();
-  console.log('threads/all - threads:', JSON.stringify(Object.keys(db.threads||{})), 'count:', Object.values(db.threads||{}).flat().length);
-  if (!db.threads) return res.json([]);
+  const threads = db.threads;
+  if (!threads || typeof threads !== 'object') return res.json([]);
+
   // Build flat file map
   const fileMap = {};
   (db.folders||[]).forEach(folder => {
@@ -1573,21 +1574,29 @@ app.get('/api/threads/all', requireAuth, (req, res) => {
       });
     });
   });
+
   const result = [];
-  Object.entries(db.threads).forEach(([fileId, threads]) => {
-    if (!threads || !threads.length) return;
+  const keys = Object.keys(threads);
+  keys.forEach(fileId => {
+    const fileThreads = threads[fileId];
+    if (!Array.isArray(fileThreads) || !fileThreads.length) return;
     const info = fileMap[String(fileId)] || { name: 'Fichier #' + fileId, folder: '' };
-    threads.forEach(t => {
+    fileThreads.forEach(t => {
+      if (!t || !t.id) return;
       result.push({
-        fileId, fileName: info.name, folderName: info.folder,
-        threadId: t.id, title: t.title,
+        fileId: String(fileId),
+        fileName: info.name,
+        folderName: info.folder,
+        threadId: t.id,
+        title: t.title || 'Sans titre',
         resolved: t.resolved || false,
         createdAt: t.createdAt,
         replyCount: (t.replies||[]).length,
-        lastActivity: t.replies?.length ? t.replies[t.replies.length-1].createdAt : t.createdAt,
+        lastActivity: (t.replies&&t.replies.length) ? t.replies[t.replies.length-1].createdAt : t.createdAt
       });
     });
   });
+
   result.sort((a,b) => new Date(b.lastActivity) - new Date(a.lastActivity));
   res.json(result);
 });
