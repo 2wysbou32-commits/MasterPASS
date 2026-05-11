@@ -2380,11 +2380,6 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
   const canDownload = isAdmin ? true : (!isVideo && dlAllowed);
   const downloadUrl = downloadBasePath ? downloadBasePath + '/download' : '';
 
-  const previewBtn = canPreview
-    ? `<button class="btn-preview" onclick="${previewFn}">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px;flex-shrink:0"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-        Visualiser</button>` : '';
-
   const downloadBtn = canDownload
     ? `<a class="btn-download" href="${downloadBasePath}/download">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Télécharger</a>`
@@ -2404,7 +2399,7 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer</button>` : '';
 
   const fileIsRead = isRead(f.id, folderId, subId);
-  return `<div class="file-row${fileIsRead ? ' is-read' : ''}" data-file-id="${f.id}">
+  return `<div class="file-row${fileIsRead ? ' is-read' : ''}" data-file-id="${f.id}" ${canPreview ? `onclick="${previewFn}" style="cursor:pointer"` : ''}>
     <div class="file-left">
       ${getFileTypeBadge(f.type)}
       <div class="file-info">
@@ -2433,13 +2428,13 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
         </svg>
       </button>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-        ${isAdmin ? `<button onclick="${toggleFn}" title="${dlAllowed ? 'Bloquer le téléchargement' : 'Autoriser le téléchargement'}"
+        ${isAdmin ? `<button onclick="event.stopPropagation();${toggleFn}" title="${dlAllowed ? 'Bloquer le téléchargement' : 'Autoriser le téléchargement'}"
           style="display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;border:1.5px solid ${dlAllowed ? 'rgba(46,125,50,0.3)' : 'rgba(229,115,115,0.3)'};background:${dlAllowed ? 'rgba(46,125,50,0.06)' : 'rgba(229,115,115,0.06)'};color:${dlAllowed ? '#2E7D32' : 'var(--danger)'};cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif;white-space:nowrap">
           ${dlAllowed ? '✅ DL on' : '🔒 DL off'}</button>` : ''}
         <div style="position:relative">
-        <button class="file-menu-btn" data-menu="menu-${f.id}" onclick="toggleFileMenu(event,this)" title="Actions">⋮</button>
+        <button class="file-menu-btn" data-menu="menu-${f.id}" onclick="event.stopPropagation();toggleFileMenu(event,this)" title="Actions">⋮</button>
         <div id="menu-${f.id}" class="file-action-menu">
-          ${canPreview ? `<div class="file-action-item" onclick="closeAllFileMenus();${previewFn}">👁 Visualiser</div>` : ''}
+
           ${canDownload && downloadUrl ? `<div class="file-action-item" onclick="closeAllFileMenus();window.location.href='${downloadUrl}'">⬇️ Télécharger</div>` : ''}
           ${isAdmin ? `<div class="file-action-item" onclick="closeAllFileMenus();openFileModal(event,${f.id},'${f.name.replace(/'/g,'\'').replace(/"/g,'')}','${folderId}','${subId||''}')">✏️ Renommer / Déplacer</div>` : ''}
 
