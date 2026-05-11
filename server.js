@@ -1486,6 +1486,40 @@ app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req,
   res.json({ ok: true });
 });
 
+// GET all threads across all files (for notification center)
+app.get('/api/threads/all', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.threads) return res.json([]);
+  const result = [];
+  Object.entries(db.threads).forEach(([fileId, threads]) => {
+    // Find file name
+    let fileName = 'Fichier #' + fileId;
+    let folderName = '';
+    for (const folder of db.folders) {
+      const f = (folder.files||[]).find(fi => String(fi.id) === String(fileId));
+      if (f) { fileName = f.name; folderName = folder.name; break; }
+      for (const sub of (folder.subfolders||[])) {
+        const sf = (sub.files||[]).find(fi => String(fi.id) === String(fileId));
+        if (sf) { fileName = sf.name; folderName = folder.name + ' / ' + sub.name; break; }
+      }
+    }
+    threads.forEach(t => {
+      result.push({
+        fileId, fileName, folderName,
+        threadId: t.id, title: t.title,
+        resolved: t.resolved,
+        createdAt: t.createdAt,
+        replyCount: (t.replies||[]).length,
+        lastActivity: t.replies?.length ? t.replies[t.replies.length-1].createdAt : t.createdAt,
+        lastReplyBy: t.replies?.length ? t.replies[t.replies.length-1].userName : null
+      });
+    });
+  });
+  // Sort by lastActivity desc
+  result.sort((a,b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+  res.json(result);
+});
+
 // Unread threads count
 app.post('/api/threads/unread', requireAuth, (req, res) => {
   const { fileIds, lastSeen } = req.body;
