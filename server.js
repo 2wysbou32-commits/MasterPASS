@@ -866,7 +866,14 @@ app.patch('/api/folders/:folderId/files/:fileId/downloadable', requireAdmin, (re
   const db = loadDB();
   const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
-  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  // Search in root files first, then subfolders
+  let file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) {
+    for (const sub of (folder.subfolders||[])) {
+      file = (sub.files||[]).find(f => f.id === parseInt(req.params.fileId));
+      if (file) break;
+    }
+  }
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
   file.downloadable = !file.downloadable;
   saveDB(db);
@@ -1482,15 +1489,25 @@ app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req,
 // Unread threads count
 app.post('/api/threads/unread', requireAuth, (req, res) => {
   const { fileIds, lastSeen } = req.body;
+  if (!Array.isArray(fileIds)) return res.status(400).json({ error: 'fileIds requis' });
   const db = loadDB();
   if (!db.threads) return res.json({});
   const result = {};
-  (fileIds || []).forEach(fileId => {
-    const threads = db.threads[fileId] || [];
+  fileIds.filter(id => id && id !== 'undefined' && id !== 'null').forEach(fileId => {
+    const threads = db.threads[String(fileId)] || [];
     const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
-    result[fileId] = lastSeenAt
-      ? threads.filter(t => new Date(t.createdAt) > lastSeenAt).length
-      : threads.length;
+    if (!lastSeenAt) {
+      // Jamais vu : compter tous les fils + toutes les réponses
+      result[fileId] = threads.reduce((acc, t) => acc + 1 + (t.replies||[]).length, 0);
+    } else {
+      // Compter les nouveaux fils + nouvelles réponses depuis lastSeen
+      let count = 0;
+      threads.forEach(t => {
+        if (new Date(t.createdAt) > lastSeenAt) count++;
+        else count += (t.replies||[]).filter(r => new Date(r.createdAt) > lastSeenAt).length;
+      });
+      result[fileId] = count;
+    }
   });
   res.json(result);
 });
