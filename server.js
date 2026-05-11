@@ -106,9 +106,47 @@ if (!require('fs').existsSync(DATA_DIR)) require('fs').mkdirSync(DATA_DIR, { rec
 if (!require('fs').existsSync(UPLOADS_DIR)) require('fs').mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // ── DB ────────────────────────────────────────────────────────────────────────
+function migrateCommentsToThreads(db) {
+  if (!db.comments || !Object.keys(db.comments).length) return;
+  if (!db.threads) db.threads = {};
+  let migrated = 0;
+  Object.entries(db.comments).forEach(([fileId, comments]) => {
+    if (!comments || !comments.length) return;
+    if (!db.threads[fileId]) db.threads[fileId] = [];
+    // Check if already migrated (avoid duplicates)
+    if (db.threads[fileId].length > 0) return;
+    // Group comments as a single thread per file
+    const firstComment = comments[0];
+    const thread = {
+      id: db.nextId++,
+      fileId: fileId,
+      title: firstComment.message ? firstComment.message.substring(0, 80) : 'Discussion importée',
+      createdBy: firstComment.userId,
+      createdAt: firstComment.createdAt,
+      resolved: false,
+      replies: comments.slice(1).map(c => ({
+        id: c.id, userId: c.userId, userName: c.userName,
+        userRole: c.userRole, message: c.message || '',
+        audio: c.audio || null, audioDuration: c.audioDuration || null,
+        createdAt: c.createdAt
+      }))
+    };
+    db.threads[fileId].push(thread);
+    migrated++;
+  });
+  if (migrated > 0) {
+    console.log('Migrated ' + migrated + ' comment threads to new thread system');
+    saveDB(db);
+  }
+}
+
 function loadDB() {
   if (!fs.existsSync(DATA_FILE)) return initDB();
-  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return initDB(); }
+  try {
+    const db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    migrateCommentsToThreads(db);
+    return db;
+  } catch { return initDB(); }
 }
 function saveDB(db) { fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2)); }
 function initDB() {
