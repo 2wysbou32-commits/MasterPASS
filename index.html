@@ -66,7 +66,15 @@
 [data-theme="dark"] [style*="background: #fff"] { background: var(--surface) !important; }
 [data-theme="dark"] .files-list-wrap,
 [data-theme="dark"] .files-list-header { background: var(--surface) !important; color: var(--text) !important; }
-[data-theme="dark"] .file-menu-btn {
+[data-theme="dark"] .sort-item {
+  display:block;width:100%;padding:11px 16px;font-size:13px;color:var(--text);
+  cursor:pointer;border:none;background:none;text-align:left;
+  font-family:'Inter',sans-serif;transition:background 0.1s;
+}
+.sort-item:hover { background:var(--bg); }
+.sort-item.active { color:var(--teal-dark);font-weight:700; }
+
+.file-menu-btn {
   width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);
   background:transparent;color:var(--text3);cursor:pointer;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -98,7 +106,15 @@
 [data-theme="dark"] .file-row { border-color: var(--border) !important; }
 [data-theme="dark"] .file-row:hover { background: var(--surface2) !important; }
 [data-theme="dark"] .file-name { color: var(--text) !important; }
-[data-theme="dark"] .file-menu-btn {
+[data-theme="dark"] .sort-item {
+  display:block;width:100%;padding:11px 16px;font-size:13px;color:var(--text);
+  cursor:pointer;border:none;background:none;text-align:left;
+  font-family:'Inter',sans-serif;transition:background 0.1s;
+}
+.sort-item:hover { background:var(--bg); }
+.sort-item.active { color:var(--teal-dark);font-weight:700; }
+
+.file-menu-btn {
   width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);
   background:transparent;color:var(--text3);cursor:pointer;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -730,6 +746,14 @@ input[type="file"]{display:none;}
   border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;
   margin-left:6px;vertical-align:middle;white-space:nowrap;
 }
+.sort-item {
+  display:block;width:100%;padding:11px 16px;font-size:13px;color:var(--text);
+  cursor:pointer;border:none;background:none;text-align:left;
+  font-family:'Inter',sans-serif;transition:background 0.1s;
+}
+.sort-item:hover { background:var(--bg); }
+.sort-item.active { color:var(--teal-dark);font-weight:700; }
+
 .file-menu-btn {
   width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);
   background:transparent;color:var(--text3);cursor:pointer;
@@ -1353,15 +1377,16 @@ input[type="file"]{display:none;}
               <span class="files-list-header-title">Fichiers</span>
               <span class="files-count-badge" id="files-count-tag">0</span>
             </div>
-            <!-- Barre de tri -->
-            <div id="sort-bar" style="display:none;padding:8px 20px;border-bottom:1px solid rgba(178,223,219,0.3);align-items:center;gap:8px;flex-wrap:wrap;background:rgba(0,151,167,0.02)">
-              <span style="font-size:11px;color:var(--text3);font-weight:600">Trier :</span>
-              <button class="sort-btn" data-sort="date-desc" onclick="setSort('date-desc')" style="background:var(--teal-dark);color:white">📅 Plus récent</button>
-              <button class="sort-btn" data-sort="date-asc" onclick="setSort('date-asc')">📅 Plus ancien</button>
-              <button class="sort-btn" data-sort="name-asc" onclick="setSort('name-asc')">🔤 A→Z</button>
-              <button class="sort-btn" data-sort="name-desc" onclick="setSort('name-desc')">🔤 Z→A</button>
-              <button class="sort-btn" data-sort="size-desc" onclick="setSort('size-desc')">📦 Plus lourd</button>
-              <button class="sort-btn" data-sort="size-asc" onclick="setSort('size-asc')">📦 Plus léger</button>
+            <!-- Bouton de tri -->
+            <div id="sort-bar" style="display:none;padding:8px 20px 0;align-items:center;justify-content:flex-end">
+              <div style="position:relative;display:inline-block">
+                <button id="sort-menu-btn" onclick="toggleSortMenu(event,this)"
+                  style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif">
+                  <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
+                  <span id="sort-label">Plus récent</span>
+                  <svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px;opacity:0.5"><path d="M7 10l5 5 5-5z"/></svg>
+                </button>
+              </div>
             </div>
             <div id="files-list-body"></div>
             <!-- Legacy tbody kept hidden for JS compat -->
@@ -1521,6 +1546,17 @@ input[type="file"]{display:none;}
     </button>
     <button onclick="dismissPWA()" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:16px;color:var(--text3);flex-shrink:0">×</button>
   </div>
+</div>
+
+<!-- MENU TRI -->
+<div id="sort-dropdown" style="display:none;position:fixed;z-index:9999;background:var(--surface,white);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);border:1.5px solid var(--border);overflow:hidden;min-width:180px">
+  <div style="padding:6px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border)">Trier par</div>
+  <div class="sort-item" onclick="setSortMenu('date-desc','📅 Plus récent')">📅 Plus récent</div>
+  <div class="sort-item" onclick="setSortMenu('date-asc','📅 Plus ancien')">📅 Plus ancien</div>
+  <div class="sort-item" onclick="setSortMenu('name-asc','🔤 A → Z')">🔤 A → Z</div>
+  <div class="sort-item" onclick="setSortMenu('name-desc','🔤 Z → A')">🔤 Z → A</div>
+  <div class="sort-item" onclick="setSortMenu('size-desc','📦 Plus lourd')">📦 Plus lourd</div>
+  <div class="sort-item" onclick="setSortMenu('size-asc','📦 Plus léger')">📦 Plus léger</div>
 </div>
 
 <!-- MENU CONTEXTUEL MESSAGE -->
@@ -3408,21 +3444,21 @@ function toggleFileMenu(e, btn) {
   const menu = document.getElementById(menuId);
   if (!menu) return;
 
-  // Déplacer le menu dans <body> pour éviter tout contexte parent
-  if (menu.parentElement !== document.body) {
-    document.body.appendChild(menu);
-  }
+  if (menu.parentElement !== document.body) document.body.appendChild(menu);
 
   const rect = btn.getBoundingClientRect();
-  const vw = window.innerWidth;
+  // Sur mobile, visualViewport donne les vraies dimensions visibles
+  const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  // Offset si la page est zoomée/scrollée
+  const offsetY = window.visualViewport ? window.visualViewport.offsetTop : 0;
   const menuWidth = 200;
 
-  // Positionner collé sous le bouton, aligné à droite
   let left = rect.right - menuWidth;
   if (left < 8) left = 8;
   if (left + menuWidth > vw - 8) left = vw - menuWidth - 8;
-  let top = rect.bottom + 2;
-  if (top + 220 > window.innerHeight) top = rect.top - 222;
+  let top = rect.bottom + offsetY + 4;
+  if (top + 200 > vh + offsetY) top = rect.top + offsetY - 204;
 
   menu.style.left = Math.round(left) + 'px';
   menu.style.top = Math.round(top) + 'px';
@@ -4073,21 +4109,21 @@ function toggleFileMenu(e, btn) {
   const menu = document.getElementById(menuId);
   if (!menu) return;
 
-  // Déplacer le menu dans <body> pour éviter tout contexte parent
-  if (menu.parentElement !== document.body) {
-    document.body.appendChild(menu);
-  }
+  if (menu.parentElement !== document.body) document.body.appendChild(menu);
 
   const rect = btn.getBoundingClientRect();
-  const vw = window.innerWidth;
+  // Sur mobile, visualViewport donne les vraies dimensions visibles
+  const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+  const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  // Offset si la page est zoomée/scrollée
+  const offsetY = window.visualViewport ? window.visualViewport.offsetTop : 0;
   const menuWidth = 200;
 
-  // Positionner collé sous le bouton, aligné à droite
   let left = rect.right - menuWidth;
   if (left < 8) left = 8;
   if (left + menuWidth > vw - 8) left = vw - menuWidth - 8;
-  let top = rect.bottom + 2;
-  if (top + 220 > window.innerHeight) top = rect.top - 222;
+  let top = rect.bottom + offsetY + 4;
+  if (top + 200 > vh + offsetY) top = rect.top + offsetY - 204;
 
   menu.style.left = Math.round(left) + 'px';
   menu.style.top = Math.round(top) + 'px';
@@ -4662,6 +4698,33 @@ function applySort() {
   if (_currentSubId) renderSubfolderFiles(sorted, _currentSubId, _currentParentId);
   else renderFiles(sorted);
 }
+function toggleSortMenu(e, btn) {
+  e.stopPropagation();
+  const menu = document.getElementById('sort-dropdown');
+  if (menu.style.display !== 'none') { menu.style.display = 'none'; return; }
+  const rect = btn.getBoundingClientRect();
+  const menuWidth = 190;
+  let left = rect.right - menuWidth;
+  if (left < 8) left = 8;
+  let top = rect.bottom + 4;
+  if (top + 260 > window.innerHeight) top = rect.top - 264;
+  menu.style.left = Math.round(left) + 'px';
+  menu.style.top = Math.round(top) + 'px';
+  menu.style.display = 'block';
+  const labels = {'date-desc':'📅 Plus récent','date-asc':'📅 Plus ancien','name-asc':'🔤 A → Z','name-desc':'🔤 Z → A','size-desc':'📦 Plus lourd','size-asc':'📦 Plus léger'};
+  menu.querySelectorAll('.sort-item').forEach(el => {
+    el.classList.toggle('active', el.textContent.trim() === (labels[_currentSort]||''));
+  });
+  setTimeout(() => document.addEventListener('click', () => { menu.style.display = 'none'; }, { once: true }), 10);
+}
+
+function setSortMenu(s, label) {
+  document.getElementById('sort-dropdown').style.display = 'none';
+  const lbl = document.getElementById('sort-label');
+  if (lbl) lbl.textContent = label.replace(/^[^\s]+ /,'');
+  setSort(s);
+}
+
 function setSort(val) {
   _currentSort = val;
   // Update active button
