@@ -67,10 +67,10 @@
 }
 .file-menu-btn:hover { background:var(--bg); color:var(--text); border-color:var(--teal); }
 .file-action-menu {
-  display:none;position:absolute;right:0;top:38px;z-index:200;
+  display:none;position:fixed;z-index:9999;
   background:var(--surface,white);border-radius:12px;
-  box-shadow:0 8px 24px rgba(0,0,0,0.15);border:1.5px solid var(--border);
-  overflow:hidden;min-width:180px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1.5px solid var(--border);
+  overflow:hidden;min-width:190px;
 }
 .file-action-menu.open { display:block; }
 .file-action-item {
@@ -99,10 +99,10 @@
 }
 .file-menu-btn:hover { background:var(--bg); color:var(--text); border-color:var(--teal); }
 .file-action-menu {
-  display:none;position:absolute;right:0;top:38px;z-index:200;
+  display:none;position:fixed;z-index:9999;
   background:var(--surface,white);border-radius:12px;
-  box-shadow:0 8px 24px rgba(0,0,0,0.15);border:1.5px solid var(--border);
-  overflow:hidden;min-width:180px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1.5px solid var(--border);
+  overflow:hidden;min-width:190px;
 }
 .file-action-menu.open { display:block; }
 .file-action-item {
@@ -771,10 +771,10 @@ input[type="file"]{display:none;}
 }
 .file-menu-btn:hover { background:var(--bg); color:var(--text); border-color:var(--teal); }
 .file-action-menu {
-  display:none;position:absolute;right:0;top:38px;z-index:200;
+  display:none;position:fixed;z-index:9999;
   background:var(--surface,white);border-radius:12px;
-  box-shadow:0 8px 24px rgba(0,0,0,0.15);border:1.5px solid var(--border);
-  overflow:hidden;min-width:180px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1.5px solid var(--border);
+  overflow:hidden;min-width:190px;
 }
 .file-action-menu.open { display:block; }
 .file-action-item {
@@ -3347,6 +3347,16 @@ function toggleFileMenu(e, btn) {
   const menuId = btn.getAttribute('data-menu');
   const menu = document.getElementById(menuId);
   if (menu) {
+    // Position fixed relative to viewport
+    const rect = btn.getBoundingClientRect();
+    const menuWidth = 200;
+    let left = rect.right - menuWidth;
+    if (left < 8) left = 8;
+    let top = rect.bottom + 4;
+    // If menu would go off bottom, show above
+    if (top + 220 > window.innerHeight) top = rect.top - 220;
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
     menu.classList.add('open');
     setTimeout(() => document.addEventListener('click', closeAllFileMenus, { once: true }), 10);
   }
@@ -3953,6 +3963,16 @@ function toggleFileMenu(e, btn) {
   const menuId = btn.getAttribute('data-menu');
   const menu = document.getElementById(menuId);
   if (menu) {
+    // Position fixed relative to viewport
+    const rect = btn.getBoundingClientRect();
+    const menuWidth = 200;
+    let left = rect.right - menuWidth;
+    if (left < 8) left = 8;
+    let top = rect.bottom + 4;
+    // If menu would go off bottom, show above
+    if (top + 220 > window.innerHeight) top = rect.top - 220;
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
     menu.classList.add('open');
     setTimeout(() => document.addEventListener('click', closeAllFileMenus, { once: true }), 10);
   }
