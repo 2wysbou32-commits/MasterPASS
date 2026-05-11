@@ -2200,10 +2200,11 @@ function showPanel(name){
   if(searchBar) searchBar.style.display = name==='files' ? 'block' : 'none';
   // Masquer toute la topbar sauf sur le panel fichiers
   const topbar = document.querySelector('.topbar');
-  if(topbar) topbar.style.display = name==='files' ? 'flex' : 'none';
+  // Topbar visible sur tous les panels sur mobile (pour le bouton hamburger)
+  if(topbar) topbar.style.display = (name==='files' || window.innerWidth <= 768) ? 'flex' : 'none';
   updateTopbar();
-  // Sur mobile, fermer la sidebar seulement sur panel fichiers (pour voir le contenu)
-  if(window.innerWidth <= 768 && name === 'files') closeSidebar();
+  // Sur mobile, fermer la sidebar pour tous les panels
+  if(window.innerWidth <= 768) closeSidebar();
 }
 
 function updateTopbar(){
