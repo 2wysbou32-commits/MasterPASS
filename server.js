@@ -1520,6 +1520,12 @@ app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req,
   res.json({ ok: true });
 });
 
+// RAW threads dump
+app.get('/api/admin/raw-threads', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json({ threads: db.threads, comments: db.comments ? Object.keys(db.comments) : [] });
+});
+
 // MIGRATION manuelle comments → threads (appeler une fois)
 app.post('/api/admin/migrate-threads', requireSuperAdmin, (req, res) => {
   const db = loadDB();
@@ -1553,6 +1559,7 @@ app.post('/api/admin/migrate-threads', requireSuperAdmin, (req, res) => {
 // GET all threads across all files (for notification center)
 app.get('/api/threads/all', requireAuth, (req, res) => {
   const db = loadDB();
+  console.log('threads/all - threads:', JSON.stringify(Object.keys(db.threads||{})), 'count:', Object.values(db.threads||{}).flat().length);
   if (!db.threads) return res.json([]);
   // Build flat file map
   const fileMap = {};
