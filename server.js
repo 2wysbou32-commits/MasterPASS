@@ -1527,6 +1527,8 @@ app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req,
 // GET all threads across all files (for notification center)
 app.get('/api/threads/all', requireAuth, (req, res) => {
   const db = loadDB();
+  console.log('[DEBUG threads/all] db.threads keys:', Object.keys(db.threads || {}));
+  console.log('[DEBUG threads/all] db.comments keys:', Object.keys(db.comments || {}));
   if (!db.threads) return res.json([]);
   const result = [];
   Object.entries(db.threads).forEach(([fileId, threads]) => {
