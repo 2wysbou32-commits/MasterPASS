@@ -2358,6 +2358,7 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
   const canPreview = ['pdf','img','video','audio'].includes(f.type);
   const isVideo = f.type === 'video';
   const canDownload = isAdmin ? true : (!isVideo && dlAllowed);
+  const downloadUrl = downloadBasePath ? downloadBasePath + '/download' : '';
 
   const previewBtn = canPreview
     ? `<button class="btn-preview" onclick="${previewFn}">
@@ -2415,7 +2416,7 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
         <button class="file-menu-btn" data-menu="menu-${f.id}" onclick="toggleFileMenu(event,this)" title="Actions">⋮</button>
         <div id="menu-${f.id}" class="file-action-menu">
           ${canPreview ? `<div class="file-action-item" onclick="closeAllFileMenus();${previewFn}">👁 Visualiser</div>` : ''}
-          ${dlAllowed && downloadUrl ? `<div class="file-action-item" onclick="closeAllFileMenus();window.location.href='${downloadUrl}'">⬇️ Télécharger</div>` : ''}
+          ${canDownload && downloadUrl ? `<div class="file-action-item" onclick="closeAllFileMenus();window.location.href='${downloadUrl}'">⬇️ Télécharger</div>` : ''}
           ${isAdmin ? `<div class="file-action-item" onclick="closeAllFileMenus();openFileModal(event,${f.id},'${f.name.replace(/'/g,'\'').replace(/"/g,'')}','${folderId}','${subId||''}')">✏️ Renommer / Déplacer</div>` : ''}
           ${isAdmin ? `<div class="file-action-item" onclick="closeAllFileMenus();${toggleFn}">${dlAllowed ? '🔒 Bloquer DL' : '✅ Autoriser DL'}</div>` : ''}
           ${isAdmin ? `<div class="file-action-item danger" onclick="closeAllFileMenus();${deleteFn}">🗑 Supprimer</div>` : ''}
@@ -5599,64 +5600,93 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
     <div class="tutorial-body">
       <div class="tutorial-steps-dots" id="tuto-dots"></div>
 
-      <!-- Étape 1 -->
+      <!-- Étape 1 : Bienvenue -->
       <div class="tutorial-step active" id="tuto-step-0">
         <div class="tutorial-step-icon">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>
         </div>
         <div class="tutorial-step-title">Bienvenue sur MasterPASS ! 👋</div>
         <div class="tutorial-step-text">
-          Bonjour <strong id="tuto-firstname"></strong> ! Tu as accès à l'espace documentaire de ta formation.<br><br>
-          Ce guide rapide va t'expliquer comment utiliser la plateforme en <strong>4 étapes</strong>.
+          Bonjour <strong id="tuto-firstname"></strong> ! Tu as accès à l&#39;espace documentaire de ta formation.<br><br>
+          Ce guide va t&#39;expliquer en <strong>6 étapes</strong> comment utiliser la plateforme.
         </div>
       </div>
 
-      <!-- Étape 2 -->
+      <!-- Étape 2 : Dossiers -->
       <div class="tutorial-step" id="tuto-step-1">
         <div class="tutorial-step-icon">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
         </div>
-        <div class="tutorial-step-title">Les dossiers 📁</div>
+        <div class="tutorial-step-title">Les dossiers et fichiers 📁</div>
         <div class="tutorial-step-text">
-          Tes ressources sont organisées en <strong>dossiers thématiques</strong> créés par tes administrateurs.<br><br>
-          Par exemple : <em>Anatomie</em>, <em>Sémiologie</em>, <em>Cours magistraux</em>…
+          Tes ressources sont organisées en <strong>dossiers thématiques</strong> : <em>Anatomie</em>, <em>Sémiologie</em>, etc.<br><br>
+          Clique sur un dossier pour voir ses fichiers. À côté de chaque fichier, un bouton <strong>⋮</strong> te permet de <strong>visualiser</strong>, <strong>télécharger</strong> ou ajouter aux favoris.
         </div>
         <div class="tutorial-tip">
-          Clique sur un dossier pour voir les fichiers qu'il contient.
+          ⭐ Tu peux marquer tes fichiers importants en favoris pour les retrouver rapidement.
         </div>
       </div>
 
-      <!-- Étape 3 -->
+      <!-- Étape 3 : Discussions -->
       <div class="tutorial-step" id="tuto-step-2">
         <div class="tutorial-step-icon">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
         </div>
-        <div class="tutorial-step-title">Télécharger un fichier ⬇️</div>
+        <div class="tutorial-step-title">Les discussions 💬</div>
         <div class="tutorial-step-text">
-          À l'intérieur d'un dossier, tu verras la liste des fichiers disponibles.<br><br>
-          Clique sur le bouton <strong>Télécharger</strong> à côté d'un fichier pour le sauvegarder sur ton appareil.
+          Chaque fichier a un espace <strong>Discussion</strong>. C&#39;est organisé en <strong>fils</strong> : chaque fil correspond à une question précise avec son titre.<br><br>
+          Tu peux répondre dans un fil, envoyer un <strong>message vocal 🎤</strong>, et <strong>appuyer longtemps</strong> sur un message pour réagir avec un emoji, répondre ou supprimer.
         </div>
         <div class="tutorial-tip">
-          Certains fichiers peuvent être marqués <em>"Non disponible"</em> si l'administrateur n'a pas encore autorisé leur téléchargement.
+          💬 Les fils ouverts apparaissent en premier. Une fois répondu par ton formateur, le fil passe en <strong>✓ Résolu</strong>.
         </div>
       </div>
 
-      <!-- Étape 4 -->
+      <!-- Étape 4 : Chercher avant de poser -->
       <div class="tutorial-step" id="tuto-step-3">
+        <div class="tutorial-step-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        </div>
+        <div class="tutorial-step-title">🔍 Cherche avant de poser ta question !</div>
+        <div class="tutorial-step-text">
+          Avant de créer un nouveau fil, <strong>vérifie toujours si ta question a déjà été posée</strong> par un autre étudiant.<br><br>
+          Parcours la liste des fils dans la discussion du fichier concerné — la réponse est peut-être déjà là ! Cela évite les doublons et rend la discussion plus utile pour tous.
+        </div>
+        <div class="tutorial-tip">
+          ✅ Si tu trouves un fil qui correspond à ta question, tu peux simplement y lire les réponses ou ajouter un commentaire.
+        </div>
+      </div>
+
+      <!-- Étape 5 : Poser une question -->
+      <div class="tutorial-step" id="tuto-step-4">
+        <div class="tutorial-step-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </div>
+        <div class="tutorial-step-title">Poser une question 🙋</div>
+        <div class="tutorial-step-text">
+          Si ta question n&#39;existe pas encore, clique sur <strong>+ Poser une question</strong> et formule-la clairement en une phrase comme titre.<br><br>
+          Ton formateur pourra ainsi voir et répondre directement dans ton fil. Une fois répondu, le fil sera marqué <strong>✓ Résolu</strong> et passera en bas de liste.
+        </div>
+        <div class="tutorial-tip">
+          🎤 Tu peux aussi envoyer un message vocal si tu as du mal à expliquer par écrit !
+        </div>
+      </div>
+
+      <!-- Étape 6 : C'est parti -->
+      <div class="tutorial-step" id="tuto-step-5">
         <div class="tutorial-step-icon">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
         </div>
-        <div class="tutorial-step-title">C'est tout ! 🎉</div>
+        <div class="tutorial-step-title">C&#39;est tout ! 🎉</div>
         <div class="tutorial-step-text">
-          Tu sais maintenant utiliser MasterPASS.<br><br>
-          Si tu as besoin de revoir ce tutoriel, clique sur le bouton <strong>?</strong> en bas de la barre de navigation à gauche.
+          Tu sais maintenant tout pour bien utiliser MasterPASS.<br><br>
+          Pour revoir ce tutoriel, clique sur le bouton <strong>?</strong> en bas de la barre de navigation.
         </div>
         <div class="tutorial-tip">
-          Pour toute question sur les contenus, contacte directement ton administrateur.
+          Bonne révision et n&#39;hésite pas à poser tes questions dans les discussions ! 🚀
         </div>
       </div>
 
-    </div>
     <div class="tutorial-footer">
       <button class="tutorial-skip" onclick="closeTutorial()" id="tuto-skip-btn">Passer</button>
       <div class="tutorial-nav">
