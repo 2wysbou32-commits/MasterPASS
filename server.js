@@ -161,6 +161,11 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '50mb' }));
+
+// PWA files
+app.get('/manifest.json', (req, res) => res.sendFile(path.join(__dirname, 'manifest.json')));
+app.get('/icon-192.png', (req, res) => res.sendFile(path.join(__dirname, 'icon-192.png')));
+app.get('/icon-512.png', (req, res) => res.sendFile(path.join(__dirname, 'icon-512.png')));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.set('trust proxy', 1);
 
