@@ -1357,6 +1357,51 @@ app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
 // Structure: db.threads = { fileId: [ { id, title, createdBy, createdAt, replies: [...] } ] }
 
 // GET all threads for a file
+app.get('/api/threads/all', requireAuth, (req, res) => {
+  const db = loadDB();
+  const threads = db.threads;
+  if (!threads || typeof threads !== 'object') return res.json([]);
+
+  // Build flat file map
+  const fileMap = {};
+  (db.folders||[]).forEach(folder => {
+    (folder.files||[]).forEach(f => {
+      fileMap[String(f.id)] = { name: f.name, folder: folder.name };
+    });
+    (folder.subfolders||[]).forEach(sub => {
+      (sub.files||[]).forEach(f => {
+        fileMap[String(f.id)] = { name: f.name, folder: folder.name + ' / ' + sub.name };
+      });
+    });
+  });
+
+  const result = [];
+  const keys = Object.keys(threads);
+  keys.forEach(fileId => {
+    const fileThreads = threads[fileId];
+    if (!Array.isArray(fileThreads) || !fileThreads.length) return;
+    const info = fileMap[String(fileId)] || { name: 'Fichier #' + fileId, folder: '' };
+    fileThreads.forEach(t => {
+      if (!t || !t.id) return;
+      result.push({
+        fileId: String(fileId),
+        fileName: info.name,
+        folderName: info.folder,
+        threadId: t.id,
+        title: t.title || 'Sans titre',
+        resolved: t.resolved || false,
+        createdAt: t.createdAt,
+        replyCount: (t.replies||[]).length,
+        lastActivity: (t.replies&&t.replies.length) ? t.replies[t.replies.length-1].createdAt : t.createdAt
+      });
+    });
+  });
+
+  result.sort((a,b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+  res.json(result);
+});
+
+// Unread threads count
 app.get('/api/threads/:fileId', requireAuth, (req, res) => {
   const db = loadDB();
   if (!db.threads) db.threads = {};
@@ -1557,51 +1602,6 @@ app.post('/api/admin/migrate-threads', requireSuperAdmin, (req, res) => {
 });
 
 // GET all threads across all files (for notification center)
-app.get('/api/threads/all', requireAuth, (req, res) => {
-  const db = loadDB();
-  const threads = db.threads;
-  if (!threads || typeof threads !== 'object') return res.json([]);
-
-  // Build flat file map
-  const fileMap = {};
-  (db.folders||[]).forEach(folder => {
-    (folder.files||[]).forEach(f => {
-      fileMap[String(f.id)] = { name: f.name, folder: folder.name };
-    });
-    (folder.subfolders||[]).forEach(sub => {
-      (sub.files||[]).forEach(f => {
-        fileMap[String(f.id)] = { name: f.name, folder: folder.name + ' / ' + sub.name };
-      });
-    });
-  });
-
-  const result = [];
-  const keys = Object.keys(threads);
-  keys.forEach(fileId => {
-    const fileThreads = threads[fileId];
-    if (!Array.isArray(fileThreads) || !fileThreads.length) return;
-    const info = fileMap[String(fileId)] || { name: 'Fichier #' + fileId, folder: '' };
-    fileThreads.forEach(t => {
-      if (!t || !t.id) return;
-      result.push({
-        fileId: String(fileId),
-        fileName: info.name,
-        folderName: info.folder,
-        threadId: t.id,
-        title: t.title || 'Sans titre',
-        resolved: t.resolved || false,
-        createdAt: t.createdAt,
-        replyCount: (t.replies||[]).length,
-        lastActivity: (t.replies&&t.replies.length) ? t.replies[t.replies.length-1].createdAt : t.createdAt
-      });
-    });
-  });
-
-  result.sort((a,b) => new Date(b.lastActivity) - new Date(a.lastActivity));
-  res.json(result);
-});
-
-// Unread threads count
 app.post('/api/threads/unread', requireAuth, (req, res) => {
   const { fileIds, lastSeen } = req.body;
   if (!Array.isArray(fileIds)) return res.status(400).json({ error: 'fileIds requis' });
