@@ -1520,6 +1520,36 @@ app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req,
   res.json({ ok: true });
 });
 
+// MIGRATION manuelle comments → threads (appeler une fois)
+app.post('/api/admin/migrate-threads', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.comments || !Object.keys(db.comments).length) {
+    return res.json({ ok: true, migrated: 0, message: 'Pas de comments à migrer' });
+  }
+  if (!db.threads) db.threads = {};
+  let migrated = 0;
+  Object.entries(db.comments).forEach(([fileId, comments]) => {
+    if (!comments || !comments.length) return;
+    if (!db.threads[fileId]) db.threads[fileId] = [];
+    comments.forEach((c, idx) => {
+      // Chaque commentaire devient un fil séparé
+      const thread = {
+        id: db.nextId++,
+        fileId,
+        title: (c.message || 'Message vocal').substring(0, 80),
+        createdBy: c.userId,
+        createdAt: c.createdAt,
+        resolved: false,
+        replies: []
+      };
+      db.threads[fileId].push(thread);
+      migrated++;
+    });
+  });
+  saveDB(db);
+  res.json({ ok: true, migrated, threadsKeys: Object.keys(db.threads) });
+});
+
 // GET all threads across all files (for notification center)
 app.get('/api/threads/all', requireAuth, (req, res) => {
   const db = loadDB();
