@@ -2416,7 +2416,7 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
       </div>
     </div>
     <div class="file-actions-cell">
-      <button onclick="openDiscussion('${f.id}','${f.name.replace(/'/g,String.fromCharCode(39))}')"
+      <button onclick="event.stopPropagation();openDiscussion('${f.id}','${f.name.replace(/'/g,String.fromCharCode(39))}')"
         id="disc-btn-${f.id}"
         style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:500;font-family:'Inter',sans-serif;white-space:nowrap;position:relative">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
@@ -2424,7 +2424,7 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
         <span id="disc-badge-${f.id}" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef5350;color:white;border-radius:10px;padding:1px 5px;font-size:9px;font-weight:700;min-width:14px;text-align:center;line-height:14px"></span>
       </button>
       <button class="btn-favorite ${isFavorite(f.id, folderId, subId) ? 'active' : ''}"
-        onclick="toggleFavorite(event, ${JSON.stringify({id:f.id,name:f.name,type:f.type,size:f.size,addedAt:f.addedAt}).replace(/"/g,'&quot;')}, '${folderId}', '${subId || ''}')"
+        onclick="event.stopPropagation();toggleFavorite(event, ${JSON.stringify({id:f.id,name:f.name,type:f.type,size:f.size,addedAt:f.addedAt}).replace(/"/g,'&quot;')}, '${folderId}', '${subId || ''}')"
         title="${isFavorite(f.id, folderId, subId) ? 'Retirer des favoris' : 'Ajouter aux favoris'}">
         <svg viewBox="0 0 24 24" fill="${isFavorite(f.id, folderId, subId) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
