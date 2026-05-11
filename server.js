@@ -144,14 +144,6 @@ function deleteActiveSession(userId) {
 // ── Reset tokens (en mémoire, valides 15 min) ────────────────────────────────
 const resetTokens = {};
 
-// ── Vider les sessions actives au démarrage ───────────────────────────────────
-try {
-  const _startupDb = loadDB();
-  _startupDb.activeSessions = {};
-  saveDB(_startupDb);
-  console.log('✅ Sessions actives réinitialisées au démarrage');
-} catch(e) { console.error('Erreur reset sessions:', e.message); }
-
 function generateToken() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
@@ -353,7 +345,7 @@ async function proxyFileFromR2(key, res, inline, originalReq) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const date = new Date();
-  const amzDate = date.toISOString().replace(/[:-]/g, '').replace(/\.\d{3}/, '').slice(0, 15) + 'Z';
+  const amzDate = date.toISOString().replace(/[:-]|\.\.\d{3}/g, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
   const bodyHash = hashSHA256('');
 
@@ -416,7 +408,7 @@ function getSignedVideoUrl(r2Key, useLegacy) {
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const region = 'auto';
   const now = new Date();
-  const amzDate = now.toISOString().replace(/[:-]/g, '').replace(/\.\d{3}/, '').slice(0, 15) + 'Z';
+  const amzDate = now.toISOString().replace(/[:-]/g, '').replace(/\.\.\d{3}/, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
   const expires = 7200;
   const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
