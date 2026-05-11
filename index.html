@@ -7,7 +7,8 @@
 <!-- PWA -->
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#00838F">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MasterPASS">
 <link rel="apple-touch-icon" href="/icon-192.png">
@@ -3588,7 +3589,7 @@ async function updateDiscussionBadges(fileIds) {
   if (!fileIds || !fileIds.length) return;
   _lastSeenComments = loadLastSeen();
   try {
-    const validIds = fileIds.filter(id => id && id !== 'undefined');
+    const validIds = fileIds.filter(id => id && id !== 'undefined' && id !== 'null' && !isNaN(parseInt(id)));
     if (!validIds.length) return;
     const unread = await api('POST', '/threads/unread', { fileIds: validIds, lastSeen: _lastSeenComments });
     fileIds.forEach(id => {
@@ -3892,7 +3893,7 @@ async function updateDiscussionBadges(fileIds) {
   if (!fileIds || !fileIds.length) return;
   _lastSeenComments = loadLastSeen();
   try {
-    const validIds = fileIds.filter(id => id && id !== 'undefined');
+    const validIds = fileIds.filter(id => id && id !== 'undefined' && id !== 'null' && !isNaN(parseInt(id)));
     if (!validIds.length) return;
     const unread = await api('POST', '/threads/unread', { fileIds: validIds, lastSeen: _lastSeenComments });
     fileIds.forEach(function(id) {
@@ -4252,7 +4253,7 @@ async function updateDiscussionBadges(fileIds) {
   if (!fileIds || !fileIds.length) return;
   _lastSeenComments = loadLastSeen();
   try {
-    const validIds = fileIds.filter(id => id && id !== 'undefined');
+    const validIds = fileIds.filter(id => id && id !== 'undefined' && id !== 'null' && !isNaN(parseInt(id)));
     if (!validIds.length) return;
     const unread = await api('POST', '/threads/unread', { fileIds: validIds, lastSeen: _lastSeenComments });
     fileIds.forEach(id => {
