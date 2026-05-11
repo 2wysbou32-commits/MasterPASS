@@ -2649,31 +2649,43 @@ function renderUsers(users){
     const rows = list.map((u, i) => {
       const initials = u.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
       const isSelf = u.id === currentUser.id;
-      const border = i < list.length-1 ? 'border-bottom:1px solid rgba(178,223,219,0.3)' : '';
       const doubleConn = u.doubleConnection;
-      const rowBg = doubleConn ? 'background:rgba(239,83,80,0.04)' : '';
-      return `<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;${border};${rowBg};transition:background 0.15s" onmouseover="this.style.background='rgba(0,151,167,0.03)'" onmouseout="this.style.background='${doubleConn?'rgba(239,83,80,0.04)':'transparent'}'">
-        <div style="width:36px;height:36px;border-radius:50%;background:${u.role==='admin'?'linear-gradient(135deg,#004D61,#003340)':'linear-gradient(135deg,var(--teal),var(--teal-dark))'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0">${initials}</div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="font-weight:600;font-size:13.5px;color:var(--text)">${u.name}</span>
-            ${isSelf?'<span style="font-size:10px;color:var(--text3)">(vous)</span>':''}
-            <span class="role-badge ${u.role==='admin'?'role-admin':u.role==='subadmin'?'role-subadmin':'role-student'}">${u.role==='admin'?'Admin':u.role==='subadmin'?'Sous-admin':'Étudiant'}</span>
-            ${doubleConn?`<span style="background:#FFEBEE;color:#C62828;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;gap:5px">⚠️ Double connexion détectée <button onclick="clearDoubleConnection(event,${u.id})" style="background:none;border:none;color:#C62828;cursor:pointer;font-size:11px;padding:0;line-height:1" title="Effacer l'alerte">✕</button></span>`:''}
+      const bg = doubleConn ? 'rgba(239,83,80,0.04)' : (i%2===0 ? 'transparent' : 'rgba(0,0,0,0.015)');
+      return `<tr style="background:${bg}">
+        <td style="padding:9px 14px;white-space:nowrap">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:28px;height:28px;border-radius:50%;background:${u.role==='admin'?'linear-gradient(135deg,#004D61,#003340)':'linear-gradient(135deg,var(--teal),var(--teal-dark))'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0">${initials}</div>
+            <span style="font-weight:600;font-size:13px;color:var(--text)">${u.name}${isSelf?' <small style="color:var(--text3)">(vous)</small>':''}</span>
+            ${doubleConn?`<button onclick="clearDoubleConnection(event,${u.id})" title="Double connexion — cliquer pour effacer" style="background:#FFEBEE;border:none;color:#C62828;cursor:pointer;font-size:10px;padding:2px 6px;border-radius:6px;font-weight:700">⚠️</button>`:''}
           </div>
-          <div style="font-size:11.5px;color:var(--text3);margin-top:2px">${u.login}${u.email?' · '+u.email:''}</div>
-          <div style="display:flex;gap:10px;margin-top:3px;flex-wrap:wrap">
-            ${u.mineure?`<span style="font-size:11px;color:var(--teal-dark)">📚 ${u.mineure}</span>`:''}
-            ${u.discord?`<span style="font-size:11px;color:#5865F2">💬 ${u.discord}</span>`:''}
-          </div>
-        </div>
-        ${!isSelf?`<button class="icon-btn" onclick="deleteUser(${u.id})" title="Supprimer" style="flex-shrink:0"><svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`:''}
-      </div>`;
+        </td>
+        <td style="padding:9px 14px;font-size:11.5px;color:var(--text3)">${u.login}</td>
+        <td style="padding:9px 14px;font-size:11.5px;color:var(--text3);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.email||'—'}</td>
+        <td style="padding:9px 14px;font-size:11px;color:var(--teal-dark)">${u.mineure||'—'}</td>
+        <td style="padding:9px 14px;font-size:11px;color:#5865F2">${u.discord||'—'}</td>
+        <td style="padding:9px 14px;text-align:right">
+          ${!isSelf?`<button class="icon-btn" onclick="deleteUser(${u.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`:''}
+        </td>
+      </tr>`;
     }).join('');
 
     return `<div style="margin-bottom:20px">
-      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;padding:0 18px;margin-bottom:8px">${title}</div>
-      <div style="background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden">${rows}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">${title}</div>
+      <div style="background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:rgba(0,151,167,0.04);border-bottom:1px solid var(--border)">
+              <th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Nom</th>
+              <th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Identifiant</th>
+              <th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Email</th>
+              <th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Mineure</th>
+              <th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Discord</th>
+              <th style="padding:8px 14px"></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
     </div>`;
   };
 
