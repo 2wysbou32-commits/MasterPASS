@@ -3445,20 +3445,28 @@ function toggleFileMenu(e, btn) {
   closeAllFileMenus();
   const menuId = btn.getAttribute('data-menu');
   const menu = document.getElementById(menuId);
-  if (menu) {
-    // Position fixed relative to viewport
-    const rect = btn.getBoundingClientRect();
-    const menuWidth = 200;
-    let left = rect.right - menuWidth;
-    if (left < 8) left = 8;
-    let top = rect.bottom + 4;
-    // If menu would go off bottom, show above
-    if (top + 220 > window.innerHeight) top = rect.top - 220;
-    menu.style.left = left + 'px';
-    menu.style.top = top + 'px';
-    menu.classList.add('open');
-    setTimeout(() => document.addEventListener('click', closeAllFileMenus, { once: true }), 10);
+  if (!menu) return;
+
+  // Déplacer le menu dans <body> pour éviter tout contexte parent
+  if (menu.parentElement !== document.body) {
+    document.body.appendChild(menu);
   }
+
+  const rect = btn.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const menuWidth = 200;
+
+  // Positionner collé sous le bouton, aligné à droite
+  let left = rect.right - menuWidth;
+  if (left < 8) left = 8;
+  if (left + menuWidth > vw - 8) left = vw - menuWidth - 8;
+  let top = rect.bottom + 2;
+  if (top + 220 > window.innerHeight) top = rect.top - 222;
+
+  menu.style.left = Math.round(left) + 'px';
+  menu.style.top = Math.round(top) + 'px';
+  menu.classList.add('open');
+  setTimeout(() => document.addEventListener('click', closeAllFileMenus, { once: true }), 10);
 }
 function closeAllFileMenus() {
   document.querySelectorAll('.file-action-menu.open').forEach(m => m.classList.remove('open'));
@@ -4102,20 +4110,28 @@ function toggleFileMenu(e, btn) {
   closeAllFileMenus();
   const menuId = btn.getAttribute('data-menu');
   const menu = document.getElementById(menuId);
-  if (menu) {
-    // Position fixed relative to viewport
-    const rect = btn.getBoundingClientRect();
-    const menuWidth = 200;
-    let left = rect.right - menuWidth;
-    if (left < 8) left = 8;
-    let top = rect.bottom + 4;
-    // If menu would go off bottom, show above
-    if (top + 220 > window.innerHeight) top = rect.top - 220;
-    menu.style.left = left + 'px';
-    menu.style.top = top + 'px';
-    menu.classList.add('open');
-    setTimeout(() => document.addEventListener('click', closeAllFileMenus, { once: true }), 10);
+  if (!menu) return;
+
+  // Déplacer le menu dans <body> pour éviter tout contexte parent
+  if (menu.parentElement !== document.body) {
+    document.body.appendChild(menu);
   }
+
+  const rect = btn.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const menuWidth = 200;
+
+  // Positionner collé sous le bouton, aligné à droite
+  let left = rect.right - menuWidth;
+  if (left < 8) left = 8;
+  if (left + menuWidth > vw - 8) left = vw - menuWidth - 8;
+  let top = rect.bottom + 2;
+  if (top + 220 > window.innerHeight) top = rect.top - 222;
+
+  menu.style.left = Math.round(left) + 'px';
+  menu.style.top = Math.round(top) + 'px';
+  menu.classList.add('open');
+  setTimeout(() => document.addEventListener('click', closeAllFileMenus, { once: true }), 10);
 }
 function closeAllFileMenus() {
   document.querySelectorAll('.file-action-menu.open').forEach(m => m.classList.remove('open'));
