@@ -142,11 +142,7 @@ function migrateCommentsToThreads(db) {
 
 function loadDB() {
   if (!fs.existsSync(DATA_FILE)) return initDB();
-  try {
-    const db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    migrateCommentsToThreads(db);
-    return db;
-  } catch { return initDB(); }
+  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return initDB(); }
 }
 function saveDB(db) { fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2)); }
 function initDB() {
@@ -1527,8 +1523,7 @@ app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req,
 // GET all threads across all files (for notification center)
 app.get('/api/threads/all', requireAuth, (req, res) => {
   const db = loadDB();
-  console.log('[DEBUG threads/all] db.threads keys:', Object.keys(db.threads || {}));
-  console.log('[DEBUG threads/all] db.comments keys:', Object.keys(db.comments || {}));
+
   if (!db.threads) return res.json([]);
   const result = [];
   Object.entries(db.threads).forEach(([fileId, threads]) => {
@@ -1901,5 +1896,33 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n✅  MasterPASS → http://0.0.0.0:${PORT}`);
+  // Migrate old comments to threads (once at startup)
+  try {
+    const db = loadDB();
+    let migrated = 0;
+    if (db.comments && Object.keys(db.comments).length) {
+      if (!db.threads) db.threads = {};
+      Object.entries(db.comments).forEach(([fileId, comments]) => {
+        if (!comments || !comments.length) return;
+        if (db.threads[fileId] && db.threads[fileId].length > 0) return;
+        if (!db.threads[fileId]) db.threads[fileId] = [];
+        const first = comments[0];
+        db.threads[fileId].push({
+          id: db.nextId++,
+          fileId, title: (first.message||'Discussion importée').substring(0, 80),
+          createdBy: first.userId, createdAt: first.createdAt,
+          resolved: false,
+          replies: comments.slice(1).map(c => ({
+            id: c.id, userId: c.userId, userName: c.userName,
+            userRole: c.userRole||'student', message: c.message||'',
+            audio: c.audio||null, audioDuration: c.audioDuration||null,
+            createdAt: c.createdAt
+          }))
+        });
+        migrated++;
+      });
+      if (migrated > 0) { saveDB(db); console.log('✅ Migrated', migrated, 'discussions'); }
+    }
+  } catch(e) { console.error('Migration error:', e.message); }
   console.log(`    Stockage : ${r2Enabled ? `R2 bucket «${R2_BUCKET_NAME}»` : 'Local'}\n`);
 });
