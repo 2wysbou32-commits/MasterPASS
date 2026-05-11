@@ -657,27 +657,7 @@ input[type="file"]{display:none;}
 
 
 /* ── WATERMARK ──────────────────────────────────────────────────────────────── */
-.watermark-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  pointer-events: none;
-  z-index: 99999;
-  overflow: hidden;
-}
-.watermark-text {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) rotate(-35deg);
-  font-size: 28px;
-  font-weight: 700;
-  color: rgba(0,77,97,0.08);
-  white-space: nowrap;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  pointer-events: none;
-  user-select: none;
-}
+
 /* ── ANNOUNCEMENTS ──────────────────────────────────────────────────────── */
 .ann-card {
   border-radius: 14px;
@@ -710,27 +690,7 @@ input[type="file"]{display:none;}
 .ann-type-btn:has(input:checked) { border-color:var(--teal); background:rgba(0,151,167,0.08); color:var(--teal-dark); }
 
 /* ── WATERMARK ──────────────────────────────────────────────────────────────── */
-.watermark-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  pointer-events: none;
-  z-index: 99999;
-  overflow: hidden;
-}
-.watermark-text {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%) rotate(-35deg);
-  font-size: 28px;
-  font-weight: 700;
-  color: rgba(0,77,97,0.08);
-  white-space: nowrap;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  pointer-events: none;
-  user-select: none;
-}
+
 /* ── ANNOUNCEMENTS ──────────────────────────────────────────────────────────── */
 .announcement-card {
   background: white; border-radius: 14px; padding: 18px 20px;
@@ -5574,50 +5534,12 @@ async function uploadSubfolderFiles(files, subId, parentId) {
 }
 
 // Update openPreview to work with explicit URLs
-function addWatermarkToPreview() {
-  // Supprimer ancien filigrane
-  const old = document.getElementById('watermark-overlay');
-  if(old) old.remove();
-  if(!currentUser) return;
-  const overlay = document.createElement('div');
-  overlay.id = 'watermark-overlay';
-  overlay.className = 'watermark-overlay';
-  // Répéter le filigrane en grille
-  const names = Array(12).fill(currentUser.name).join('   ·   ');
-  overlay.innerHTML = `
-    <div class="watermark-text" style="top:25%;left:50%">${names}</div>
-    <div class="watermark-text" style="top:50%;left:50%">${names}</div>
-    <div class="watermark-text" style="top:75%;left:50%">${names}</div>`;
-  document.body.appendChild(overlay);
-}
 function removeWatermark() {
   const w = document.getElementById('watermark-overlay');
   if(w) w.remove();
 }
 
 // Filigrane sur les PDFs - récupère l'utilisateur depuis le header ou currentUser
-function addWatermark(container) {
-  if (!currentUser) return;
-  const wm = document.createElement('div');
-  const text = `${currentUser.name} · ${currentUser.login} · MasterPASS`;
-  wm.style.cssText = `
-    position:absolute;inset:0;pointer-events:none;z-index:10;overflow:hidden;
-    display:flex;align-items:center;justify-content:center;
-  `;
-  // Filigrane répété en diagonale
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-    <defs>
-      <pattern id="wm" x="0" y="0" width="320" height="180" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
-        <text x="10" y="90" font-family="Inter,sans-serif" font-size="13" fill="rgba(0,77,97,0.09)" font-weight="600">${text}</text>
-      </pattern>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#wm)"/>
-  </svg>`;
-  wm.innerHTML = svg;
-  container.style.position = 'relative';
-  container.appendChild(wm);
-}
-
 function addPDFWatermark(iframe) {
   // Overlay canvas watermark on top of PDF iframe
   if (!currentUser) return;
@@ -5669,7 +5591,6 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
     body.style.display = 'block';
     body.style.position = 'relative';
     body.innerHTML = `<embed src="${previewUrl}" type="application/pdf" style="width:100%;height:100%;position:absolute;top:0;left:0;border:none;">`;
-    addWatermark(body);
   } else if (type === 'video') {
     body.style.display = 'flex';
     body.style.alignItems = 'center';
@@ -5745,8 +5666,7 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
   }
   document.getElementById('preview-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
-  addWatermarkToPreview();
-}
+  }
 
 </script>
 
