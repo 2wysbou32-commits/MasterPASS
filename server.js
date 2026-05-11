@@ -1520,48 +1520,37 @@ app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req,
   res.json({ ok: true });
 });
 
-// Debug endpoint
-app.get('/api/debug/db-state', requireSuperAdmin, (req, res) => {
-  const db = loadDB();
-  res.json({
-    threadsKeys: Object.keys(db.threads||{}),
-    commentsKeys: Object.keys(db.comments||{}),
-    threadCount: Object.values(db.threads||{}).flat().length,
-    commentCount: Object.values(db.comments||{}).flat().length
-  });
-});
-
 // GET all threads across all files (for notification center)
 app.get('/api/threads/all', requireAuth, (req, res) => {
   const db = loadDB();
-
   if (!db.threads) return res.json([]);
-  const result = [];
-  Object.entries(db.threads).forEach(([fileId, threads]) => {
-    // Find file name
-    let fileName = 'Fichier #' + fileId;
-    let folderName = '';
-    for (const folder of db.folders) {
-      const f = (folder.files||[]).find(fi => String(fi.id) === String(fileId));
-      if (f) { fileName = f.name; folderName = folder.name; break; }
-      for (const sub of (folder.subfolders||[])) {
-        const sf = (sub.files||[]).find(fi => String(fi.id) === String(fileId));
-        if (sf) { fileName = sf.name; folderName = folder.name + ' / ' + sub.name; break; }
-      }
-    }
-    threads.forEach(t => {
-      result.push({
-        fileId, fileName, folderName,
-        threadId: t.id, title: t.title,
-        resolved: t.resolved,
-        createdAt: t.createdAt,
-        replyCount: (t.replies||[]).length,
-        lastActivity: t.replies?.length ? t.replies[t.replies.length-1].createdAt : t.createdAt,
-        lastReplyBy: t.replies?.length ? t.replies[t.replies.length-1].userName : null
+  // Build flat file map
+  const fileMap = {};
+  (db.folders||[]).forEach(folder => {
+    (folder.files||[]).forEach(f => {
+      fileMap[String(f.id)] = { name: f.name, folder: folder.name };
+    });
+    (folder.subfolders||[]).forEach(sub => {
+      (sub.files||[]).forEach(f => {
+        fileMap[String(f.id)] = { name: f.name, folder: folder.name + ' / ' + sub.name };
       });
     });
   });
-  // Sort by lastActivity desc
+  const result = [];
+  Object.entries(db.threads).forEach(([fileId, threads]) => {
+    if (!threads || !threads.length) return;
+    const info = fileMap[String(fileId)] || { name: 'Fichier #' + fileId, folder: '' };
+    threads.forEach(t => {
+      result.push({
+        fileId, fileName: info.name, folderName: info.folder,
+        threadId: t.id, title: t.title,
+        resolved: t.resolved || false,
+        createdAt: t.createdAt,
+        replyCount: (t.replies||[]).length,
+        lastActivity: t.replies?.length ? t.replies[t.replies.length-1].createdAt : t.createdAt,
+      });
+    });
+  });
   result.sort((a,b) => new Date(b.lastActivity) - new Date(a.lastActivity));
   res.json(result);
 });
