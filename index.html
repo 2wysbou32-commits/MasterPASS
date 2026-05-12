@@ -1564,6 +1564,14 @@ input[type="file"]{display:none;}
   <div class="sort-item" onclick="setSortMenu('size-asc','📦 Plus léger')">📦 Plus léger</div>
 </div>
 
+<!-- MENU TRI DISCUSSIONS -->
+<div id="disc-sort-dropdown" style="display:none;position:fixed;z-index:9999;background:var(--surface,white);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);border:1.5px solid var(--border);overflow:hidden;min-width:200px">
+  <div style="padding:6px 10px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border)">Trier / Grouper</div>
+  <div class="sort-item" onclick="setDiscSort('recent')">📅 Plus récent</div>
+  <div class="sort-item" onclick="setDiscSort('open')">💬 Ouverts d'abord</div>
+  <div class="sort-item" onclick="setDiscSort('folder')">📁 Par dossier</div>
+</div>
+
 <!-- MENU CONTEXTUEL MESSAGE -->
 <div id="msg-context-menu" onclick="event.stopPropagation()" style="display:none;position:fixed;z-index:9999;background:var(--surface,white);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1px solid var(--border);overflow:hidden;min-width:200px">
   <div style="display:flex;gap:4px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg)">
@@ -1679,7 +1687,14 @@ input[type="file"]{display:none;}
       <div class="panel" id="panel-discussions-center" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <div class="section-title">Toutes les discussions</div>
-          <button onclick="loadDiscussionsCenter()" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif">↻ Actualiser</button>
+          <div style="display:flex;gap:8px">
+            <button onclick="loadDiscussionsCenter()" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif">↻ Actualiser</button>
+            <div style="position:relative">
+              <button id="disc-sort-btn" onclick="toggleDiscSort(event,this)" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif">
+                ⋮
+              </button>
+            </div>
+          </div>
         </div>
         <!-- Filtres -->
         <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
@@ -3448,14 +3463,58 @@ function filterDiscCenter(filter) {
   renderDiscCenter();
 }
 
+let _discSort = 'recent';
+
+function toggleDiscSort(e, btn) {
+  e.stopPropagation();
+  const menu = document.getElementById('disc-sort-dropdown');
+  if (menu.style.display !== 'none') { menu.style.display = 'none'; return; }
+  const rect = btn.getBoundingClientRect();
+  menu.style.left = Math.round(rect.right - 210) + 'px';
+  menu.style.top = Math.round(rect.bottom + 4) + 'px';
+  menu.style.display = 'block';
+  setTimeout(() => document.addEventListener('click', () => menu.style.display = 'none', { once: true }), 10);
+}
+
+function setDiscSort(sort) {
+  _discSort = sort;
+  document.getElementById('disc-sort-dropdown').style.display = 'none';
+  renderDiscCenter();
+}
+
 function renderDiscCenter() {
   const list = document.getElementById('disc-center-list');
   let threads = _allThreads;
   if (_discCenterFilter === 'open') threads = threads.filter(t => !t.resolved);
   if (_discCenterFilter === 'resolved') threads = threads.filter(t => t.resolved);
 
+  // Sort
+  if (_discSort === 'recent') threads = [...threads].sort((a,b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+  else if (_discSort === 'open') threads = [...threads].sort((a,b) => a.resolved - b.resolved || new Date(b.lastActivity) - new Date(a.lastActivity));
+
   if (!threads.length) {
     list.innerHTML = '<div style="padding:48px;text-align:center;color:var(--text3)"><div style="font-size:32px;margin-bottom:12px">💬</div><div>Aucune discussion</div></div>';
+    return;
+  }
+
+  // Group by folder if needed
+  if (_discSort === 'folder') {
+    const groups = {};
+    threads.forEach(t => {
+      const key = t.folderName || 'Sans dossier';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    });
+    const _lastSeen = loadLastSeen();
+    let html = '';
+    Object.entries(groups).sort().forEach(([folder, ts]) => {
+      html += '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;padding:8px 0 6px;margin-top:8px">📁 ' + folder + '</div>';
+      ts.forEach(t => {
+        const isNew = _lastSeen[t.fileId] ? new Date(t.lastActivity) > new Date(_lastSeen[t.fileId]) : true;
+        html += renderThreadCard(t, isNew);
+      });
+    });
+    list.innerHTML = html;
     return;
   }
 
@@ -3507,12 +3566,15 @@ function goToThreadEl(el) {
 }
 
 async function goToThread(fileId, fileName, threadId) {
-  // Navigate to the file's discussion and open the specific thread
+  // Go to files panel first if not already there
+  showPanel('files');
+  await new Promise(r => setTimeout(r, 100));
+  // Open discussion
   await openDiscussion(fileId, fileName);
+  // Open specific thread
   if (threadId) {
-    setTimeout(async function() {
-      await openThread(threadId);
-    }, 300);
+    await new Promise(r => setTimeout(r, 400));
+    await openThread(threadId);
   }
 }
 
@@ -4213,12 +4275,15 @@ function goToThreadEl(el) {
 }
 
 async function goToThread(fileId, fileName, threadId) {
-  // Navigate to the file's discussion and open the specific thread
+  // Go to files panel first if not already there
+  showPanel('files');
+  await new Promise(r => setTimeout(r, 100));
+  // Open discussion
   await openDiscussion(fileId, fileName);
+  // Open specific thread
   if (threadId) {
-    setTimeout(async function() {
-      await openThread(threadId);
-    }, 300);
+    await new Promise(r => setTimeout(r, 400));
+    await openThread(threadId);
   }
 }
 
