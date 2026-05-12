@@ -3569,22 +3569,24 @@ function goToThreadEl(el) {
 }
 
 async function goToThread(fileId, fileName, threadId) {
-  // Show panel-files
-  document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+  // Activer panel-files sans resetVisuals
+  document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display='none'; });
   const pf = document.getElementById('panel-files');
-  if (pf) { pf.classList.add('active'); pf.style.display = ''; }
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const nf = document.getElementById('nav-files'); if (nf) nf.classList.add('active');
-  const topbar = document.getElementById('topbar'); if (topbar) topbar.style.display = 'flex';
-  if (window.innerWidth <= 768) closeSidebar();
-  await new Promise(r => setTimeout(r, 50));
+  if (pf) { pf.classList.add('active'); pf.style.display=''; }
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const nf = document.getElementById('nav-files'); if(nf) nf.classList.add('active');
+  const topbar = document.getElementById('topbar'); if(topbar) topbar.style.display='flex';
+  if(window.innerWidth<=768) closeSidebar();
 
-  // Open discussion (same as clicking Discussion button)
+  // Montrer view-files pour que discussion-panel ait un parent visible
+  const vf = document.getElementById('view-files');
+  if(vf) vf.style.display='block';
+
+  // Appeler openDiscussion directement
   await openDiscussion(fileId, fileName);
 
-  // Open specific thread
-  if (threadId) {
-    await new Promise(r => setTimeout(r, 400));
+  if(threadId) {
+    await new Promise(r=>setTimeout(r,400));
     await openThread(threadId);
   }
 }
