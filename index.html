@@ -3566,12 +3566,21 @@ function goToThreadEl(el) {
 }
 
 async function goToThread(fileId, fileName, threadId) {
-  // Go to files panel first if not already there
-  showPanel('files');
-  await new Promise(r => setTimeout(r, 100));
-  // Open discussion
+  // 1. Afficher panel-files sans passer par showPanel (qui ferme discussion-panel)
+  document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+  const pf = document.getElementById('panel-files');
+  if (pf) { pf.classList.add('active'); pf.style.display = ''; }
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nf = document.getElementById('nav-files');
+  if (nf) nf.classList.add('active');
+  const topbar = document.getElementById('topbar');
+  if (topbar) topbar.style.display = 'flex';
+  if (window.innerWidth <= 768) closeSidebar();
+
+  // 2. Ouvrir la discussion
   await openDiscussion(fileId, fileName);
-  // Open specific thread
+
+  // 3. Ouvrir le fil spécifique
   if (threadId) {
     await new Promise(r => setTimeout(r, 400));
     await openThread(threadId);
@@ -4275,12 +4284,21 @@ function goToThreadEl(el) {
 }
 
 async function goToThread(fileId, fileName, threadId) {
-  // Go to files panel first if not already there
-  showPanel('files');
-  await new Promise(r => setTimeout(r, 100));
-  // Open discussion
+  // 1. Afficher panel-files sans passer par showPanel (qui ferme discussion-panel)
+  document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+  const pf = document.getElementById('panel-files');
+  if (pf) { pf.classList.add('active'); pf.style.display = ''; }
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nf = document.getElementById('nav-files');
+  if (nf) nf.classList.add('active');
+  const topbar = document.getElementById('topbar');
+  if (topbar) topbar.style.display = 'flex';
+  if (window.innerWidth <= 768) closeSidebar();
+
+  // 2. Ouvrir la discussion
   await openDiscussion(fileId, fileName);
-  // Open specific thread
+
+  // 3. Ouvrir le fil spécifique
   if (threadId) {
     await new Promise(r => setTimeout(r, 400));
     await openThread(threadId);
