@@ -3566,23 +3566,39 @@ function goToThreadEl(el) {
 }
 
 async function goToThread(fileId, fileName, threadId) {
-  // 1. Afficher panel-files sans passer par showPanel (qui ferme discussion-panel)
+  // Afficher le panel-files en premier
   document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
   const pf = document.getElementById('panel-files');
   if (pf) { pf.classList.add('active'); pf.style.display = ''; }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const nf = document.getElementById('nav-files');
-  if (nf) nf.classList.add('active');
-  const topbar = document.getElementById('topbar');
-  if (topbar) topbar.style.display = 'flex';
+  const nf = document.getElementById('nav-files'); if (nf) nf.classList.add('active');
+  const topbar = document.getElementById('topbar'); if (topbar) topbar.style.display = 'flex';
   if (window.innerWidth <= 768) closeSidebar();
 
-  // 2. Ouvrir la discussion
-  await openDiscussion(fileId, fileName);
+  // Forcer la visibilité du discussion-panel en dehors de panel-files
+  const dp = document.getElementById('discussion-panel');
+  if (dp && dp.parentElement !== document.body && dp.parentElement !== pf) {
+    // déjà OK
+  }
 
-  // 3. Ouvrir le fil spécifique
+  // Définir les variables et afficher directement
+  _discussionFileId = fileId;
+  _discussionFileName = fileName;
+  _currentThreadId = null;
+
+  // Cacher view-files, montrer discussion-panel
+  const vf = document.getElementById('view-files'); if (vf) vf.style.display = 'none';
+  dp.style.display = 'block';
+  document.getElementById('discussion-filename').textContent = '💬 ' + fileName;
+  saveLastSeen(fileId);
+  showView('threads-list-view');
+  await loadThreads(false);
+  startDiscussionRefresh();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Ouvrir le fil spécifique
   if (threadId) {
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise(r => setTimeout(r, 500));
     await openThread(threadId);
   }
 }
@@ -4284,23 +4300,39 @@ function goToThreadEl(el) {
 }
 
 async function goToThread(fileId, fileName, threadId) {
-  // 1. Afficher panel-files sans passer par showPanel (qui ferme discussion-panel)
+  // Afficher le panel-files en premier
   document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
   const pf = document.getElementById('panel-files');
   if (pf) { pf.classList.add('active'); pf.style.display = ''; }
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const nf = document.getElementById('nav-files');
-  if (nf) nf.classList.add('active');
-  const topbar = document.getElementById('topbar');
-  if (topbar) topbar.style.display = 'flex';
+  const nf = document.getElementById('nav-files'); if (nf) nf.classList.add('active');
+  const topbar = document.getElementById('topbar'); if (topbar) topbar.style.display = 'flex';
   if (window.innerWidth <= 768) closeSidebar();
 
-  // 2. Ouvrir la discussion
-  await openDiscussion(fileId, fileName);
+  // Forcer la visibilité du discussion-panel en dehors de panel-files
+  const dp = document.getElementById('discussion-panel');
+  if (dp && dp.parentElement !== document.body && dp.parentElement !== pf) {
+    // déjà OK
+  }
 
-  // 3. Ouvrir le fil spécifique
+  // Définir les variables et afficher directement
+  _discussionFileId = fileId;
+  _discussionFileName = fileName;
+  _currentThreadId = null;
+
+  // Cacher view-files, montrer discussion-panel
+  const vf = document.getElementById('view-files'); if (vf) vf.style.display = 'none';
+  dp.style.display = 'block';
+  document.getElementById('discussion-filename').textContent = '💬 ' + fileName;
+  saveLastSeen(fileId);
+  showView('threads-list-view');
+  await loadThreads(false);
+  startDiscussionRefresh();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Ouvrir le fil spécifique
   if (threadId) {
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise(r => setTimeout(r, 500));
     await openThread(threadId);
   }
 }
