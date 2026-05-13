@@ -3722,7 +3722,7 @@ async function loadThreadsInline(silent) {
 
     list.innerHTML = threads.map(function(t) {
       var date = new Date(t.lastReplyAt||t.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-      return '<div data-thread-id="' + t.id + '" onclick="handleThreadCardClick(event,' + t.id + ')" onmousedown="threadLongPressStart(event,' + t.id + ')" onmouseup="threadLongPressEnd()" ontouchstart="threadLongPressStart(event,' + t.id + ')" ontouchend="threadLongPressEnd()" ontouchmove="threadLongPressEnd()" style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;background:var(--surface,white);border-radius:14px;border:1.5px solid ' + (t.resolved?'rgba(46,125,50,0.3)':'var(--border)') + ';margin-bottom:10px;cursor:pointer;transition:background 0.15s,border-color 0.15s" class="thread-card">' +
+      return '<div data-thread-id="' + t.id + '" onclick="handleThreadCardClick(event,' + t.id + ')" style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;background:var(--surface,white);border-radius:14px;border:1.5px solid ' + (t.resolved?'rgba(46,125,50,0.3)':'var(--border)') + ';margin-bottom:10px;cursor:pointer;transition:background 0.15s,border-color 0.15s" class="thread-card">' +
         '<div style="flex:1">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
             (t.resolved?'<span style="background:#2E7D32;color:white;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700">✓ Résolu</span>':'<span style="background:rgba(0,151,167,0.1);color:var(--teal-dark);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700">💬 Ouvert</span>') +
@@ -3737,6 +3737,25 @@ async function loadThreadsInline(silent) {
       '</div>' +
       '</div>';
     }).join('');
+    // Attach long press handlers after render
+    document.querySelectorAll('#threads-list2 .thread-card').forEach(function(card) {
+      var tid = parseInt(card.getAttribute('data-thread-id'));
+      var timer = null; var startX = 0; var startY = 0;
+      card.addEventListener('touchstart', function(e) {
+        startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+        timer = setTimeout(function() {
+          if (navigator.vibrate) navigator.vibrate(50);
+          enterThreadSelectionMode(tid);
+        }, 500);
+      }, { passive: true });
+      card.addEventListener('touchmove', function(e) {
+        if (Math.abs(e.touches[0].clientX-startX) > 10 || Math.abs(e.touches[0].clientY-startY) > 10) clearTimeout(timer);
+      }, { passive: true });
+      card.addEventListener('touchend', function() { clearTimeout(timer); });
+      card.addEventListener('mousedown', function() { timer = setTimeout(function() { enterThreadSelectionMode(tid); }, 600); });
+      card.addEventListener('mouseup', function() { clearTimeout(timer); });
+      card.addEventListener('mouseleave', function() { clearTimeout(timer); });
+    });
   } catch(e) {
     list.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
   }
