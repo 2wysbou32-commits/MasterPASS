@@ -3598,7 +3598,10 @@ function renderThreadCard(t, isNew) {
   div.style.cssText = 'padding:14px 16px;border-radius:12px;border:1.5px solid ' + (isNew ? 'var(--teal)' : 'var(--border)') + ';background:' + (isNew ? 'rgba(0,151,167,0.04)' : 'var(--surface,white)') + ';margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s';
   div.onmouseover = function() { this.style.boxShadow = '0 4px 12px var(--shadow)'; };
   div.onmouseout = function() { this.style.boxShadow = ''; };
-  div.onclick = function() { goToThread(t.fileId, t.fileName, t.threadId); };
+  div.setAttribute('data-fid', t.fileId);
+  div.setAttribute('data-fname', encodeURIComponent(t.fileName));
+  div.setAttribute('data-tid', t.threadId);
+  div.setAttribute('onclick', 'goToThreadEl(this)');
   div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
     (isNew ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0;display:inline-block"></span>' : '') +
     (t.resolved ? '<span style="background:#2E7D32;color:white;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">✓ Résolu</span>' : '<span style="background:rgba(0,151,167,0.1);color:var(--teal-dark);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">💬 Ouvert</span>') +
@@ -4424,7 +4427,10 @@ function renderThreadCard(t, isNew) {
   div.style.cssText = 'padding:14px 16px;border-radius:12px;border:1.5px solid ' + (isNew ? 'var(--teal)' : 'var(--border)') + ';background:' + (isNew ? 'rgba(0,151,167,0.04)' : 'var(--surface,white)') + ';margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s';
   div.onmouseover = function() { this.style.boxShadow = '0 4px 12px var(--shadow)'; };
   div.onmouseout = function() { this.style.boxShadow = ''; };
-  div.onclick = function() { goToThread(t.fileId, t.fileName, t.threadId); };
+  div.setAttribute('data-fid', t.fileId);
+  div.setAttribute('data-fname', encodeURIComponent(t.fileName));
+  div.setAttribute('data-tid', t.threadId);
+  div.setAttribute('onclick', 'goToThreadEl(this)');
   div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
     (isNew ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0;display:inline-block"></span>' : '') +
     (t.resolved ? '<span style="background:#2E7D32;color:white;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">✓ Résolu</span>' : '<span style="background:rgba(0,151,167,0.1);color:var(--teal-dark);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">💬 Ouvert</span>') +
