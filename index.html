@@ -1622,19 +1622,18 @@ input[type="file"]{display:none;}
 
         <!-- VUE DISCUSSION INLINE -->
         <div id="disc-inline-view" style="display:none">
-          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border)">
-            <button onclick="closeInlineDiscussion()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif">
-              <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-              Retour
-            </button>
-            <div style="flex:1">
-              <div style="font-size:20px;font-weight:800;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif" id="inline-disc-filename"></div>
-              <div style="font-size:12px;color:var(--text3)" id="inline-threads-count"></div>
-            </div>
-          </div>
-
           <!-- Liste fils -->
           <div id="threads-list-view2">
+              <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border)">
+                <button onclick="closeInlineDiscussion()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif">
+                  <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                  ← Discussions
+                </button>
+                <div style="flex:1">
+                  <div style="font-size:18px;font-weight:800;color:var(--text)" id="inline-disc-filename"></div>
+                  <div style="font-size:12px;color:var(--text3)" id="inline-threads-count"></div>
+                </div>
+              </div>
                       <!-- Formulaire nouveau fil -->
           <div id="new-thread-form" style="display:none;background:var(--surface,white);border-radius:16px;border:1.5px solid var(--teal);padding:20px;margin-bottom:20px">
             <div style="font-size:14px;font-weight:700;margin-bottom:12px">📝 Nouvelle question</div>
@@ -1654,7 +1653,10 @@ input[type="file"]{display:none;}
           <!-- Détail fil -->
           <div id="thread-detail-view2" style="display:none">
             <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border)">
-              <button onclick="backToThreads2()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;flex-shrink:0">← Fils</button>
+              <button onclick="closeInlineDiscussion()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;flex-shrink:0">
+                <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                ← Discussions
+              </button>
               <div style="flex:1">
                 <div style="font-size:18px;font-weight:800;color:var(--text)" id="thread-title-display2"></div>
               </div>
