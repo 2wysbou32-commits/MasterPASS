@@ -2454,6 +2454,33 @@ function checkAndShowTutorial() {
   }
 }
 
+let _tutoStep = 0;
+let _tutoTotal = 6;
+
+function showTutoStep(n) {
+  _tutoStep = n;
+  document.querySelectorAll('.tutorial-step').forEach(function(s,i){ s.classList.toggle('active', i===n); });
+  document.querySelectorAll('.tutorial-dot').forEach(function(d,i){
+    d.classList.toggle('active', i===n);
+    d.classList.toggle('done', i<n);
+  });
+  var skipBtn = document.getElementById('tuto-skip-btn');
+  var nextBtn = document.getElementById('tuto-next-btn');
+  if (skipBtn) skipBtn.textContent = n >= _tutoTotal-1 ? 'Terminer' : 'Passer';
+  if (nextBtn) nextBtn.style.display = n >= _tutoTotal-1 ? 'none' : 'inline-flex';
+  var fn = document.getElementById('tuto-firstname');
+  if (fn && currentUser) fn.textContent = currentUser.name.split(' ')[0];
+}
+
+function tutoNext() {
+  if (_tutoStep < _tutoTotal-1) showTutoStep(_tutoStep+1);
+  else closeTutorial();
+}
+
+function tutoPrev() {
+  if (_tutoStep > 0) showTutoStep(_tutoStep-1);
+}
+
 function openTutorial() {
   var overlay = document.getElementById('tutorial-overlay');
   if (overlay) overlay.style.display = 'flex';
