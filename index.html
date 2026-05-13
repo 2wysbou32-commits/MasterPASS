@@ -3570,26 +3570,13 @@ function goToThreadEl(el) {
 }
 
 async function goToThread(fileId, fileName, threadId) {
-  // Cacher tous les panels
-  document.querySelectorAll('.panel').forEach(p => {
-    p.classList.remove('active');
-    p.style.display = 'none';
-  });
-  // Forcer panel-files visible
+  // Utiliser showPanel pour activer panel-files correctement
+  showPanel('files');
+  // Attendre que le DOM soit mis à jour
+  await new Promise(r => setTimeout(r, 100));
+  // Vérifier et forcer si nécessaire
   const pf = document.getElementById('panel-files');
-  pf.classList.add('active');
   pf.style.display = 'block';
-  // Nav
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const nf = document.getElementById('nav-files');
-  if (nf) nf.classList.add('active');
-  // Topbar
-  const topbar = document.getElementById('topbar');
-  if (topbar) topbar.style.display = 'flex';
-  if (window.innerWidth <= 768) closeSidebar();
-  // view-files visible pour que discussion-panel fonctionne
-  const vf = document.getElementById('view-files');
-  if (vf) vf.style.display = 'block';
   // Ouvrir la discussion
   await openDiscussion(fileId, fileName);
   // Ouvrir le fil
