@@ -3865,6 +3865,10 @@ async function loadThreadRepliesInline() {
     }).join('');
     container.scrollTop = container.scrollHeight;
     setTimeout(function() { drawAllWaveformsInContainer(container); }, 50);
+    data.replies.forEach(function(r) {
+      _commentDataMap[r.id] = { id: r.id, userId: r.userId, userName: r.userName, message: r.message||'', audio: r.audio||null, isOwn: r.userId === currentUser?.id, canDelete: (currentUser?.role==='admin') || r.userId === currentUser?.id };
+    });
+    initBubbleEvents('thread-replies2');
   } catch(e) {
     container.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
   }
