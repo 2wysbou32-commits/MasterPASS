@@ -2267,7 +2267,11 @@ function setupApp(){
   const topbarEl = document.querySelector('.topbar');
   if(topbarEl) topbarEl.style.display = 'flex';
   if($('topbar-search')) $('topbar-search').style.display='block';
-  updateTopbar();updateBreadcrumb();loadFolders();
+  updateTopbar();updateBreadcrumb();
+  // Force view-folders visible before loading
+  var vf = document.getElementById('view-folders');
+  if (vf) vf.style.setProperty('display', 'block', 'important');
+  loadFolders();
   if(isAdmin)loadStats();
   // Afficher bouton nouvelle annonce pour admin principal seulement
   const annAdminActions = $('ann-admin-actions');
