@@ -3267,17 +3267,23 @@ function initBubbleEvents() {
   };
   list.onmouseup = function() { msgLongPressEnd(); };
   list.onmouseleave = function() { msgLongPressEnd(); };
+  var _touchStartX = 0, _touchStartY = 0;
   list.ontouchstart = function(e) {
     var bubble = e.target.closest('.msg-bubble');
     if (!bubble) return;
+    _touchStartX = e.touches[0].clientX;
+    _touchStartY = e.touches[0].clientY;
     var cid = parseInt(bubble.getAttribute('data-cid'));
     msgLongPressStart(e, cid);
   };
   list.ontouchend = function(e) {
-    // Ne pas fermer le menu si c'est un vrai tap (le long press l'a déjà ouvert)
     msgLongPressEnd();
   };
-  list.ontouchmove = function() { msgLongPressEnd(); };
+  list.ontouchmove = function(e) {
+    var dx = Math.abs(e.touches[0].clientX - _touchStartX);
+    var dy = Math.abs(e.touches[0].clientY - _touchStartY);
+    if (dx > 10 || dy > 10) msgLongPressEnd();
+  };
 }
 
 function ctxReply() {
@@ -3957,44 +3963,55 @@ async function deleteThreadInline(threadId) {
 
 function drawAllWaveformsInContainer(container) {
   container.querySelectorAll('canvas[data-mine]').forEach(function(canvas) {
-    var isMine = canvas.getAttribute('data-mine') === 'true';
-    var W = canvas.offsetWidth || 120;
-    canvas.width = W;
+    canvas.width = canvas.offsetWidth || 120;
     canvas.height = 28;
-    var ctx2d = canvas.getContext('2d');
-    // Draw random-looking but consistent bars based on canvas id
-    var seed = canvas.id ? canvas.id.charCodeAt(canvas.id.length-1) : 42;
-    var bars = Math.floor(W / 4);
-    ctx2d.fillStyle = isMine ? 'rgba(255,255,255,0.85)' : 'var(--teal-dark, #006064)';
-    for (var i = 0; i < bars; i++) {
-      var rnd = Math.abs(Math.sin((i + seed) * 2.3) * 0.7 + Math.sin((i + seed) * 1.7) * 0.3);
-      var h = Math.max(3, Math.round(rnd * 20 + 4));
-      var y = (28 - h) / 2;
-      ctx2d.beginPath();
-      ctx2d.rect(i * 4, y, 3, h);
-      ctx2d.fill();
-    }
+    redrawWaveformProgress(canvas, 0); // Draw at 0% progress (all unplayed)
   });
 }
 
 function toggleInlineAudio(audioId, btnId, barId, timeId) {
   var audio = document.getElementById(audioId);
   var btn = document.getElementById(btnId);
-  if (!audio) return;
+  var canvas = document.getElementById(barId);
+  if (!audio || !btn) return;
   if (audio.paused) {
     audio.play();
     btn.textContent = '⏸';
     audio.ontimeupdate = function() {
-      var pct = audio.duration ? (audio.currentTime / audio.duration * 100) : 0;
-      var bar = document.getElementById(barId);
+      var pct = audio.duration ? (audio.currentTime / audio.duration) : 0;
       var time = document.getElementById(timeId);
-      if (bar) bar.style.width = pct + '%';
       if (time) { var s = Math.floor(audio.currentTime); time.textContent = Math.floor(s/60) + ':' + (s%60<10?'0':'') + s%60; }
+      if (canvas) redrawWaveformProgress(canvas, pct);
     };
-    audio.onended = function() { btn.textContent = '▶'; var bar = document.getElementById(barId); if(bar) bar.style.width='0%'; };
+    audio.onended = function() {
+      btn.textContent = '▶';
+      if (canvas) redrawWaveformProgress(canvas, 0);
+    };
   } else {
     audio.pause();
     btn.textContent = '▶';
+  }
+}
+
+function redrawWaveformProgress(canvas, pct) {
+  var ctx2d = canvas.getContext('2d');
+  if (!ctx2d) return;
+  var W = canvas.width || canvas.offsetWidth || 120;
+  var H = canvas.height || 28;
+  var isMine = canvas.getAttribute('data-mine') === 'true';
+  var playedColor = isMine ? 'rgba(255,255,255,0.95)' : '#006064';
+  var unplayedColor = isMine ? 'rgba(255,255,255,0.35)' : 'rgba(0,96,100,0.3)';
+  var seed = canvas.id ? canvas.id.charCodeAt(canvas.id.length-1) : 42;
+  var bars = Math.floor(W / 4);
+  ctx2d.clearRect(0, 0, W, H);
+  for (var i = 0; i < bars; i++) {
+    var rnd = Math.abs(Math.sin((i + seed) * 2.3) * 0.7 + Math.sin((i + seed) * 1.7) * 0.3);
+    var h = Math.max(3, Math.round(rnd * 20 + 4));
+    var y = (H - h) / 2;
+    ctx2d.fillStyle = (i / bars) < pct ? playedColor : unplayedColor;
+    ctx2d.beginPath();
+    ctx2d.rect(i * 4, y, 3, h);
+    ctx2d.fill();
   }
 }
 
@@ -4543,6 +4560,28 @@ function dismissPWA() {
   localStorage.setItem('pwa-dismissed', '1');
 }
 
+// ── SIDEBAR MOBILE ───────────────────────────────────────────────────────────
+function openSidebar() {
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebar-overlay');
+  if (sidebar) sidebar.classList.add('open');
+  if (overlay) overlay.style.display = 'block';
+}
+function closeSidebar() {
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebar-overlay');
+  if (sidebar) sidebar.classList.remove('open');
+  if (overlay) overlay.style.display = 'none';
+}
+function toggleSidebar() {
+  var sidebar = document.getElementById('sidebar');
+  if (sidebar && sidebar.classList.contains('open')) {
+    closeSidebar();
+  } else {
+    openSidebar();
+  }
+}
+
 // ── VOCAL RECORDING ──────────────────────────────────────────────────────────
 // New system: hold-to-record, lock mode, preview before send, waveform
 
@@ -4757,7 +4796,6 @@ async function sendVoiceMessage(ctx) {
 
 // Old toggleRecording kept for compatibility (not used anymore)
 function toggleRecording() {}
-function toggleRecording2() {}
 
 </script>
 </body>
