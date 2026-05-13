@@ -2800,6 +2800,18 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
   </div>`;
 }
 
+let _currentSort = 'date-desc';
+
+function setSort(val) {
+  _currentSort = val;
+  // Re-render current files with new sort
+  if (currentSubfolder) {
+    loadSubfolderFiles(currentFolder.id, currentSubfolder.id);
+  } else if (currentFolder) {
+    loadFiles();
+  }
+}
+
 function sortFiles(files, sort) {
   var arr = files ? files.slice() : [];
   if (sort === 'date-desc') arr.sort(function(a,b){ return new Date(b.uploadedAt||0) - new Date(a.uploadedAt||0); });
