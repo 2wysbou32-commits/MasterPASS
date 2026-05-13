@@ -2229,7 +2229,7 @@ function showPanel(name){
   // Afficher le panel cible
   const target=$('panel-'+name);
   target.classList.add('active');
-  target.style.display='';
+  target.style.display='block';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-'+name)?.classList.add('active');
   if(name==='files'){$('topbar-title').textContent='Espace documentaire';backToRoot();clearSearch();}
