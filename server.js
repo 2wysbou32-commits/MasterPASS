@@ -1391,6 +1391,7 @@ app.get('/api/threads/all', requireAuth, (req, res) => {
         title: t.title || 'Sans titre',
         resolved: t.resolved || false,
         createdAt: t.createdAt,
+        createdBy: t.createdBy,
         replyCount: (t.replies||[]).length,
         lastActivity: (t.replies&&t.replies.length) ? t.replies[t.replies.length-1].createdAt : t.createdAt
       });
@@ -1563,12 +1564,6 @@ app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req,
   thread.replies = thread.replies.filter(r => r.id !== parseInt(req.params.replyId));
   saveDB(db);
   res.json({ ok: true });
-});
-
-// RAW threads dump
-app.get('/api/admin/raw-threads', requireSuperAdmin, (req, res) => {
-  const db = loadDB();
-  res.json({ threads: db.threads, comments: db.comments ? Object.keys(db.comments) : [] });
 });
 
 // MIGRATION manuelle comments → threads (appeler une fois)
