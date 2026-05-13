@@ -3659,10 +3659,13 @@ function closeInlineDiscussion() {
   document.getElementById('disc-inline-view').style.display = 'none';
   document.getElementById('thread-detail-view2').style.display = 'none';
   document.getElementById('threads-list-view2').style.display = 'block';
-  // Show disc center list
+  // Show disc center list and refresh it
   document.getElementById('disc-center-list').style.display = 'block';
   _discussionFileId = null;
   _currentThreadId = null;
+  // Refresh list to update red dots and badge
+  renderDiscCenter();
+  updateDiscCenterBadge();
 }
 
 async function loadThreadsInline(silent) {
@@ -3693,6 +3696,7 @@ async function loadThreadsInline(silent) {
   } catch(e) {
     list.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
   }
+  updateDiscCenterBadge();
 }
 
 async function openThreadInline(threadId) {
@@ -3713,7 +3717,11 @@ async function loadThreadRepliesInline() {
   container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
   try {
     const data = await api('GET', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies');
-    document.getElementById('thread-title-display2').textContent = data.thread.title;
+    // Show "filename > thread title"
+    const fname = _discussionFileName || '';
+    document.getElementById('thread-title-display2').innerHTML = 
+      '<span style="font-size:13px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">📄 ' + fname + '</span>' +
+      data.thread.title;
     const resolveBtn = document.getElementById('resolve-btn2');
     if (resolveBtn) {
       resolveBtn.textContent = data.thread.resolved ? '✓ Résolu' : '○ Marquer résolu';
