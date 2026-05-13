@@ -1667,9 +1667,18 @@ input[type="file"]{display:none;}
             <div id="thread-replies2" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;min-height:100px"></div>
             <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden">
               <textarea id="reply-input2" placeholder="Ajoute une réponse..." style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border)">
-                <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée</span>
-                <button onclick="postReply2()" style="padding:9px 22px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Répondre</button>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <button id="record-btn2" onclick="toggleRecording2()" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif">
+                    <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 4.19-3.97 7-7.91 7s-7.42-2.81-7.91-7H0c.51 5.06 4.45 9 9 9.46V23h2v-2.54c4.55-.46 8.49-4.4 9-9.46h-2.09z"/></svg>
+                    <span id="record-label2">🎤 Vocal</span>
+                  </button>
+                  <span id="record-timer2" style="display:none;font-size:12px;color:#ef5350;font-weight:700">⏺ 0:00</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée</span>
+                  <button onclick="postReply2()" style="padding:9px 22px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Répondre</button>
+                </div>
               </div>
             </div>
           </div>
@@ -3780,6 +3789,53 @@ function showNewThreadForm2() {
 function hideNewThreadForm2() {
   document.getElementById('new-thread-form2').style.display = 'none';
   document.getElementById('new-thread-title2').value = '';
+}
+
+async function toggleRecording2() {
+  if (_mediaRecorder && _mediaRecorder.state === 'recording') {
+    _mediaRecorder.stop();
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _audioChunks = [];
+    _mediaRecorder = new MediaRecorder(stream);
+    _mediaRecorder.ondataavailable = function(e) { _audioChunks.push(e.data); };
+    _mediaRecorder.onstop = function() {
+      stream.getTracks().forEach(function(t) { t.stop(); });
+      var blob = new Blob(_audioChunks, { type: 'audio/webm' });
+      clearInterval(_recordTimer);
+      document.getElementById('record-timer2').style.display = 'none';
+      document.getElementById('record-label2').textContent = '🎤 Vocal';
+      var rb = document.getElementById('record-btn2');
+      if (rb) { rb.style.borderColor = 'var(--border)'; rb.style.color = 'var(--text2)'; }
+      var reader = new FileReader();
+      reader.onload = async function() {
+        try {
+          await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', {
+            message: '', audio: reader.result, audioDuration: _recordSeconds
+          });
+          await loadThreadRepliesInline();
+        } catch(e) { toast(e.message, 'error'); }
+      };
+      reader.readAsDataURL(blob);
+    };
+    _mediaRecorder.start();
+    _recordSeconds = 0;
+    document.getElementById('record-timer2').style.display = 'inline';
+    document.getElementById('record-label2').textContent = '⏹ Stop';
+    var rb = document.getElementById('record-btn2');
+    if (rb) { rb.style.borderColor = '#ef5350'; rb.style.color = '#ef5350'; }
+    _recordTimer = setInterval(function() {
+      _recordSeconds++;
+      var m = Math.floor(_recordSeconds/60);
+      var s = _recordSeconds % 60;
+      document.getElementById('record-timer2').textContent = '⏺ ' + m + ':' + (s<10?'0':'') + s;
+      if (_recordSeconds >= 120) _mediaRecorder.stop();
+    }, 1000);
+  } catch(e) {
+    toast('Micro non disponible: ' + e.message, 'error');
+  }
 }
 
 async function deleteThreadInline(threadId) {
