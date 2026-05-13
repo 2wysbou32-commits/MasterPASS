@@ -3808,27 +3808,37 @@ async function loadThreadRepliesInline() {
     }
     container.innerHTML = data.replies.map(function(r) {
       var isMine = r.userId === currentUser?.id;
-      var isAdmin = r.userRole === 'admin';
+      var isAdmin = r.userRole === 'admin' || r.userRole === 'subadmin';
       var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-      var bubbleBg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : (isAdmin ? 'rgba(0,151,167,0.07)' : 'var(--bg)');
+      var initials = (r.userName||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+      var avatarBg = isAdmin ? 'linear-gradient(135deg,#004D61,#003340)' : 'linear-gradient(135deg,var(--teal),var(--teal-dark))';
+      var avatarHtml = r.userAvatar ? '<img src="' + r.userAvatar + '" style="width:100%;height:100%;object-fit:cover">' : initials;
+      var bubbleBg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : (isAdmin ? 'rgba(0,151,167,0.08)' : 'var(--bg)');
       var bubbleColor = isMine ? 'white' : 'var(--text)';
-      var msgHtml = '';
+      var bubbleBorder = isMine ? 'none' : '1px solid var(--border)';
+      // Audio
+      var msgHtml;
       if (r.audio) {
-        var dur = r.audioDuration ? Math.floor(r.audioDuration/60) + ':' + (r.audioDuration%60<10?'0':'') + (r.audioDuration%60) : '';
-        msgHtml = '<div style="display:flex;align-items:center;gap:8px;padding:4px 0">' +
-          '<audio controls src="' + r.audio + '" style="height:32px;max-width:200px;filter:' + (isMine?'invert(1)':'none') + '"></audio>' +
-          (dur ? '<span style="font-size:11px;opacity:0.7">🎤 ' + dur + '</span>' : '<span style="font-size:11px;opacity:0.7">🎤</span>') +
-          '</div>';
+        var durSec = r.audioDuration || 0;
+        var durStr = Math.floor(durSec/60) + ':' + (durSec%60<10?'0':'') + durSec%60;
+        var aId = 'ia-' + r.id; var bId = 'ib-' + r.id; var barId = 'ic-' + r.id; var tId = 'it-' + r.id;
+        msgHtml = '<audio id="' + aId + '" src="' + r.audio + '" style="display:none"></audio>' +
+          '<div style="display:flex;align-items:center;gap:10px;padding:4px 0;min-width:160px">' +
+          '<button id="' + bId + '" onclick="toggleInlineAudio(\'' + aId + '\',\'' + bId + '\',\'' + barId + '\',\'' + tId + '\')" style="width:32px;height:32px;border-radius:50%;background:' + (isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)') + ';color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>' +
+          '<div style="flex:1"><div style="height:3px;background:' + (isMine?'rgba(255,255,255,0.3)':'rgba(0,151,167,0.2)') + ';border-radius:99px;overflow:hidden;margin-bottom:4px"><div id="' + barId + '" style="height:100%;width:0%;background:' + (isMine?'white':'var(--teal-dark)') + ';border-radius:99px"></div></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div></div></div>';
       } else {
-        msgHtml = r.message || '';
+        msgHtml = (r.message||'').split('\n').join('<br>');
       }
-      var row = '<div style="display:flex;flex-direction:column;align-items:' + (isMine?'flex-end':'flex-start') + ';margin-bottom:10px">';
-      if (!isMine) row += '<div style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + ';margin-bottom:4px;padding-left:40px">' + r.userName + (isAdmin?' 👨‍🏫':'') + '</div>';
-      row += '<div style="max-width:78%"><div style="background:' + bubbleBg + ';color:' + bubbleColor + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5">' + msgHtml + '</div>';
+      var row = '<div style="display:flex;flex-direction:column;align-items:' + (isMine?'flex-end':'flex-start') + ';margin-bottom:12px">';
+      if (!isMine) row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:42px"><span style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + '">' + (r.userName||'') + (isAdmin?' 👨‍🏫':'') + '</span><span style="font-size:10px;color:var(--text3)">' + date + '</span></div>';
+      row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%;' + (isMine?'flex-direction:row-reverse':'') + '">';
+      if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">' + avatarHtml + '</div>';
+      row += '<div><div style="background:' + bubbleBg + ';color:' + bubbleColor + ';border:' + bubbleBorder + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5">' + msgHtml + '</div>';
       if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">' + date + '</div>';
       var canDelete = currentUser && (currentUser.role === 'admin' || r.userId === currentUser.id);
-      if (canDelete) row += '<div style="margin-top:3px;' + (isMine?'text-align:right':'') + '"><button onclick="deleteReplyInline(' + r.id + ')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑</button></div>';
-      row += '</div></div>';
+      if (canDelete) row += '<div style="margin-top:2px;' + (isMine?'text-align:right':'') + '"><button onclick="deleteReplyInline(' + r.id + ')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑</button></div>';
+      row += '</div></div></div>';
       return row;
     }).join('');
     container.scrollTop = container.scrollHeight;
@@ -3971,6 +3981,27 @@ async function deleteThreadInline(threadId) {
     await api('DELETE', '/threads/' + _discussionFileId + '/' + threadId);
     await loadThreadsInline(false);
   } catch(e) { toast(e.message, 'error'); }
+}
+
+function toggleInlineAudio(audioId, btnId, barId, timeId) {
+  var audio = document.getElementById(audioId);
+  var btn = document.getElementById(btnId);
+  if (!audio) return;
+  if (audio.paused) {
+    audio.play();
+    btn.textContent = '⏸';
+    audio.ontimeupdate = function() {
+      var pct = audio.duration ? (audio.currentTime / audio.duration * 100) : 0;
+      var bar = document.getElementById(barId);
+      var time = document.getElementById(timeId);
+      if (bar) bar.style.width = pct + '%';
+      if (time) { var s = Math.floor(audio.currentTime); time.textContent = Math.floor(s/60) + ':' + (s%60<10?'0':'') + s%60; }
+    };
+    audio.onended = function() { btn.textContent = '▶'; var bar = document.getElementById(barId); if(bar) bar.style.width='0%'; };
+  } else {
+    audio.pause();
+    btn.textContent = '▶';
+  }
 }
 
 async function deleteReplyInline(replyId) {
