@@ -3593,7 +3593,7 @@ async function goToThread(fileId, fileName, threadId) {
   _discussionFileName = fileName;
   _currentThreadId = null;
   const panel = document.getElementById('discussion-panel');
-  panel.style.display = 'block';
+  panel.setAttribute('style', 'display:block');
   document.getElementById('discussion-filename').textContent = String.fromCharCode(0x1F4AC) + ' ' + fileName;
   saveLastSeen(fileId);
   showView('threads-list-view');
@@ -3848,7 +3848,7 @@ async function openDiscussion(fileId, fileName) {
   const viewFiles = document.getElementById('view-files');
   const panel = document.getElementById('discussion-panel');
   if (viewFiles) viewFiles.style.display = 'none';
-  panel.style.display = 'block';
+  panel.setAttribute('style', 'display:block');
   document.getElementById('discussion-filename').textContent = '💬 ' + fileName;
   // Mark as seen
   saveLastSeen(fileId);
@@ -3863,7 +3863,7 @@ async function openDiscussion(fileId, fileName) {
 function closeDiscussion() {
   stopDiscussionRefresh();
   const panel = document.getElementById('discussion-panel');
-  panel.style.display = 'none';
+  panel.setAttribute('style', 'display:none');
   const viewFiles = document.getElementById('view-files');
   if (viewFiles) viewFiles.style.display = 'block';
   _discussionFileId = null;
