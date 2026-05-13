@@ -3570,16 +3570,36 @@ function goToThreadEl(el) {
 }
 
 async function goToThread(fileId, fileName, threadId) {
-  // Utiliser showPanel pour activer panel-files correctement
-  showPanel('files');
-  // Attendre que le DOM soit mis à jour
-  await new Promise(r => setTimeout(r, 100));
-  // Vérifier et forcer si nécessaire
+  // Activer panel-files directement sans passer par showPanel
+  document.querySelectorAll('.panel').forEach(p => {
+    p.classList.remove('active');
+    p.style.display = 'none';
+  });
   const pf = document.getElementById('panel-files');
+  pf.classList.add('active');
   pf.style.display = 'block';
-  // Ouvrir la discussion
-  await openDiscussion(fileId, fileName);
-  // Ouvrir le fil
+  // Nav
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nf = document.getElementById('nav-files');
+  if (nf) nf.classList.add('active');
+  const topbar = document.querySelector('.topbar');
+  if (topbar) topbar.style.display = 'flex';
+  if (window.innerWidth <= 768) closeSidebar();
+  // S'assurer que view-files est visible (parent de discussion-panel)
+  const vf = document.getElementById('view-files');
+  if (vf) vf.style.display = 'block';
+  // Ouvrir la discussion directement
+  _discussionFileId = fileId;
+  _discussionFileName = fileName;
+  _currentThreadId = null;
+  const panel = document.getElementById('discussion-panel');
+  panel.style.display = 'block';
+  document.getElementById('discussion-filename').textContent = String.fromCharCode(0x1F4AC) + ' ' + fileName;
+  saveLastSeen(fileId);
+  showView('threads-list-view');
+  await loadThreads(false);
+  startDiscussionRefresh();
+  // Ouvrir le fil spécifique
   if (threadId) {
     await new Promise(r => setTimeout(r, 400));
     await openThread(threadId);
