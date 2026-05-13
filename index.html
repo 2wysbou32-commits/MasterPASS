@@ -278,7 +278,7 @@ select.field-input{cursor:pointer;}
 .topbar-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:21px;font-weight:800;color:var(--teal-dark);flex:1;letter-spacing:-0.3px;}
 .topbar-actions{display:flex;gap:10px;align-items:center;}
 .content-area{}
-.panel{display:none;}.panel.active{display:block;}.panel-force-show{display:block !important;}
+.panel{display:none;}.panel.active{display:block;}
 
 /* ── STATS ── */
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px;}
@@ -1629,7 +1629,7 @@ input[type="file"]{display:none;}
   <div id="threads-list-view">
     <!-- Header -->
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--border)">
-      <button onclick="closeDiscussion()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif">
+      <button onclick="document.getElementById('panel-discussions-center').contains(document.getElementById('discussion-panel')) ? closeInlineDiscussion() : closeDiscussion()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         Retour
       </button>
@@ -3570,39 +3570,55 @@ function goToThreadEl(el) {
 }
 
 async function goToThread(fileId, fileName, threadId) {
-  // Activer panel-files directement sans passer par showPanel
-  document.querySelectorAll('.panel').forEach(p => {
-    p.classList.remove('active');
-    p.style.display = 'none';
-  });
-  const pf = document.getElementById('panel-files');
-  pf.classList.add('active');
-  pf.classList.add('panel-force-show');
-  // Nav
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const nf = document.getElementById('nav-files');
-  if (nf) nf.classList.add('active');
-  const topbar = document.querySelector('.topbar');
-  if (topbar) topbar.style.display = 'flex';
-  if (window.innerWidth <= 768) closeSidebar();
-  // S'assurer que view-files est visible (parent de discussion-panel)
-  const vf = document.getElementById('view-files');
-  if (vf) vf.style.display = 'block';
-  // Ouvrir la discussion directement
   _discussionFileId = fileId;
   _discussionFileName = fileName;
   _currentThreadId = null;
-  const panel = document.getElementById('discussion-panel');
-  panel.setAttribute('style', 'display:block');
-  document.getElementById('discussion-filename').textContent = String.fromCharCode(0x1F4AC) + ' ' + fileName;
+
+  // Move discussion-panel into panel-discussions-center temporarily
+  const dp = document.getElementById('discussion-panel');
+  const pdc = document.getElementById('panel-discussions-center');
+  if (!dp || !pdc) return;
+
+  // Store where discussion panel was
+  dp._originalParent = dp.parentNode;
+  dp._originalNextSibling = dp.nextSibling;
+
+  // Move and show
+  pdc.appendChild(dp);
+  dp.setAttribute('style', 'display:block');
+
+  // Hide the threads list of disc center
+  const dcList = document.getElementById('disc-center-list');
+  const dcFilters = pdc.querySelector('.sort-btn')?.parentElement?.parentElement;
+  if (dcList) dcList._savedDisplay = dcList.style.display, dcList.style.display = 'none';
+  if (dcFilters) dcFilters._savedDisplay = dcFilters.style.display, dcFilters.style.display = 'none';
+
+  document.getElementById('discussion-filename').textContent = '💬 ' + fileName;
   saveLastSeen(fileId);
   showView('threads-list-view');
   await loadThreads(false);
   startDiscussionRefresh();
-  // Ouvrir le fil spécifique
+
   if (threadId) {
     await new Promise(r => setTimeout(r, 400));
     await openThread(threadId);
+  }
+}
+
+function closeInlineDiscussion() {
+  stopDiscussionRefresh();
+  const dp = document.getElementById('discussion-panel');
+  if (dp && dp._originalParent) {
+    dp._originalParent.insertBefore(dp, dp._originalNextSibling);
+    dp.setAttribute('style', 'display:none');
+    // Restore disc center content
+    const pdc = document.getElementById('panel-discussions-center');
+    const dcList = document.getElementById('disc-center-list');
+    if (dcList && dcList._savedDisplay !== undefined) dcList.style.display = dcList._savedDisplay;
+    const dcFilters = pdc?.querySelector('.sort-btn')?.parentElement?.parentElement;
+    if (dcFilters && dcFilters._savedDisplay !== undefined) dcFilters.style.display = dcFilters._savedDisplay;
+    _discussionFileId = null;
+    _currentThreadId = null;
   }
 }
 
