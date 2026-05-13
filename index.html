@@ -2242,9 +2242,9 @@ function setupApp(){
   const isAnyAdmin = isAdmin || isSubAdmin;
   const initials=currentUser.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
-  $('panel-files').classList.add('active');$('panel-files').style.display='';
+  $('panel-files').classList.add('active');$('panel-files').style.display='block';
   $('panel-users').style.display=isAdmin?'':'none';
-  $('view-folders').style.display='';$('view-files').style.display='none';
+  $('view-folders').style.display='block';$('view-files').style.display='none';
   // Hide discussion panel when navigating back
   const dp = document.getElementById('discussion-panel'); if(dp) dp.style.display='none';
   currentFolder=null;
@@ -2621,7 +2621,7 @@ function renderFolders(folders){
 
 function backToRoot(){
   currentFolder=null;
-  $('view-folders').style.display='';
+  $('view-folders').style.display='block';
   $('view-files').style.display='none';
   const dp2 = document.getElementById('discussion-panel'); if(dp2) dp2.style.display='none';
   $('topbar-title').textContent='Espace documentaire';
