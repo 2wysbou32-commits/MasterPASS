@@ -3655,17 +3655,21 @@ async function goToThread(fileId, fileName, threadId) {
 
 function closeInlineDiscussion() {
   stopDiscussionRefresh();
-  // Reset inline view state
   document.getElementById('disc-inline-view').style.display = 'none';
   document.getElementById('thread-detail-view2').style.display = 'none';
   document.getElementById('threads-list-view2').style.display = 'block';
-  // Show disc center list and refresh it
   document.getElementById('disc-center-list').style.display = 'block';
   _discussionFileId = null;
   _currentThreadId = null;
-  // Refresh list to update red dots and badge
-  renderDiscCenter();
-  updateDiscCenterBadge();
+  // Reload all threads from server to get fresh data, then update UI
+  api('GET', '/threads/all').then(function(threads) {
+    _allThreads = threads;
+    renderDiscCenter();
+    updateDiscCenterBadge();
+  }).catch(function() {
+    renderDiscCenter();
+    updateDiscCenterBadge();
+  });
 }
 
 async function loadThreadsInline(silent) {
