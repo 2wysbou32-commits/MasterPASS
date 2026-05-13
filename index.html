@@ -3569,7 +3569,9 @@ function renderDiscCenter() {
     Object.entries(groups).sort().forEach(([folder, ts]) => {
       html += '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;padding:8px 0 6px;margin-top:8px">📁 ' + folder + '</div>';
       ts.forEach(t => {
-        const isNew = _lastSeen[t.fileId] ? new Date(t.lastActivity) > new Date(_lastSeen[t.fileId]) : true;
+        // New = thread created or has replies after last time we opened this file's discussion
+    const lastSeenTime = _lastSeen[t.fileId] ? new Date(_lastSeen[t.fileId]) : null;
+    const isNew = lastSeenTime ? new Date(t.lastActivity) > lastSeenTime : true;
         html += renderThreadCard(t, isNew);
       });
     });
@@ -3581,7 +3583,9 @@ function renderDiscCenter() {
 
   list.innerHTML = threads.map(function(t) {
     const date = new Date(t.lastActivity).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-    const isNew = _lastSeen[t.fileId] ? new Date(t.lastActivity) > new Date(_lastSeen[t.fileId]) : true;
+    // New = thread created or has replies after last time we opened this file's discussion
+    const lastSeenTime = _lastSeen[t.fileId] ? new Date(_lastSeen[t.fileId]) : null;
+    const isNew = lastSeenTime ? new Date(t.lastActivity) > lastSeenTime : true;
     return renderThreadCard(t, isNew);
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
         (isNew ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0;display:inline-block"></span>' : '') +
@@ -3644,11 +3648,13 @@ async function goToThread(fileId, fileName, threadId) {
     const aa = document.getElementById('thread-admin-actions2');
     if (aa) aa.style.display = currentUser?.role === 'admin' ? 'block' : 'none';
     await loadThreadRepliesInline();
+    saveLastSeen(String(fileId));
   } else {
     // Show threads list
     document.getElementById('threads-list-view2').style.display = 'block';
     document.getElementById('thread-detail-view2').style.display = 'none';
     await loadThreadsInline(false);
+    saveLastSeen(String(fileId));
   }
   startDiscussionRefresh();
 }
@@ -3778,9 +3784,10 @@ async function toggleResolve2() {
 
 function updateDiscCenterBadge() {
   const _lastSeen = loadLastSeen();
-  const newCount = _allThreads.filter(t =>
-    _lastSeen[t.fileId] ? new Date(t.lastActivity) > new Date(_lastSeen[t.fileId]) : true
-  ).length;
+  const newCount = _allThreads.filter(function(t) {
+    var ls = _lastSeen[t.fileId] ? new Date(_lastSeen[t.fileId]) : null;
+    return ls ? new Date(t.lastActivity) > ls : true;
+  }).length;
   const badge = document.getElementById('disc-center-badge');
   if (badge) {
     badge.textContent = newCount > 9 ? '9+' : newCount;
@@ -4478,9 +4485,10 @@ function goToThreadEl(el) {
 
 function updateDiscCenterBadge() {
   const _lastSeen = loadLastSeen();
-  const newCount = _allThreads.filter(t =>
-    _lastSeen[t.fileId] ? new Date(t.lastActivity) > new Date(_lastSeen[t.fileId]) : true
-  ).length;
+  const newCount = _allThreads.filter(function(t) {
+    var ls = _lastSeen[t.fileId] ? new Date(_lastSeen[t.fileId]) : null;
+    return ls ? new Date(t.lastActivity) > ls : true;
+  }).length;
   const badge = document.getElementById('disc-center-badge');
   if (badge) {
     badge.textContent = newCount > 9 ? '9+' : newCount;
