@@ -1619,6 +1619,56 @@ input[type="file"]{display:none;}
         <div id="disc-center-list">
           <div style="padding:40px;text-align:center;color:var(--text3)">Chargement...</div>
         </div>
+
+        <!-- VUE DISCUSSION INLINE -->
+        <div id="disc-inline-view" style="display:none">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border)">
+            <button onclick="closeInlineDiscussion()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+              Retour
+            </button>
+            <div style="flex:1">
+              <div style="font-size:20px;font-weight:800;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif" id="inline-disc-filename"></div>
+              <div style="font-size:12px;color:var(--text3)" id="inline-threads-count"></div>
+            </div>
+            <button onclick="showNewThreadForm()" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">
+              + Poser une question
+            </button>
+          </div>
+          <!-- Formulaire nouveau fil -->
+          <div id="new-thread-form" style="display:none;background:var(--surface,white);border-radius:16px;border:1.5px solid var(--teal);padding:20px;margin-bottom:20px">
+            <div style="font-size:14px;font-weight:700;margin-bottom:12px">📝 Nouvelle question</div>
+            <input id="new-thread-title" type="text" placeholder="Formule ta question..." style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;margin-bottom:12px;box-sizing:border-box">
+            <div style="display:flex;justify-content:flex-end;gap:10px">
+              <button onclick="hideNewThreadForm()" style="padding:8px 16px;border-radius:9px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-family:'Inter',sans-serif">Annuler</button>
+              <button onclick="createThread()" style="padding:8px 20px;border-radius:9px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;cursor:pointer;font-weight:700;font-family:'Inter',sans-serif">Créer</button>
+            </div>
+          </div>
+          <!-- Liste fils -->
+          <div id="threads-list-view2">
+            <div id="threads-list2"></div>
+          </div>
+          <!-- Détail fil -->
+          <div id="thread-detail-view2" style="display:none">
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border)">
+              <button onclick="backToThreads2()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;flex-shrink:0">← Fils</button>
+              <div style="flex:1">
+                <div style="font-size:18px;font-weight:800;color:var(--text)" id="thread-title-display2"></div>
+              </div>
+              <div id="thread-admin-actions2" style="display:none">
+                <button onclick="toggleResolve2()" id="resolve-btn2" style="padding:9px 18px;border-radius:10px;border:2px solid #2E7D32;background:#2E7D32;color:white;cursor:pointer;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">✓ Marquer résolu</button>
+              </div>
+            </div>
+            <div id="thread-replies2" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;min-height:100px"></div>
+            <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden">
+              <textarea id="reply-input2" placeholder="Ajoute une réponse..." style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border)">
+                <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée</span>
+                <button onclick="postReply2()" style="padding:9px 22px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Répondre</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
 
@@ -3574,52 +3624,127 @@ async function goToThread(fileId, fileName, threadId) {
   _discussionFileName = fileName;
   _currentThreadId = null;
 
-  // Move discussion-panel into panel-discussions-center temporarily
-  const dp = document.getElementById('discussion-panel');
-  const pdc = document.getElementById('panel-discussions-center');
-  if (!dp || !pdc) return;
+  // Show inline discussion view, hide disc center list
+  document.getElementById('disc-center-list').style.display = 'none';
+  document.getElementById('disc-inline-view').style.display = 'block';
+  document.getElementById('inline-disc-filename').textContent = '💬 ' + fileName;
 
-  // Store where discussion panel was
-  dp._originalParent = dp.parentNode;
-  dp._originalNextSibling = dp.nextSibling;
-
-  // Move and show
-  pdc.appendChild(dp);
-  dp.setAttribute('style', 'display:block');
-
-  // Hide the threads list of disc center
-  const dcList = document.getElementById('disc-center-list');
-  const dcFilters = pdc.querySelector('.sort-btn')?.parentElement?.parentElement;
-  if (dcList) dcList._savedDisplay = dcList.style.display, dcList.style.display = 'none';
-  if (dcFilters) dcFilters._savedDisplay = dcFilters.style.display, dcFilters.style.display = 'none';
-
-  document.getElementById('discussion-filename').textContent = '💬 ' + fileName;
-  saveLastSeen(fileId);
-  showView('threads-list-view');
-  await loadThreads(false);
+  // Load threads into the inline view
+  await loadThreadsInline(false);
   startDiscussionRefresh();
 
   if (threadId) {
     await new Promise(r => setTimeout(r, 400));
-    await openThread(threadId);
+    await openThreadInline(threadId);
   }
 }
 
 function closeInlineDiscussion() {
   stopDiscussionRefresh();
-  const dp = document.getElementById('discussion-panel');
-  if (dp && dp._originalParent) {
-    dp._originalParent.insertBefore(dp, dp._originalNextSibling);
-    dp.setAttribute('style', 'display:none');
-    // Restore disc center content
-    const pdc = document.getElementById('panel-discussions-center');
-    const dcList = document.getElementById('disc-center-list');
-    if (dcList && dcList._savedDisplay !== undefined) dcList.style.display = dcList._savedDisplay;
-    const dcFilters = pdc?.querySelector('.sort-btn')?.parentElement?.parentElement;
-    if (dcFilters && dcFilters._savedDisplay !== undefined) dcFilters.style.display = dcFilters._savedDisplay;
-    _discussionFileId = null;
-    _currentThreadId = null;
+  document.getElementById('disc-inline-view').style.display = 'none';
+  document.getElementById('disc-center-list').style.display = 'block';
+  _discussionFileId = null;
+  _currentThreadId = null;
+}
+
+async function loadThreadsInline(silent) {
+  const list = document.getElementById('threads-list2');
+  const countEl = document.getElementById('inline-threads-count');
+  if (!silent) list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
+  try {
+    const threads = await api('GET', '/threads/' + _discussionFileId);
+    if (countEl) countEl.textContent = threads.length + ' fil' + (threads.length > 1 ? 's' : '');
+    if (!threads.length) {
+      list.innerHTML = '<div style="text-align:center;padding:48px;color:var(--text3)"><div style="font-size:40px;margin-bottom:12px">💬</div><div>Aucune question pour l&#39;instant</div></div>';
+      return;
+    }
+    threads.sort(function(a,b) { return a.resolved - b.resolved || new Date(b.lastReplyAt) - new Date(a.lastReplyAt); });
+    list.innerHTML = threads.map(function(t) {
+      var date = new Date(t.lastReplyAt||t.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      return '<div onclick="openThreadInline(' + t.id + ')" style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;background:var(--surface,white);border-radius:14px;border:1.5px solid ' + (t.resolved?'rgba(46,125,50,0.3)':'var(--border)') + ';margin-bottom:10px;cursor:pointer" class="thread-card">' +
+        '<div style="flex:1">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
+            (t.resolved?'<span style="background:#2E7D32;color:white;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700">✓ Résolu</span>':'<span style="background:rgba(0,151,167,0.1);color:var(--teal-dark);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700">💬 Ouvert</span>') +
+            '<span style="font-weight:700;font-size:15px;color:var(--text)">' + t.title + '</span>' +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--text3)">' + date + ' · ' + (t.replyCount||0) + ' réponse' + ((t.replyCount||0)>1?'s':'') + '</div>' +
+        '</div>' +
+        '<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--text3);flex-shrink:0;margin-top:4px"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
   }
+}
+
+async function openThreadInline(threadId) {
+  _currentThreadId = threadId;
+  document.getElementById('threads-list-view2').style.display = 'none';
+  document.getElementById('thread-detail-view2').style.display = 'block';
+  const adminActions = document.getElementById('thread-admin-actions2');
+  if (adminActions) adminActions.style.display = currentUser?.role === 'admin' ? 'block' : 'none';
+  await loadThreadRepliesInline();
+}
+
+function backToThreads2() {
+  _currentThreadId = null;
+  document.getElementById('thread-detail-view2').style.display = 'none';
+  document.getElementById('threads-list-view2').style.display = 'block';
+  loadThreadsInline(true);
+}
+
+async function loadThreadRepliesInline() {
+  const container = document.getElementById('thread-replies2');
+  container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
+  try {
+    const data = await api('GET', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies');
+    document.getElementById('thread-title-display2').textContent = data.thread.title;
+    const resolveBtn = document.getElementById('resolve-btn2');
+    if (resolveBtn) {
+      resolveBtn.textContent = data.thread.resolved ? '✓ Résolu' : '○ Marquer résolu';
+      resolveBtn.style.background = data.thread.resolved ? 'transparent' : '#2E7D32';
+      resolveBtn.style.color = data.thread.resolved ? '#2E7D32' : 'white';
+    }
+    if (!data.replies.length) {
+      container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text3)">Aucune réponse — sois le premier !</div>';
+      return;
+    }
+    container.innerHTML = data.replies.map(function(r) {
+      var isMine = r.userId === currentUser?.id;
+      var isAdmin = r.userRole === 'admin';
+      var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      var bubbleBg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : (isAdmin ? 'rgba(0,151,167,0.07)' : 'var(--bg)');
+      var bubbleColor = isMine ? 'white' : 'var(--text)';
+      var msgHtml = r.message || '';
+      var row = '<div style="display:flex;flex-direction:column;align-items:' + (isMine?'flex-end':'flex-start') + ';margin-bottom:10px">';
+      if (!isMine) row += '<div style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + ';margin-bottom:4px;padding-left:40px">' + r.userName + (isAdmin?' 👨‍🏫':'') + '</div>';
+      row += '<div style="max-width:78%"><div style="background:' + bubbleBg + ';color:' + bubbleColor + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5">' + msgHtml + '</div>';
+      if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">' + date + '</div>';
+      row += '</div></div>';
+      return row;
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
+  }
+}
+
+async function postReply2() {
+  const input = document.getElementById('reply-input2');
+  const message = input.value.trim();
+  if (!message) return;
+  try {
+    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', { message });
+    input.value = ''; input.style.height = 'auto';
+    await loadThreadRepliesInline();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function toggleResolve2() {
+  try {
+    await api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/resolve');
+    await loadThreadRepliesInline();
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 
