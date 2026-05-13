@@ -2448,12 +2448,15 @@ async function loadSubfolderFiles(folderId, subId) {
         folderId, subId
       );
     }).join('');
-    const fc = document.getElementById('files-container');
+    const fc = document.getElementById('files-list-body');
     if(fc) fc.innerHTML = html;
+    // Also clear files-tbody if exists
+    const tb = document.getElementById('files-tbody');
+    if(tb) tb.innerHTML = '';
     const validIds = (files||[]).filter(function(f){ return f && f.id; }).map(function(f){ return String(f.id); });
     if(validIds.length) setTimeout(function(){ updateDiscussionBadges(validIds); }, 300);
   } catch(e) {
-    const fc = document.getElementById('files-container');
+    const fc = document.getElementById('files-list-body');
     if(fc) fc.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
   }
 }
