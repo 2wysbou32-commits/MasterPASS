@@ -3718,10 +3718,11 @@ async function loadThreadRepliesInline() {
   try {
     const data = await api('GET', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies');
     // Show "filename > thread title"
-    const fname = _discussionFileName || '';
+    var fname = _discussionFileName || '';
+    try { fname = decodeURIComponent(fname); } catch(e) {}
     document.getElementById('thread-title-display2').innerHTML = 
-      '<span style="font-size:13px;color:var(--text3);font-weight:500;display:block;margin-bottom:4px">📄 ' + fname + '</span>' +
-      data.thread.title;
+      '<span style="font-size:12px;color:var(--teal-dark);font-weight:700;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">📄 ' + fname + '</span>' +
+      '<span style="font-size:18px;font-weight:800;color:var(--text)">' + data.thread.title + '</span>';
     const resolveBtn = document.getElementById('resolve-btn2');
     if (resolveBtn) {
       resolveBtn.textContent = data.thread.resolved ? '✓ Résolu' : '○ Marquer résolu';
