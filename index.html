@@ -278,7 +278,7 @@ select.field-input{cursor:pointer;}
 .topbar-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:21px;font-weight:800;color:var(--teal-dark);flex:1;letter-spacing:-0.3px;}
 .topbar-actions{display:flex;gap:10px;align-items:center;}
 .content-area{}
-.panel{display:none;}.panel.active{display:block;}
+.panel{display:none;}.panel.active{display:block;}.panel-force-show{display:block !important;}
 
 /* ── STATS ── */
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px;}
@@ -3577,7 +3577,7 @@ async function goToThread(fileId, fileName, threadId) {
   });
   const pf = document.getElementById('panel-files');
   pf.classList.add('active');
-  pf.style.display = 'block';
+  pf.classList.add('panel-force-show');
   // Nav
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const nf = document.getElementById('nav-files');
