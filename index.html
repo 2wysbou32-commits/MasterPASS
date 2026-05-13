@@ -3625,26 +3625,36 @@ function goToThreadEl(el) {
 async function goToThread(fileId, fileName, threadId) {
   _discussionFileId = fileId;
   _discussionFileName = fileName;
-  _currentThreadId = null;
+  _currentThreadId = threadId || null;
 
   // Show inline discussion view, hide disc center list
   document.getElementById('disc-center-list').style.display = 'none';
   document.getElementById('disc-inline-view').style.display = 'block';
   document.getElementById('inline-disc-filename').textContent = '💬 ' + fileName;
 
-  // Load threads into the inline view
-  await loadThreadsInline(false);
-  startDiscussionRefresh();
-
   if (threadId) {
-    await new Promise(r => setTimeout(r, 400));
-    await openThreadInline(threadId);
+    // Go directly to thread - skip list
+    document.getElementById('threads-list-view2').style.display = 'none';
+    document.getElementById('thread-detail-view2').style.display = 'block';
+    const aa = document.getElementById('thread-admin-actions2');
+    if (aa) aa.style.display = currentUser?.role === 'admin' ? 'block' : 'none';
+    await loadThreadRepliesInline();
+  } else {
+    // Show threads list
+    document.getElementById('threads-list-view2').style.display = 'block';
+    document.getElementById('thread-detail-view2').style.display = 'none';
+    await loadThreadsInline(false);
   }
+  startDiscussionRefresh();
 }
 
 function closeInlineDiscussion() {
   stopDiscussionRefresh();
+  // Reset inline view state
   document.getElementById('disc-inline-view').style.display = 'none';
+  document.getElementById('thread-detail-view2').style.display = 'none';
+  document.getElementById('threads-list-view2').style.display = 'block';
+  // Show disc center list
   document.getElementById('disc-center-list').style.display = 'block';
   _discussionFileId = null;
   _currentThreadId = null;
@@ -3690,10 +3700,7 @@ async function openThreadInline(threadId) {
 }
 
 function backToThreads2() {
-  _currentThreadId = null;
-  document.getElementById('thread-detail-view2').style.display = 'none';
-  document.getElementById('threads-list-view2').style.display = 'block';
-  loadThreadsInline(true);
+  closeInlineDiscussion();
 }
 
 async function loadThreadRepliesInline() {
