@@ -3463,9 +3463,11 @@ function msgLongPressEnd() {
 }
 
 // Event delegation for bubbles - attached after loadDiscussion renders
-function initBubbleEvents() {
+function initBubbleEvents(containerId) {
   // Works for both thread-replies (new system) and discussion-messages (legacy)
-  var list = document.getElementById('thread-replies') || document.getElementById('discussion-messages');
+  var list = containerId
+    ? document.getElementById(containerId)
+    : (document.getElementById('thread-replies') || document.getElementById('discussion-messages'));
   if (!list) return;
   list.onmousedown = function(e) {
     var bubble = e.target.closest('.msg-bubble');
