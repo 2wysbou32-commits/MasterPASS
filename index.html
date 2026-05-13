@@ -3517,6 +3517,20 @@ async function loadDiscussionsCenter() {
   list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Chargement...</div>';
   try {
     _allThreads = await api('GET', '/threads/all');
+    // One-time: initialize lastSeen for threads never seen before
+    // Use their createdAt so only NEW replies after first load appear red
+    _lastSeenComments = loadLastSeen();
+    var changed = false;
+    _allThreads.forEach(function(t) {
+      if (!_lastSeenComments['thread_' + t.threadId]) {
+        _lastSeenComments['thread_' + t.threadId] = t.createdAt;
+        changed = true;
+      }
+    });
+    if (changed) {
+      var key = getLastSeenKey();
+      if (key) localStorage.setItem(key, JSON.stringify(_lastSeenComments));
+    }
     renderDiscCenter();
     // Update global badge
     updateDiscCenterBadge();
@@ -3705,6 +3719,7 @@ async function loadThreadsInline(silent) {
       return;
     }
     threads.sort(function(a,b) { return a.resolved - b.resolved || new Date(b.lastReplyAt) - new Date(a.lastReplyAt); });
+
     list.innerHTML = threads.map(function(t) {
       var date = new Date(t.lastReplyAt||t.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       return '<div data-thread-id="' + t.id + '" onclick="handleThreadCardClick(event,' + t.id + ')" onmousedown="threadLongPressStart(event,' + t.id + ')" onmouseup="threadLongPressEnd()" ontouchstart="threadLongPressStart(event,' + t.id + ')" ontouchend="threadLongPressEnd()" ontouchmove="threadLongPressEnd()" style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;background:var(--surface,white);border-radius:14px;border:1.5px solid ' + (t.resolved?'rgba(46,125,50,0.3)':'var(--border)') + ';margin-bottom:10px;cursor:pointer;transition:background 0.15s,border-color 0.15s" class="thread-card">' +
@@ -4601,6 +4616,20 @@ async function loadDiscussionsCenter() {
   list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Chargement...</div>';
   try {
     _allThreads = await api('GET', '/threads/all');
+    // One-time: initialize lastSeen for threads never seen before
+    // Use their createdAt so only NEW replies after first load appear red
+    _lastSeenComments = loadLastSeen();
+    var changed = false;
+    _allThreads.forEach(function(t) {
+      if (!_lastSeenComments['thread_' + t.threadId]) {
+        _lastSeenComments['thread_' + t.threadId] = t.createdAt;
+        changed = true;
+      }
+    });
+    if (changed) {
+      var key = getLastSeenKey();
+      if (key) localStorage.setItem(key, JSON.stringify(_lastSeenComments));
+    }
     renderDiscCenter();
     // Update global badge
     updateDiscCenterBadge();
