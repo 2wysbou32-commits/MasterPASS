@@ -3701,6 +3701,8 @@ async function loadThreadsInline(silent) {
           '<div style="font-size:12px;color:var(--text3)">' + date + ' · ' + (t.replyCount||0) + ' réponse' + ((t.replyCount||0)>1?'s':'') + '</div>' +
         '</div>' +
         '<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;color:var(--text3);flex-shrink:0;margin-top:4px"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>' +
+      (currentUser && (currentUser.role === 'admin' || t.createdBy === currentUser.id) ?
+        '<button onclick="event.stopPropagation();deleteThreadInline(' + t.id + ')" style="width:28px;height:28px;border-radius:8px;border:none;background:rgba(229,115,115,0.1);color:var(--danger);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>' : '') +
       '</div>';
     }).join('');
   } catch(e) {
@@ -3754,6 +3756,8 @@ async function loadThreadRepliesInline() {
       if (!isMine) row += '<div style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + ';margin-bottom:4px;padding-left:40px">' + r.userName + (isAdmin?' 👨‍🏫':'') + '</div>';
       row += '<div style="max-width:78%"><div style="background:' + bubbleBg + ';color:' + bubbleColor + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5">' + msgHtml + '</div>';
       if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">' + date + '</div>';
+      var canDelete = currentUser && (currentUser.role === 'admin' || r.userId === currentUser.id);
+      if (canDelete) row += '<div style="margin-top:3px;' + (isMine?'text-align:right':'') + '"><button onclick="deleteReplyInline(' + r.id + ')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑</button></div>';
       row += '</div></div>';
       return row;
     }).join('');
@@ -3761,6 +3765,22 @@ async function loadThreadRepliesInline() {
   } catch(e) {
     container.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
   }
+}
+
+async function deleteThreadInline(threadId) {
+  if (!confirm('Supprimer ce fil et toutes ses réponses ?')) return;
+  try {
+    await api('DELETE', '/threads/' + _discussionFileId + '/' + threadId);
+    await loadThreadsInline(false);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteReplyInline(replyId) {
+  if (!confirm('Supprimer cette réponse ?')) return;
+  try {
+    await api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + replyId);
+    await loadThreadRepliesInline();
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 async function postReply2() {
