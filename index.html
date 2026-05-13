@@ -3077,54 +3077,6 @@ function markAnnouncementsSeen(ids) {
   localStorage.setItem('masterpass_seen_ann_' + currentUser.id, JSON.stringify(merged));
 }
 
-async function loadAnnouncements() {
-  const isAdmin = currentUser?.role === 'admin';
-  const isSubAdmin = currentUser?.role === 'subadmin';
-
-  // Afficher le bon header
-  const adminHeader = $('announcements-header-admin');
-  const studentHeader = $('announcements-header-student');
-  if (adminHeader) adminHeader.style.display = isAdmin ? 'flex' : 'none';
-  if (studentHeader) studentHeader.style.display = isAdmin ? 'none' : 'flex';
-
-  const list = $('announcements-list');
-  list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
-
-  try {
-    const anns = await api('GET', '/announcements');
-    const seen = getSeenAnnouncements();
-
-    // Marquer toutes comme vues maintenant qu'on les a lues
-    markAnnouncementsSeen(anns.map(a => a.id));
-    updateAnnouncementsBadge();
-
-    if (!anns.length) {
-      list.innerHTML = `<div class="search-no-results">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width:40px;height:40px;opacity:0.2;margin-bottom:12px"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
-        <div>Aucune annonce pour l'instant.</div>
-      </div>`;
-      return;
-    }
-
-    const icons = { info: '📘', urgent: '🔴', success: '✅', warning: '⚠️' };
-    list.innerHTML = anns.map(a => {
-      const isNew = !seen.includes(a.id);
-      const date = new Date(a.createdAt).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
-      return `<div class="announcement-card ${a.color}">
-        ${isAdmin ? `<button class="announcement-delete" onclick="deleteAnnouncement(${a.id})" title="Supprimer">
-          <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        </button>` : ''}
-        <div class="announcement-title">
-          ${icons[a.color] || '📢'} ${a.title}
-          ${isNew ? '<span class="announcement-new-badge">Nouveau</span>' : ''}
-        </div>
-        <div class="announcement-message">${a.message}</div>
-        <div class="announcement-date">${date}</div>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    list.innerHTML = '<div style="padding:20px;color:var(--danger)">Erreur de chargement</div>';
-  }
 }
 
 async function updateAnnouncementsBadge() {
@@ -3166,13 +3118,6 @@ async function publishAnnouncement() {
   } catch(e) { toast(e.message, 'error'); }
 }
 
-async function deleteAnnouncement(id) {
-  if (!confirm('Supprimer cette annonce ?')) return;
-  try {
-    await api('DELETE', '/announcements/' + id);
-    await loadAnnouncements();
-    toast('Annonce supprimée');
-  } catch(e) { toast(e.message, 'error'); }
 }
 
 // ── NOTIFICATIONS PUSH ───────────────────────────────────────────────────────
@@ -4573,21 +4518,10 @@ async function toggleResolve() {
 
 // Badge unread (uses threads)
 
-function getLastSeenKey() {
-  return currentUser ? 'mp_disc_seen_' + currentUser.id : null;
-}
-function loadLastSeen() {
   const key = getLastSeenKey();
   if (!key) return {};
   try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; }
 }
-function saveLastSeen(fileId) {
-  const key = getLastSeenKey();
-  if (!key) return;
-  _lastSeenComments[fileId] = new Date().toISOString();
-  localStorage.setItem(key, JSON.stringify(_lastSeenComments));
-}
-function installPWA() {
   if (!_pwaInstallPrompt) {
     // iOS - show manual instructions
     toast('Sur iPhone : bouton Partage \u2192 Sur l\u2019\u00e9cran d\u2019accueil', 'info');
@@ -4822,4 +4756,3 @@ async function sendVoiceMessage(ctx) {
 
 // Old toggleRecording kept for compatibility (not used anymore)
 function toggleRecording() {}
-function toggleRecording2() {}
