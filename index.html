@@ -2389,6 +2389,83 @@ async function loadStats(){
   }catch(_){}
 }
 
+
+// ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
+function renderSubfolders(subs, parentId, parentName) {
+  if (!subs || !subs.length) return '';
+  return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">' +
+    subs.map(function(sub) {
+      return '<div onclick="openSubfolder(' + sub.id + ',\'' + sub.name.replace(/'/g,"\'") + '\',' + parentId + ',\'' + parentName.replace(/'/g,"\'") + '\')" ' +
+        'style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface,white);border-radius:12px;border:1.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;color:var(--text);transition:border-color 0.15s" ' +
+        '>' +
+        '<svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;color:var(--teal-dark)"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>' +
+        sub.name + '</div>';
+    }).join('') + '</div>';
+}
+
+async function openSubfolder(subId, subName, parentId, parentName) {
+  currentSubfolder = { id: subId, name: subName, parentId: parentId };
+  currentFolder = { id: parentId, name: parentName };
+  const vf = $('view-files');
+  const vd = $('view-folders');
+  if(vd) vd.style.display = 'none';
+  if(vf) vf.style.display = 'block';
+  const ft = document.getElementById('folder-page-title');
+  if(ft) { ft.textContent = parentName + ' / ' + subName; ft.style.display = 'block'; }
+  if($('student-banner')) $('student-banner').style.display = 'none';
+  if($('admin-stats')) $('admin-stats').style.display = 'none';
+  const subContainerOld = document.getElementById('subfolders-container');
+  if(subContainerOld) subContainerOld.innerHTML = '';
+  updateBreadcrumb(); updateTopbar();
+  await loadSubfolderFiles(parentId, subId);
+}
+
+async function loadSubfolderFiles(folderId, subId) {
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
+  const container = $('files-container') || $('files-tbody')?.closest('.files-list');
+  try {
+    const files = await api('GET', '/folders/' + folderId + '/subfolders/' + subId + '/files');
+    const dlBase = '/api/folders/' + folderId + '/subfolders/' + subId + '/files';
+    const html = (files||[]).map(function(f) {
+      return buildFileRow(f, isAdmin,
+        'openPreviewById(this)" data-fileid="' + f.id + '" data-type="' + f.type + '" data-basepath="' + dlBase + '/' + f.id,
+        dlBase + '/' + f.id,
+        'toggleSubDownload(' + folderId + ',' + subId + ',' + f.id + ')',
+        'deleteSubFile(' + folderId + ',' + subId + ',' + f.id + ')',
+        folderId, subId
+      );
+    }).join('');
+    const fc = document.getElementById('files-container');
+    if(fc) fc.innerHTML = html;
+    const validIds = (files||[]).filter(function(f){ return f && f.id; }).map(function(f){ return String(f.id); });
+    if(validIds.length) setTimeout(function(){ updateDiscussionBadges(validIds); }, 300);
+  } catch(e) {
+    const fc = document.getElementById('files-container');
+    if(fc) fc.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
+  }
+}
+
+// ── TUTORIEL ──────────────────────────────────────────────────────────────────
+function checkAndShowTutorial() {
+  if (!currentUser) return;
+  var key = 'mp_tutorial_done_' + currentUser.id;
+  if (!localStorage.getItem(key)) {
+    setTimeout(function() { openTutorial(); }, 800);
+  }
+}
+
+function openTutorial() {
+  var overlay = document.getElementById('tutorial-overlay');
+  if (overlay) overlay.style.display = 'flex';
+  showTutoStep(0);
+}
+
+function closeTutorial() {
+  var overlay = document.getElementById('tutorial-overlay');
+  if (overlay) overlay.style.display = 'none';
+  if (currentUser) localStorage.setItem('mp_tutorial_done_' + currentUser.id, '1');
+}
+
 async function loadFolders(){
   const grid=$('folders-grid');
   grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">Chargement…</div></div>';
@@ -2444,6 +2521,15 @@ function backToRoot(){
   const ft = document.getElementById('folder-page-title');
   if(ft) ft.style.display='none';
   updateBreadcrumb();loadFolders();updateTopbar();
+}
+
+async function loadSubfolders(folderId) {
+  try {
+    const folder = await api('GET', '/folders/' + folderId);
+    return folder.subfolders || [];
+  } catch(e) {
+    return [];
+  }
 }
 
 async function openFolder(id,name){
