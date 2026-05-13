@@ -3077,7 +3077,7 @@ function markAnnouncementsSeen(ids) {
   localStorage.setItem('masterpass_seen_ann_' + currentUser.id, JSON.stringify(merged));
 }
 
-}
+
 
 async function updateAnnouncementsBadge() {
   try {
@@ -3118,7 +3118,7 @@ async function publishAnnouncement() {
   } catch(e) { toast(e.message, 'error'); }
 }
 
-}
+
 
 // ── NOTIFICATIONS PUSH ───────────────────────────────────────────────────────
 async function initPushNotifications() {
@@ -4516,12 +4516,13 @@ async function toggleResolve() {
   } catch(e) { toast(e.message, 'error'); }
 }
 
-// Badge unread (uses threads)
 
-  const key = getLastSeenKey();
-  if (!key) return {};
-  try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; }
-}
+
+
+
+
+
+function installPWA() {
   if (!_pwaInstallPrompt) {
     // iOS - show manual instructions
     toast('Sur iPhone : bouton Partage \u2192 Sur l\u2019\u00e9cran d\u2019accueil', 'info');
@@ -4756,3 +4757,8 @@ async function sendVoiceMessage(ctx) {
 
 // Old toggleRecording kept for compatibility (not used anymore)
 function toggleRecording() {}
+function toggleRecording2() {}
+
+</script>
+</body>
+</html>
