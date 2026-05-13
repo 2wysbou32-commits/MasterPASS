@@ -2502,6 +2502,83 @@ function closeTutorial() {
   if (currentUser) localStorage.setItem('mp_tutorial_done_' + currentUser.id, '1');
 }
 
+
+// ── RECHERCHE ─────────────────────────────────────────────────────────────────
+function clearSearch() {
+  var input = document.getElementById('topbar-search-input') || document.getElementById('search-input');
+  if (input) input.value = '';
+  var clearBtn = document.getElementById('search-clear');
+  if (clearBtn) clearBtn.style.display = 'none';
+  var panel = document.getElementById('panel-search');
+  if (panel) panel.style.display = 'none';
+}
+
+async function doSearch(query) {
+  if (!query || query.length < 2) return;
+  var clearBtn = document.getElementById('search-clear');
+  if (clearBtn) clearBtn.style.display = 'block';
+  try {
+    var folders = await api('GET', '/folders');
+    var results = [];
+    (folders||[]).forEach(function(folder) {
+      (folder.files||[]).forEach(function(f) {
+        if (f.name.toLowerCase().includes(query.toLowerCase())) {
+          results.push({ file: f, folderName: folder.name, folderId: folder.id });
+        }
+      });
+      (folder.subfolders||[]).forEach(function(sub) {
+        (sub.files||[]).forEach(function(f) {
+          if (f.name.toLowerCase().includes(query.toLowerCase())) {
+            results.push({ file: f, folderName: folder.name + ' / ' + sub.name, folderId: folder.id, subId: sub.id });
+          }
+        });
+      });
+    });
+    var list = document.getElementById('search-results');
+    if (!list) return;
+    if (!results.length) {
+      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Aucun résultat pour "' + query + '"</div>';
+      return;
+    }
+    var isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
+    list.innerHTML = results.map(function(r) {
+      return buildFileRow(r.file, isAdmin,
+        'openPreviewById(this)" data-fileid="' + r.file.id + '" data-type="' + r.file.type + '" data-basepath="/api/folders/' + r.folderId + '/files/' + r.file.id,
+        '/api/folders/' + r.folderId + '/files/' + r.file.id,
+        null, null, r.folderId, r.subId
+      );
+    }).join('');
+  } catch(e) {
+    console.error('Search error:', e);
+  }
+}
+
+// ── SOUS-FICHIERS ─────────────────────────────────────────────────────────────
+async function toggleSubDownload(folderId, subId, fileId) {
+  try {
+    await api('PATCH', '/folders/' + folderId + '/subfolders/' + subId + '/files/' + fileId + '/downloadable');
+    await loadSubfolderFiles(folderId, subId);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteSubFile(folderId, subId, fileId) {
+  if (!confirm('Supprimer ce fichier ?')) return;
+  try {
+    await api('DELETE', '/folders/' + folderId + '/subfolders/' + subId + '/files/' + fileId);
+    await loadSubfolderFiles(folderId, subId);
+    toast('Fichier supprimé');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── WATERMARK (no-op) ─────────────────────────────────────────────────────────
+function removeWatermark() {}
+
+// ── SCROLL TO COMMENT ─────────────────────────────────────────────────────────
+function scrollToComment(commentId) {
+  var el = document.getElementById('msg-' + commentId);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 async function loadFolders(){
   const grid=$('folders-grid');
   grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">Chargement…</div></div>';
