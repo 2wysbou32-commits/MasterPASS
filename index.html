@@ -2268,10 +2268,10 @@ function setupApp(){
   if(topbarEl) topbarEl.style.display = 'flex';
   if($('topbar-search')) $('topbar-search').style.display='block';
   updateTopbar();updateBreadcrumb();
-  // Force view-folders visible before loading
-  var vf = document.getElementById('view-folders');
-  if (vf) vf.style.setProperty('display', 'block', 'important');
-  loadFolders();
+  loadFolders().then(function() {
+    var vf = document.getElementById('view-folders');
+    if (vf) vf.style.display = 'block';
+  });
   if(isAdmin)loadStats();
   // Afficher bouton nouvelle annonce pour admin principal seulement
   const annAdminActions = $('ann-admin-actions');
@@ -2653,7 +2653,7 @@ async function openFolder(id,name){
   currentSubfolder = null;
   currentFolder={id,name};
   $('view-folders').style.display='none';
-  $('view-files').style.display='';
+  $('view-files').style.display='block';
   // Mettre le nom du dossier dans la topbar
   $('topbar-title').textContent='';
   // Afficher le titre en grand dans la page
