@@ -1538,6 +1538,15 @@ input[type="file"]{display:none;}
   </div>
 </div>
 
+<!-- PREVIEW OVERLAY -->
+<div id="preview-overlay" class="preview-overlay" onclick="closePreview()">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:rgba(0,0,0,0.6)">
+    <span id="preview-filename" style="color:white;font-size:14px;font-weight:600;font-family:'Inter',sans-serif"></span>
+    <button onclick="closePreview()" style="background:rgba(255,255,255,0.15);border:none;color:white;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center">×</button>
+  </div>
+  <div id="preview-body" class="preview-body" onclick="event.stopPropagation()"></div>
+</div>
+
 <!-- BANNIERE INSTALLATION PWA -->
 <div id="pwa-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:8888;background:white;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.2);border:1.5px solid var(--border);padding:16px 20px;max-width:360px;width:calc(100% - 40px)">
   <div style="display:flex;align-items:center;gap:14px">
@@ -2866,10 +2875,12 @@ function openPreview(fileId, filename, type) {
 
 
 function closePreview() {
-  document.getElementById('preview-overlay').classList.remove('open');
-  document.getElementById('preview-body').innerHTML = '';
+  var overlay = document.getElementById('preview-overlay');
+  var body = document.getElementById('preview-body');
+  if (overlay) overlay.classList.remove('open');
+  if (body) body.innerHTML = '';
   document.body.style.overflow = '';
-  removeWatermark();
+  if (typeof removeWatermark === 'function') removeWatermark();
 }
 
 // Fermer avec Échap
