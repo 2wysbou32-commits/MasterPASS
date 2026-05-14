@@ -2586,6 +2586,229 @@ function scrollToComment(commentId) {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+
+// ── FAVORIS ───────────────────────────────────────────────────────────────────
+function getFavoritesKey() { return currentUser ? 'mp_favs_' + currentUser.id : null; }
+
+function loadFavorites() {
+  var key = getFavoritesKey();
+  var favs = key ? JSON.parse(localStorage.getItem(key) || '[]') : [];
+  var list = document.getElementById('favorites-list');
+  if (!list) return;
+  if (!favs.length) {
+    list.innerHTML = '<div style="padding:48px;text-align:center;color:var(--text3)"><div style="font-size:40px;margin-bottom:12px">⭐</div><div>Aucun favori pour l&#39;instant</div></div>';
+    return;
+  }
+  var isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
+  list.innerHTML = favs.map(function(f) {
+    return buildFileRow(f, isAdmin,
+      'openPreviewById(this)" data-fileid="' + f.id + '" data-type="' + f.type + '" data-basepath="/api/folders/' + (f.folderId||0) + '/files/' + f.id,
+      '/api/folders/' + (f.folderId||0) + '/files/' + f.id,
+      null, null, f.folderId, f.subId
+    );
+  }).join('');
+}
+
+function toggleFavorite(e, fileObj) {
+  if (e) e.stopPropagation();
+  var key = getFavoritesKey();
+  if (!key) return;
+  var favs = JSON.parse(localStorage.getItem(key) || '[]');
+  var idx = favs.findIndex(function(f) { return f.id === fileObj.id; });
+  if (idx >= 0) {
+    favs.splice(idx, 1);
+    toast('Retiré des favoris');
+  } else {
+    favs.push(fileObj);
+    toast('Ajouté aux favoris ⭐');
+  }
+  localStorage.setItem(key, JSON.stringify(favs));
+  // Update star buttons
+  document.querySelectorAll('.btn-favorite[data-id="' + fileObj.id + '"]').forEach(function(btn) {
+    btn.style.color = idx >= 0 ? '' : 'gold';
+  });
+}
+
+// ── RÉGLAGES ──────────────────────────────────────────────────────────────────
+async function saveSettings() {
+  try {
+    var name = document.getElementById('settings-name')?.value?.trim();
+    var discord = document.getElementById('settings-discord')?.value?.trim();
+    if (!name) { toast('Nom requis', 'error'); return; }
+    await api('PATCH', '/users/' + currentUser.id, { name, discord });
+    currentUser.name = name;
+    currentUser.discord = discord;
+    toast('Réglages sauvegardés ✅');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveAvatar() {
+  var input = document.getElementById('avatar-input');
+  if (!input || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = async function() {
+    try {
+      await api('POST', '/avatar', { avatar: reader.result });
+      currentUser.avatar = reader.result;
+      toast('Photo mise à jour ✅');
+      updateAvatarPreview();
+    } catch(e) { toast(e.message, 'error'); }
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+// ── CODES D'INVITATION ────────────────────────────────────────────────────────
+async function loadCodes() {
+  try {
+    var codes = await api('GET', '/invite-codes');
+    var list = document.getElementById('codes-list');
+    if (!list) return;
+    if (!codes.length) {
+      list.innerHTML = '<div style="padding:20px;color:var(--text3)">Aucun code actif</div>';
+      return;
+    }
+    list.innerHTML = codes.map(function(c) {
+      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface,white);border-radius:10px;border:1.5px solid var(--border);margin-bottom:8px">' +
+        '<code style="flex:1;font-size:14px;font-weight:700;color:var(--teal-dark)">' + c.code + '</code>' +
+        (c.usedBy ? '<span style="font-size:11px;color:var(--text3)">Utilisé</span>' : '<span style="font-size:11px;color:green">Disponible</span>') +
+        '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer">🗑</button>' +
+        '</div>';
+    }).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function generateCode() {
+  try {
+    var res = await api('POST', '/invite-codes');
+    toast('Code créé : ' + res.code);
+    loadCodes();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteCode(code) {
+  if (!confirm('Supprimer ce code ?')) return;
+  try {
+    await api('DELETE', '/invite-codes/' + code);
+    loadCodes();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── EXPORT CSV ────────────────────────────────────────────────────────────────
+async function exportCSV() {
+  try {
+    var users = await api('GET', '/users');
+    var rows = [['Nom', 'Identifiant', 'Email', 'Mineure', 'Discord', 'Rôle', 'Inscrit le']];
+    users.forEach(function(u) {
+      rows.push([u.name, u.login, u.email||'', u.mineure||'', u.discord||'', u.role, u.registeredAt ? new Date(u.registeredAt).toLocaleDateString('fr-FR') : '']);
+    });
+    var csv = rows.map(function(r) { return r.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'etudiants.csv'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── UPLOAD SOUS-DOSSIER ───────────────────────────────────────────────────────
+async function uploadSubfolderFiles(files, subId, parentId) {
+  if (!files || !files.length) return;
+  toast('Upload en cours...');
+  for (var i = 0; i < files.length; i++) {
+    var fd = new FormData();
+    fd.append('file', files[i]);
+    try {
+      await fetch('/api/folders/' + parentId + '/subfolders/' + subId + '/files', {
+        method: 'POST', body: fd
+      });
+    } catch(e) { toast('Erreur: ' + e.message, 'error'); }
+  }
+  toast('Upload terminé ✅');
+  loadSubfolderFiles(parentId, subId);
+}
+
+// ── DOSSIERS ──────────────────────────────────────────────────────────────────
+async function renameFolder(id) {
+  var name = prompt('Nouveau nom :');
+  if (!name) return;
+  try {
+    await api('PATCH', '/folders/' + id, { name });
+    loadFolders();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function moveFolder(id) {
+  toast('Fonctionnalité de déplacement disponible depuis la vue dossiers', 'info');
+}
+
+// ── LECTURE FICHIERS ──────────────────────────────────────────────────────────
+function getReadKey() { return currentUser ? 'mp_read_' + currentUser.id : null; }
+
+function isFileRead(fileId) {
+  var key = getReadKey();
+  if (!key) return false;
+  var read = JSON.parse(localStorage.getItem(key) || '{}');
+  return !!read[String(fileId)];
+}
+
+function markRead(fileId) {
+  var key = getReadKey();
+  if (!key) return;
+  var read = JSON.parse(localStorage.getItem(key) || '{}');
+  read[String(fileId)] = true;
+  localStorage.setItem(key, JSON.stringify(read));
+}
+
+// ── ANNONCES ──────────────────────────────────────────────────────────────────
+async function postAnnouncement() {
+  var text = document.getElementById('announcement-text')?.value?.trim();
+  if (!text) { toast('Message requis', 'error'); return; }
+  try {
+    await api('POST', '/announcements', { message: text });
+    document.getElementById('announcement-text').value = '';
+    loadAnnouncements();
+    toast('Annonce publiée ✅');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── TRI ───────────────────────────────────────────────────────────────────────
+function applySort() {
+  if (currentSubfolder) {
+    loadSubfolderFiles(currentFolder.id, currentSubfolder.id);
+  } else if (currentFolder) {
+    loadFiles();
+  }
+}
+
+function toggleSortMenu(e, btn) {
+  e.stopPropagation();
+  var menu = document.getElementById('sort-dropdown');
+  if (!menu) return;
+  if (menu.style.display !== 'none') { menu.style.display = 'none'; return; }
+  var rect = btn.getBoundingClientRect();
+  var menuWidth = 190;
+  var left = rect.right - menuWidth;
+  if (left < 8) left = 8;
+  var top = rect.bottom + 4;
+  if (top + 260 > window.innerHeight) top = rect.top - 264;
+  menu.style.left = Math.round(left) + 'px';
+  menu.style.top = Math.round(top) + 'px';
+  menu.style.display = 'block';
+  var labels = {'date-desc':'📅 Plus récent','date-asc':'📅 Plus ancien','name-asc':'🔤 A → Z','name-desc':'🔤 Z → A','size-desc':'📦 Plus lourd','size-asc':'📦 Plus léger'};
+  menu.querySelectorAll('.sort-item').forEach(function(el) {
+    el.classList.toggle('active', el.textContent.trim() === (labels[_currentSort]||''));
+  });
+  setTimeout(function() { document.addEventListener('click', function() { menu.style.display = 'none'; }, { once: true }); }, 10);
+}
+
+function setSortMenu(s, label) {
+  var menu = document.getElementById('sort-dropdown');
+  if (menu) menu.style.display = 'none';
+  var lbl = document.getElementById('sort-label');
+  if (lbl) lbl.textContent = label.replace(/^[^\s]+ /,'');
+  setSort(s);
+}
+
 async function loadFolders(){
   const grid=$('folders-grid');
   grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">Chargement…</div></div>';
