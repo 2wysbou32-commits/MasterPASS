@@ -3875,7 +3875,7 @@ async function reactMsg(emoji, commentId) {
   try {
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid + '/react', { emoji });
     var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
-    if (isInline) await loadThreadRepliesInline(); else await loadThreadReplies(true);
+    if (isInline) await loadThreadRepliesInline(true); else await loadThreadReplies(true);
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -4774,10 +4774,11 @@ function setReply(commentId, userName, msgPreview) {
   var replyBar = document.getElementById('reply-bar') || document.getElementById('reply-bar2');
   var replyName = document.getElementById('reply-name') || document.getElementById('reply-name2');
   var replyPreview = document.getElementById('reply-preview') || document.getElementById('reply-preview2');
-  // Pick the visible input
   var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+  var replyBar = isInline ? document.getElementById('reply-bar2') : document.getElementById('reply-bar');
+  var replyName = isInline ? document.getElementById('reply-name2') : document.getElementById('reply-name');
+  var replyPreview = isInline ? document.getElementById('reply-preview2') : document.getElementById('reply-preview');
   var input = isInline ? document.getElementById('reply-input2') : document.getElementById('reply-input');
-  if (!input) input = document.getElementById('reply-input') || document.getElementById('reply-input2');
   if (replyBar) {
     replyBar.style.display = 'flex';
     if (replyName) replyName.textContent = userName;
