@@ -4364,7 +4364,7 @@ async function loadThreadRepliesInline() {
       if (!isMine) row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:42px"><span style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + '">' + (r.userName||'') + (isAdmin?' 👨‍🏫':'') + '</span><span style="font-size:10px;color:var(--text3)">' + date + '</span></div>';
       row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%;' + (isMine?'flex-direction:row-reverse':'') + '">';
       if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">' + avatarHtml + '</div>';
-      row += '<div><div data-cid="' + r.id + '" class="msg-bubble" style="background:' + bubbleBg + ';color:' + bubbleColor + ';border:' + bubbleBorder + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5">' + msgHtml + '</div>';
+      row += '<div><div data-cid="' + r.id + '" class="msg-bubble" style="background:' + bubbleBg + ';color:' + bubbleColor + ';border:' + bubbleBorder + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5">' + (r.replyToName ? '<div style="opacity:0.8;font-size:11px;border-left:2px solid rgba(255,255,255,0.5);padding:2px 6px;margin-bottom:4px">↩ ' + r.replyToName + ': ' + String(r.replyToPreview||'').substring(0,40) + '</div>' : '') + msgHtml + '</div>';
       if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">' + date + '</div>';
       var canDelete = currentUser && (currentUser.role === 'admin' || r.userId === currentUser.id);
       // Réactions
@@ -5030,7 +5030,7 @@ async function loadThreadReplies(silent) {
       }
       row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%;'+(isMine?'flex-direction:row-reverse':'')+'">'+
         (isMine?'':'<div style="width:32px;height:32px;border-radius:50%;background:'+avatarBg+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">'+avatarHtml+'</div>')+
-        '<div><div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+'">'+msgHtml+'</div>'+
+        '<div><div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+'">'+(r.replyToName?'<div style="opacity:0.8;font-size:11px;border-left:2px solid rgba(255,255,255,0.5);padding:2px 6px;margin-bottom:4px">↩ '+r.replyToName+': '+String(r.replyToPreview||'').substring(0,40)+'</div>':'')+msgHtml+'</div>'+
         (isMine?'<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">'+date+'</div>':'')+
         // Reactions
         (function(){
