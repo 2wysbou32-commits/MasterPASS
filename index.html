@@ -2877,8 +2877,7 @@ function backToRoot(){
 
 async function loadSubfolders(folderId) {
   try {
-    const folder = await api('GET', '/folders/' + folderId);
-    return folder.subfolders || [];
+    return await api('GET', '/folders/' + folderId + '/subfolders');
   } catch(e) {
     return [];
   }
@@ -3221,7 +3220,7 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
   } else if (type === 'img') {
     html = '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:20px"><img src="' + previewUrl + '" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px"></div>';
   } else if (type === 'video') {
-    html = '<div style="display:flex;align-items:center;justify-content:center;height:100%"><video controls src="' + (streamUrl||previewUrl) + '" style="max-width:100%;max-height:100%;border-radius:8px"></video></div>';
+    html = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#000"><video controls autoplay src="' + (streamUrl||previewUrl) + '" style="max-width:100%;max-height:90vh" controlslist="nodownload"></video></div>';
   } else if (type === 'audio') {
     html = '<div style="display:flex;align-items:center;justify-content:center;height:100%"><audio controls src="' + previewUrl + '" style="width:80%;max-width:400px"></audio></div>';
   } else {
