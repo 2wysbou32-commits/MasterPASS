@@ -2666,6 +2666,16 @@ async function saveAvatar() {
 }
 
 // ── CODES D'INVITATION ────────────────────────────────────────────────────────
+function switchCodesTab(tab) {
+  var tabs = ['codes-active', 'codes-used'];
+  tabs.forEach(function(t) {
+    var el = document.getElementById(t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+    var btn = document.getElementById('tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+}
+
 async function loadCodes() {
   try {
     var codes = await api('GET', '/invite-codes');
@@ -2684,6 +2694,8 @@ async function loadCodes() {
     }).join('');
   } catch(e) { toast(e.message, 'error'); }
 }
+
+async function generateCodes() { return generateCode(); }
 
 async function generateCode() {
   try {
@@ -3770,9 +3782,14 @@ function closeMsgContextMenu() {
 }
 
 function msgLongPressStart(e, commentId) {
+  // Capture coordinates immediately (touches disappear after touchend)
+  var captured = {
+    clientX: e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : window.innerWidth/2),
+    clientY: e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : window.innerHeight/2)
+  };
   _longPressTimer = setTimeout(function() {
     if (navigator.vibrate) navigator.vibrate(50);
-    showMsgContextMenu(e, commentId);
+    showMsgContextMenu(captured, commentId);
   }, 500);
 }
 
@@ -4738,7 +4755,10 @@ function setReply(commentId, userName, msgPreview) {
   var replyBar = document.getElementById('reply-bar') || document.getElementById('reply-bar2');
   var replyName = document.getElementById('reply-name') || document.getElementById('reply-name2');
   var replyPreview = document.getElementById('reply-preview') || document.getElementById('reply-preview2');
-  var input = document.getElementById('reply-input') || document.getElementById('reply-input2');
+  // Pick the visible input
+  var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+  var input = isInline ? document.getElementById('reply-input2') : document.getElementById('reply-input');
+  if (!input) input = document.getElementById('reply-input') || document.getElementById('reply-input2');
   if (replyBar) {
     replyBar.style.display = 'flex';
     if (replyName) replyName.textContent = userName;
