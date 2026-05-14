@@ -2744,6 +2744,13 @@ async function moveFolder(id) {
 // ── LECTURE FICHIERS ──────────────────────────────────────────────────────────
 function getReadKey() { return currentUser ? 'mp_read_' + currentUser.id : null; }
 
+function isFavorite(fileId) {
+  var key = getFavoritesKey();
+  if (!key) return false;
+  var favs = JSON.parse(localStorage.getItem(key) || '[]');
+  return favs.some(function(f) { return f.id == fileId; });
+}
+
 function isFileRead(fileId) {
   var key = getReadKey();
   if (!key) return false;
