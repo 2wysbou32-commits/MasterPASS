@@ -5083,7 +5083,9 @@ async function postReply() {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const body = { message };
+    console.log('[postReply] _replyTo:', _replyTo);
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
+    console.log('[postReply] body:', body);
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
     cancelReply();
