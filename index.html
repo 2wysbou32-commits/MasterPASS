@@ -3819,7 +3819,10 @@ function ctxEdit() {
   if (!newMsg || newMsg.trim() === _ctxComment.message) return;
   // Edit reply in thread
   api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id, { message: newMsg.trim() })
-    .then(() => loadThreadReplies(true))
+    .then(function() {
+      var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+      if (isInline) loadThreadRepliesInline(); else loadThreadReplies(true);
+    })
     .catch(e => toast(e.message, 'error'));
 }
 
@@ -3827,9 +3830,10 @@ function ctxDelete() {
   closeMsgContextMenu();
   if (!_ctxComment) return;
   if (!confirm('Supprimer ce message ?')) return;
-  // Use deleteReply for thread view
-  if (_currentThreadId) deleteReply(_ctxComment.id);
-  else deleteComment(_ctxComment.id);
+  var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+  api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id)
+    .then(function() { if (isInline) loadThreadRepliesInline(); else loadThreadReplies(true); })
+    .catch(function(e) { toast(e.message, 'error'); });
 }
 
 async function reactMsg(emoji, commentId) {
@@ -3838,6 +3842,8 @@ async function reactMsg(emoji, commentId) {
   if (!cid || !_discussionFileId || !_currentThreadId) return;
   try {
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid + '/react', { emoji });
+    var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+    if (isInline) await loadThreadRepliesInline(); else await loadThreadReplies(true);
     await loadThreadReplies(true);
   } catch(e) { toast(e.message, 'error'); }
 }
@@ -4720,12 +4726,16 @@ function setReply(commentId, userName, msgPreview) {
   try { userName = decodeURIComponent(userName); } catch(e) {}
   try { msgPreview = decodeURIComponent(msgPreview); } catch(e) {}
   _replyTo = { id: commentId, userName: userName, msgPreview: msgPreview };
-  var replyBar = document.getElementById('reply-bar');
+  // Support both main discussion and sidebar discussion
+  var replyBar = document.getElementById('reply-bar') || document.getElementById('reply-bar2');
+  var replyName = document.getElementById('reply-name') || document.getElementById('reply-name2');
+  var replyPreview = document.getElementById('reply-preview') || document.getElementById('reply-preview2');
+  var input = document.getElementById('reply-input') || document.getElementById('reply-input2');
   if (replyBar) {
     replyBar.style.display = 'flex';
-    document.getElementById('reply-name').textContent = userName;
-    document.getElementById('reply-preview').textContent = msgPreview.substring(0, 60);
-    document.getElementById('discussion-input').focus();
+    if (replyName) replyName.textContent = userName;
+    if (replyPreview) replyPreview.textContent = msgPreview.substring(0, 60);
+    if (input) input.focus();
   }
 }
 
@@ -4733,6 +4743,8 @@ function cancelReply() {
   _replyTo = null;
   var replyBar = document.getElementById('reply-bar');
   if (replyBar) replyBar.style.display = 'none';
+  var replyBar2 = document.getElementById('reply-bar2');
+  if (replyBar2) replyBar2.style.display = 'none';
 }
 
 function handleReply(btn) {
