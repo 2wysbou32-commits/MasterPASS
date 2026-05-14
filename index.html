@@ -2758,6 +2758,8 @@ function isFileRead(fileId) {
   return !!read[String(fileId)];
 }
 
+function markAsRead(fileId) { markRead(fileId); }
+
 function markRead(fileId) {
   var key = getReadKey();
   if (!key) return;
