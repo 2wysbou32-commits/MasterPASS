@@ -4367,6 +4367,19 @@ async function loadThreadRepliesInline() {
       row += '<div><div data-cid="' + r.id + '" class="msg-bubble" style="background:' + bubbleBg + ';color:' + bubbleColor + ';border:' + bubbleBorder + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5">' + msgHtml + '</div>';
       if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">' + date + '</div>';
       var canDelete = currentUser && (currentUser.role === 'admin' || r.userId === currentUser.id);
+      // Réactions
+      var reactHtml = '';
+      if (r.reactions && Object.keys(r.reactions).length) {
+        reactHtml += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+        Object.entries(r.reactions).forEach(function(entry) {
+          var em = entry[0], users = entry[1];
+          if (!users || !users.length) return;
+          var iReacted = users.indexOf(currentUser ? currentUser.id : -1) !== -1;
+          reactHtml += '<button onclick="reactMsg(' + JSON.stringify(em) + ',' + r.id + ')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid ' + (iReacted ? 'var(--teal)' : 'var(--border)') + ';background:' + (iReacted ? 'rgba(0,151,167,0.1)' : 'transparent') + ';cursor:pointer;font-size:12px">' + em + ' ' + users.length + '</button>';
+        });
+        reactHtml += '</div>';
+        row += reactHtml;
+      }
       if (canDelete) row += '<div style="margin-top:2px;' + (isMine?'text-align:right':'') + '"><button onclick="deleteReplyInline(' + r.id + ')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑</button></div>';
       row += '</div></div></div>';
       return row;
