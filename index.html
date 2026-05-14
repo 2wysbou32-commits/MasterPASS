@@ -1692,6 +1692,13 @@ input[type="file"]{display:none;}
                 <button onclick="cancelVoicePreview('side')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;flex-shrink:0">×</button>
                 <button onclick="sendVoiceMessage('side')" style="padding:6px 14px;border-radius:8px;background:var(--teal-dark);color:white;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif;flex-shrink:0">Envoyer ↑</button>
               </div>
+              <div id="reply-bar2" style="display:none;align-items:center;gap:8px;padding:8px 14px;background:rgba(0,151,167,0.06);border-bottom:1px solid var(--border)">
+                <div style="flex:1;border-left:3px solid var(--teal);padding-left:10px">
+                  <div style="font-size:11px;font-weight:700;color:var(--teal-dark)" id="reply-name2"></div>
+                  <div style="font-size:11px;color:var(--text3)" id="reply-preview2"></div>
+                </div>
+                <button onclick="cancelReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px">×</button>
+              </div>
               <textarea id="reply-input2" placeholder="Ajoute une réponse..." style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
               <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px">
                 <div style="display:flex;align-items:center;gap:8px">
@@ -2699,7 +2706,7 @@ async function generateCodes() { return generateCode(); }
 
 async function generateCode() {
   try {
-    var res = await api('POST', '/invite-codes');
+    var res = await api('POST', '/invite-codes/generate');
     toast('Code créé : ' + res.code);
     loadCodes();
   } catch(e) { toast(e.message, 'error'); }
@@ -3869,7 +3876,6 @@ async function reactMsg(emoji, commentId) {
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid + '/react', { emoji });
     var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
     if (isInline) await loadThreadRepliesInline(); else await loadThreadReplies(true);
-    await loadThreadReplies(true);
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -5041,7 +5047,7 @@ async function loadThreadReplies(silent) {
     });
     if (!silent || wasAtBottom) container.scrollTop = container.scrollHeight;
     // Init long press context menu for replies
-    _commentDataMap = {};
+    // Update comment map (keep inline entries)
     data.replies.forEach(function(r) {
       _commentDataMap[r.id] = {
         id: r.id, userId: r.userId, userName: r.userName,
