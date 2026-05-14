@@ -4764,9 +4764,11 @@ async function updateDiscussionBadges(fileIds) {
   if (!fileIds || !fileIds.length) return;
   _lastSeenComments = loadLastSeen();
   try {
-    const validIds = fileIds.filter(id => id && id !== 'undefined' && id !== 'null' && !isNaN(parseInt(id)));
+    const validIds = Array.from(fileIds).filter(id => id && id !== 'undefined' && id !== 'null' && !isNaN(parseInt(id)));
     if (!validIds.length) return;
-    const unread = await api('POST', '/threads/unread', { fileIds: validIds, lastSeen: _lastSeenComments });
+    const fileLevelSeen = {};
+    Object.entries(_lastSeenComments || {}).forEach(([k,v]) => { if (!k.startsWith('thread_')) fileLevelSeen[k] = v; });
+    const unread = await api('POST', '/threads/unread', { fileIds: validIds, lastSeen: fileLevelSeen });
     fileIds.forEach(id => {
       const badge = document.getElementById('disc-badge-' + id);
       if (!badge) return;
