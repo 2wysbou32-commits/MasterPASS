@@ -2623,9 +2623,17 @@ function toggleFavorite(e, fileObj) {
     toast('Ajouté aux favoris ⭐');
   }
   localStorage.setItem(key, JSON.stringify(favs));
-  // Update star buttons
+  var isFav = idx < 0; // after toggle: if was found (idx>=0) it's now removed, else added
   document.querySelectorAll('.btn-favorite[data-id="' + fileObj.id + '"]').forEach(function(btn) {
-    btn.style.color = idx >= 0 ? '' : 'gold';
+    if (isFav) {
+      btn.classList.add('active');
+      var svg = btn.querySelector('svg');
+      if (svg) { svg.setAttribute('fill', 'currentColor'); }
+    } else {
+      btn.classList.remove('active');
+      var svg = btn.querySelector('svg');
+      if (svg) { svg.setAttribute('fill', 'none'); }
+    }
   });
 }
 
@@ -3005,7 +3013,7 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
         Discussion
         <span id="disc-badge-${f.id}" style="display:none;position:absolute;top:-4px;right:-4px;background:#ef5350;color:white;border-radius:10px;padding:1px 5px;font-size:9px;font-weight:700;min-width:14px;text-align:center;line-height:14px"></span>
       </button>
-      <button class="btn-favorite ${isFavorite(f.id, folderId, subId) ? 'active' : ''}"
+      <button class="btn-favorite ${isFavorite(f.id, folderId, subId) ? 'active' : ''}" data-id="${f.id}"
         onclick="event.stopPropagation();toggleFavorite(event, ${JSON.stringify({id:f.id,name:f.name,type:f.type,size:f.size,addedAt:f.addedAt}).replace(/"/g,'&quot;')}, '${folderId}', '${subId || ''}')"
         title="${isFavorite(f.id, folderId, subId) ? 'Retirer des favoris' : 'Ajouter aux favoris'}">
         <svg viewBox="0 0 24 24" fill="${isFavorite(f.id, folderId, subId) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
