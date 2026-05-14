@@ -3220,7 +3220,17 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
   } else if (type === 'img') {
     html = '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:20px"><img src="' + previewUrl + '" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px"></div>';
   } else if (type === 'video') {
-    html = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#000"><video controls autoplay src="' + (streamUrl||previewUrl) + '" style="max-width:100%;max-height:90vh" controlslist="nodownload"></video></div>';
+    // Stream URL returns JSON with signed R2 URL - fetch it first
+    html = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#000" id="video-loading"><div style="color:white">Chargement...</div></div>';
+    // Async load the real URL
+    fetch(streamUrl||previewUrl, {credentials:'include'})
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        var videoUrl = data.url || data.urlLegacy || streamUrl;
+        var body = document.getElementById('preview-body');
+        if (body) body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#000"><video controls autoplay src="' + videoUrl + '" style="max-width:100%;max-height:90vh"></video></div>';
+      })
+      .catch(function(){ console.error('Video load failed'); });
   } else if (type === 'audio') {
     html = '<div style="display:flex;align-items:center;justify-content:center;height:100%"><audio controls src="' + previewUrl + '" style="width:80%;max-width:400px"></audio></div>';
   } else {
