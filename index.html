@@ -4598,8 +4598,11 @@ async function postReply2() {
   const message = input.value.trim();
   if (!message) return;
   try {
-    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', { message });
+    const body = { message };
+    if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
+    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
+    cancelReply();
     await loadThreadRepliesInline();
   } catch(e) { toast(e.message, 'error'); }
 }
