@@ -2244,10 +2244,10 @@ async function doRegister() {
   const password = document.getElementById('reg-password')?.value?.trim();
   const code = document.getElementById('reg-code')?.value?.trim();
   const mineure = document.getElementById('reg-mineure')?.value?.trim();
-  if (!name || !login || !password || !code) { toast('Tous les champs requis', 'error'); return; }
+  if (!firstName || !lastName || !login || !password || !code) { toast('Tous les champs requis', 'error'); return; }
   try {
-    await api('POST', '/register', { name, login, email, password, inviteCode: code, mineure });
-    toast('Compte créé ! Connecte-toi.');
+    await api('POST', '/register', { firstName, lastName, login, email, password, code, mineure });
+    toast('Compte créé ! Connecte-toi. 🎉');
     showLoginForm();
   } catch(e) { toast(e.message, 'error'); }
 }
