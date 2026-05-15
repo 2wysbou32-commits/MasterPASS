@@ -1,0 +1,1973 @@
+const express = require('express');
+const session = require('express-session');
+const FileStore = require('session-file-store')(session);
+const multer = require('multer');
+const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
+
+// R2 via API HTTP directe (pas de SDK — évite les problèmes SSL)
+const crypto = require('crypto');
+const https = require('https');
+
+// ── Notifications Push (Web Push) ─────────────────────────────────────────────
+let webpush = null;
+try {
+  webpush = require('web-push');
+  const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || 'BPAm2u-DCWr3oUwEtnXoa2Yb3J1y2zxRigqtA5UadyOjy15CX_zdDqx7-cOseKC6VxAlfhVpkmmyT_TpORJ8JRM';
+  const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || 'pvIDK_3p5Jvc1PJzYNV8ftfxk_vh-yVR4UJHu2p6sBs';
+  webpush.setVapidDetails('mailto:masterpass.lille@gmail.com', VAPID_PUBLIC, VAPID_PRIVATE);
+  console.log('✅ Web Push activé');
+} catch(e) {
+  console.log('⚠️ Web Push non disponible (npm install web-push)');
+}
+
+async function sendPushToAll(title, body, url = '/') {
+  if (!webpush) return;
+  const db = loadDB();
+  const subs = db.pushSubscriptions || [];
+  const payload = JSON.stringify({ title, body, url });
+  await Promise.allSettled(subs.map(async (sub) => {
+    try {
+      await webpush.sendNotification(sub.subscription, payload);
+    } catch(e) {
+      if (e.statusCode === 410) {
+        // Subscription expirée — la supprimer
+        db.pushSubscriptions = (db.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== sub.subscription.endpoint);
+        saveDB(db);
+      }
+    }
+  }));
+}
+
+const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
+
+// ── Cloudflare R2 config ──────────────────────────────────────────────────────
+const R2_ACCOUNT_ID    = process.env.R2_ACCOUNT_ID;
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_KEY    = process.env.R2_SECRET_KEY;
+const R2_BUCKET_NAME   = process.env.R2_BUCKET_NAME || 'masterpass';
+
+let r2Enabled = false;
+if (R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_KEY) {
+  r2Enabled = true;
+  console.log('✅ Cloudflare R2 activé — bucket:', R2_BUCKET_NAME);
+} else {
+  console.log('⚠️  R2 non configuré → stockage local');
+}
+
+// ── Helpers crypto ────────────────────────────────────────────────────────────
+function hmac(key, data, encoding) {
+  return crypto.createHmac('sha256', key).update(data).digest(encoding || undefined);
+}
+function hashSHA256(data) {
+  return crypto.createHash('sha256').update(data).digest('hex');
+}
+
+// Encode chaque segment du path R2 séparément (conserve les /)
+function encodeR2Key(key) {
+  return key.split('/').map(s => encodeURIComponent(s)).join('/');
+}
+
+// Ancien encodage (avant correction) : les / deviennent %2F
+function encodeR2KeyLegacy(key) {
+  return encodeURIComponent(key);
+}
+
+// Signature AWS v4 pour PUT/DELETE
+function buildAuthHeader(method, key, contentType, bodyHash, date, region) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const datetime = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateShort = datetime.slice(0, 8);
+  const scope = `${dateShort}/${region}/s3/aws4_request`;
+  const canonicalPath = `/${R2_BUCKET_NAME}/${encodeR2Key(key)}`;
+  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-date:${datetime}\n`;
+  const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
+  const canonicalRequest = [method, canonicalPath, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
+  const stringToSign = ['AWS4-HMAC-SHA256', datetime, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateShort), region), 's3'), 'aws4_request');
+  const signature = hmac(signingKey, stringToSign, 'hex');
+  return {
+    authorization: `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+    datetime,
+    host,
+    canonicalPath,
+  };
+}
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ── Paths ─────────────────────────────────────────────────────────────────────
+const DATA_DIR    = process.env.DATA_DIR || require('path').join(__dirname, 'data');
+const DATA_FILE   = require('path').join(DATA_DIR, 'db.json');
+const UPLOADS_DIR = require('path').join(DATA_DIR, 'uploads');
+if (!require('fs').existsSync(DATA_DIR)) require('fs').mkdirSync(DATA_DIR, { recursive: true });
+if (!require('fs').existsSync(UPLOADS_DIR)) require('fs').mkdirSync(UPLOADS_DIR, { recursive: true });
+
+// ── DB ────────────────────────────────────────────────────────────────────────
+function migrateCommentsToThreads(db) {
+  if (!db.comments || !Object.keys(db.comments).length) return;
+  if (!db.threads) db.threads = {};
+  let migrated = 0;
+  Object.entries(db.comments).forEach(([fileId, comments]) => {
+    if (!comments || !comments.length) return;
+    if (!db.threads[fileId]) db.threads[fileId] = [];
+    // Check if already migrated (avoid duplicates)
+    if (db.threads[fileId].length > 0) return;
+    // Group comments as a single thread per file
+    const firstComment = comments[0];
+    const thread = {
+      id: db.nextId++,
+      fileId: fileId,
+      title: firstComment.message ? firstComment.message.substring(0, 80) : 'Discussion importée',
+      createdBy: firstComment.userId,
+      createdAt: firstComment.createdAt,
+      resolved: false,
+      replies: comments.slice(1).map(c => ({
+        id: c.id, userId: c.userId, userName: c.userName,
+        userRole: c.userRole, message: c.message || '',
+        audio: c.audio || null, audioDuration: c.audioDuration || null,
+        createdAt: c.createdAt
+      }))
+    };
+    db.threads[fileId].push(thread);
+    migrated++;
+  });
+  if (migrated > 0) {
+    console.log('Migrated ' + migrated + ' comment threads to new thread system');
+    saveDB(db);
+  }
+}
+
+function loadDB() {
+  if (!fs.existsSync(DATA_FILE)) return initDB();
+  try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch { return initDB(); }
+}
+function saveDB(db) { fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2)); }
+function initDB() {
+  const db = {
+    nextId: 10,
+    users: [{ id: 1, name: 'Administrateur Principal', login: 'admin', password: require('bcryptjs').hashSync('admin123', 10), role: 'admin' }],
+    folders: [],
+    inviteCodes: [],
+    announcements: [],
+    connectionLogs: [],
+  };
+  saveDB(db); return db;
+}
+
+// ── Registre des sessions actives (déconnexion simultanée) ──────────────────
+// Stocké en DB pour survivre aux redémarrages
+function getActiveSessions() {
+  const db = loadDB();
+  return db.activeSessions || {};
+}
+function setActiveSession(userId, sessionId) {
+  const db = loadDB();
+  if (!db.activeSessions) db.activeSessions = {};
+  db.activeSessions[userId] = sessionId;
+  saveDB(db);
+}
+function deleteActiveSession(userId) {
+  const db = loadDB();
+  if (db.activeSessions) delete db.activeSessions[userId];
+  saveDB(db);
+}
+
+// ── Reset tokens (en mémoire, valides 15 min) ────────────────────────────────
+const resetTokens = {};
+
+function generateToken() {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
+
+// ── Codes d'invitation ────────────────────────────────────────────────────────
+function generateInviteCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 12; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+// ── Multer → mémoire (puis R2 ou disque) ─────────────────────────────────────
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 * 1024 } });
+
+// ── Middleware ────────────────────────────────────────────────────────────────
+app.use(express.json({ limit: '50mb' }));
+
+// PWA files
+app.get('/manifest.json', (req, res) => res.sendFile(path.join(__dirname, 'manifest.json')));
+app.get('/icon-192.png', (req, res) => res.sendFile(path.join(__dirname, 'icon-192.png')));
+app.get('/icon-512.png', (req, res) => res.sendFile(path.join(__dirname, 'icon-512.png')));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.set('trust proxy', 1);
+
+const sessionsDir = path.join(__dirname, 'data', 'sessions');
+if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
+
+app.use(session({
+  store: new FileStore({
+    path: sessionsDir,
+    ttl: 28800,
+    retries: 1,
+    logFn: () => {},
+  }),
+  secret: process.env.SESSION_SECRET || 'masterpass-secret-2024',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 8 * 60 * 60 * 1000,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  },
+}));
+
+const publicDir = fs.existsSync(path.join(__dirname, 'public'))
+  ? path.join(__dirname, 'public')
+  : __dirname;
+app.use(express.static(publicDir));
+
+// ── Auth guards ───────────────────────────────────────────────────────────────
+function requireAuth(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
+  // Vérifier que c'est bien la session active (anti-partage de compte)
+  const activeSessionId = getActiveSessions()[req.session.userId];
+  if (activeSessionId && activeSessionId !== req.sessionID) {
+    console.log('[SECURITY] Session expirée pour userId:', req.session.userId, '— double connexion détectée');
+    // Marquer l'utilisateur comme ayant tenté une double connexion
+    try {
+      const dbSec = loadDB();
+      const userSec = dbSec.users.find(u => u.id === req.session.userId);
+      if (userSec) { userSec.doubleConnectionAt = new Date().toISOString(); saveDB(dbSec); }
+    } catch(e) {}
+    req.session.destroy(() => {});
+    return res.status(401).json({ error: 'SESSION_EXPIRED', message: 'Ton compte a été connecté depuis un autre appareil.' });
+  }
+  next();
+}
+// Admin principal uniquement (comptes, codes, stats)
+function requireSuperAdmin(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
+  const user = loadDB().users.find(u => u.id === req.session.userId);
+  if (!user || user.role !== 'admin') return res.status(403).json({ error: 'Accès refusé — admin principal requis' });
+  next();
+}
+
+// Admin principal OU sous-admin (fichiers uniquement)
+function requireAdmin(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
+  const user = loadDB().users.find(u => u.id === req.session.userId);
+  if (!user || (user.role !== 'admin' && user.role !== 'subadmin')) {
+    return res.status(403).json({ error: 'Accès refusé' });
+  }
+  next();
+}
+
+// ── R2 helpers ────────────────────────────────────────────────────────────────
+async function uploadToR2(key, buffer, contentType) {
+  const ct = contentType || 'application/octet-stream';
+  const bodyHash = hashSHA256(buffer);
+  const date = new Date();
+  const region = 'auto';
+  const { authorization, datetime, host, canonicalPath } = buildAuthHeader('PUT', key, ct, bodyHash, date, region);
+
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: host,
+      port: 443,
+      // Utiliser le même canonicalPath que la signature (segments encodés séparément)
+      path: canonicalPath,
+      method: 'PUT',
+      rejectUnauthorized: false,
+      secureProtocol: 'TLSv1_2_method',
+      headers: {
+        'Content-Type': ct,
+        'Content-Length': buffer.length,
+        'x-amz-content-sha256': bodyHash,
+        'x-amz-date': datetime,
+        'Authorization': authorization,
+      },
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve();
+        else reject(new Error(`R2 upload failed: ${res.statusCode} ${data}`));
+      });
+    });
+    req.on('error', reject);
+    req.write(buffer);
+    req.end();
+  });
+}
+
+async function deleteFromR2(key) {
+  try {
+    const bodyHash = hashSHA256('');
+    const date = new Date();
+    const { authorization, datetime, host, canonicalPath } = buildAuthHeader('DELETE', key, 'application/octet-stream', bodyHash, date, 'auto');
+    await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: host,
+        port: 443,
+        path: canonicalPath,
+        method: 'DELETE',
+        rejectUnauthorized: false,
+        secureProtocol: 'TLSv1_2_method',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'x-amz-content-sha256': bodyHash,
+          'x-amz-date': datetime,
+          'Authorization': authorization,
+        },
+      }, (res) => { res.on('data', ()=>{}); res.on('end', resolve); });
+      req.on('error', reject);
+      req.end();
+    });
+  } catch(e) { console.error('R2 delete error:', e.message); }
+}
+
+// Construit les headers de signature pour une requête GET R2
+function buildR2GetHeaders(canonicalPath, host, region, amzDate, dateStamp, bodyHash) {
+  const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-date:${amzDate}\n`;
+  const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+  const canonicalRequest = ['GET', canonicalPath, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
+  const signature = hmac(signingKey, stringToSign, 'hex');
+  return {
+    'host': host,
+    'x-amz-content-sha256': bodyHash,
+    'x-amz-date': amzDate,
+    'Authorization': `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+  };
+}
+
+// Effectue une requête GET vers R2 avec un path donné
+function r2GetRequest(host, canonicalPath, reqHeaders) {
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: host,
+      port: 443,
+      path: canonicalPath,
+      method: 'GET',
+      rejectUnauthorized: false,
+      headers: reqHeaders,
+    }, resolve);
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+// Proxy fichier depuis R2 — essaie le nouvel encodage puis l'ancien (legacy) si 404
+async function addWatermarkHeader(res, userId) {
+  // Ajoute le nom de l'utilisateur dans les headers pour le filigrane frontend
+  try {
+    const db = loadDB();
+    const user = db.users.find(u => u.id === userId);
+    if (user) res.setHeader('X-User-Watermark', encodeURIComponent(user.name));
+  } catch(e) {}
+}
+
+// Watermark info from session for PDF
+function getWatermarkUser(req) {
+  if (!req.session.userId) return null;
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  return user ? `${user.name} (${user.login})` : null;
+}
+
+async function proxyFileFromR2(key, res, inline, originalReq) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const date = new Date();
+  const amzDate = date.toISOString().replace(/[:-]|\.\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const bodyHash = hashSHA256('');
+
+  // Les deux encodages possibles selon comment le fichier a été uploadé
+  const pathNew    = `/${R2_BUCKET_NAME}/${encodeR2Key(key)}`;       // Nouveau : segments séparés
+  const pathLegacy = `/${R2_BUCKET_NAME}/${encodeR2KeyLegacy(key)}`; // Ancien : tout encodé (les / = %2F)
+
+  // Fonction qui construit les headers et envoie la requête
+  async function tryPath(canonicalPath) {
+    const extraRange = (originalReq && originalReq.headers && originalReq.headers.range)
+      ? { 'Range': originalReq.headers.range } : {};
+    const headers = { ...buildR2GetHeaders(canonicalPath, host, region, amzDate, dateStamp, bodyHash), ...extraRange };
+    return r2GetRequest(host, canonicalPath, headers);
+  }
+
+  let r2res;
+  try {
+    r2res = await tryPath(pathNew);
+    if (r2res.statusCode === 404) {
+      // Fichier introuvable avec le nouvel encodage → essayer l'ancien
+      console.log('[R2] 404 nouveau encodage, tentative legacy pour:', key);
+      r2res.resume(); // vider la réponse 404
+      r2res = await tryPath(pathLegacy);
+    }
+  } catch(e) {
+    return Promise.reject(e);
+  }
+
+  return new Promise((resolve, reject) => {
+    if (r2res.statusCode >= 400) {
+      let errData = '';
+      r2res.on('data', c => errData += c);
+      r2res.on('end', () => reject(new Error(`R2 fetch failed: ${r2res.statusCode} ${errData}`)));
+      return;
+    }
+    const ct = r2res.headers['content-type'] || 'application/octet-stream';
+    const cl = r2res.headers['content-length'];
+    const cr = r2res.headers['content-range'];
+    const al = r2res.headers['accept-ranges'];
+    res.status(r2res.statusCode);
+    res.setHeader('Content-Type', ct);
+    if (cl) res.setHeader('Content-Length', cl);
+    if (cr) res.setHeader('Content-Range', cr);
+    if (al) res.setHeader('Accept-Ranges', al);
+    else res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Content-Disposition', inline ? 'inline' : 'attachment');
+    res.setHeader('Cache-Control', 'private, no-store');
+    // Filigrane : envoyer l'identité de l'utilisateur au client
+    if (originalReq && originalReq.session && originalReq.session.userId) {
+      const wUser = getWatermarkUser(originalReq);
+      if (wUser) res.setHeader('X-Watermark-User', Buffer.from(wUser).toString('base64'));
+    }
+    r2res.pipe(res);
+    r2res.on('end', resolve);
+  });
+}
+
+// URL signée pour streaming vidéo — essaie nouveau encodage, fallback legacy
+function getSignedVideoUrl(r2Key, useLegacy) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]/g, '').replace(/\.\.\d{3}/, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const expires = 7200;
+  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
+
+  const encodedPath = useLegacy
+    ? `/${R2_BUCKET_NAME}/${encodeR2KeyLegacy(r2Key)}`
+    : `/${R2_BUCKET_NAME}/${encodeR2Key(r2Key)}`;
+
+  const params = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expires)],
+    ['X-Amz-SignedHeaders', 'host'],
+  ].sort((a, b) => encodeURIComponent(a[0]) < encodeURIComponent(b[0]) ? -1 : 1);
+
+  const qs = params.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+
+  const canonicalReq = [
+    'GET',
+    encodedPath,
+    qs,
+    `host:${host}\n`,
+    'host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const toSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalReq)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
+  const sig = hmac(signingKey, toSign, 'hex');
+
+  return `https://${host}${encodedPath}?${qs}&X-Amz-Signature=${sig}`;
+}
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+app.post('/api/login', (req, res) => {
+  const { login, password } = req.body;
+  const db = loadDB();
+  // Connexion par identifiant OU par email
+  const user = db.users.find(u => u.login === login || (u.email && u.email === login));
+  if (!user || !bcrypt.compareSync(password, user.password))
+    return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });
+  req.session.userId = user.id;
+  req.session.save((err) => {
+    if (err) console.log('[SESSION] Save error:', err);
+    else console.log('[SESSION] Saved — sessionID:', req.sessionID, '— userId:', user.id);
+  });
+  // Enregistrer la session active — déconnecter toute session précédente
+  const prevSession = getActiveSessions()[user.id];
+  setActiveSession(user.id, req.sessionID);
+
+  // Log de connexion
+  const dbLog = loadDB();
+  if (!dbLog.connectionLogs) dbLog.connectionLogs = [];
+  dbLog.connectionLogs.unshift({
+    userId: user.id,
+    login: user.login,
+    name: user.name,
+    ip: req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'inconnue',
+    ua: (req.headers['user-agent'] || '').substring(0, 120),
+    at: new Date().toISOString(),
+    replaced: !!prevSession,
+  });
+  if (dbLog.connectionLogs.length > 200) dbLog.connectionLogs = dbLog.connectionLogs.slice(0, 200);
+  saveDB(dbLog);
+  console.log('[SESSION] Session active enregistrée pour userId:', user.id);
+  // Log de connexion
+  try {
+    const db2 = loadDB();
+    if (!db2.connectionLogs) db2.connectionLogs = [];
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
+    db2.connectionLogs.unshift({
+      userId: user.id, login: user.login, name: user.name,
+      ip, date: new Date().toISOString(),
+    });
+    // Garder uniquement les 200 derniers logs
+    if (db2.connectionLogs.length > 200) db2.connectionLogs = db2.connectionLogs.slice(0, 200);
+    saveDB(db2);
+  } catch(e) { console.error('[LOG] Erreur log connexion:', e.message); }
+  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', registeredAt: user.registeredAt || '' });
+});
+app.post('/api/logout', (req, res) => {
+  if (req.session.userId && getActiveSessions()[req.session.userId] === req.sessionID) {
+    deleteActiveSession(req.session.userId);
+  }
+  req.session.destroy(() => res.json({ ok: true }));
+});
+app.get('/api/me', requireAuth, (req, res) => {
+  const user = loadDB().users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(401).json({ error: 'Session invalide' });
+  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null });
+});
+
+// ── USERS ─────────────────────────────────────────────────────────────────────
+app.get('/api/users', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  const activeSess = db.activeSessions || {};
+  res.json(db.users.map(u => ({
+    id: u.id, name: u.name, login: u.login, role: u.role,
+    email: u.email || '', mineure: u.mineure || '', discord: u.discord || '',
+    doubleConnection: !!u.doubleConnectionAt
+  })));
+});
+app.post('/api/users', requireSuperAdmin, (req, res) => {
+  const { name, login, password, role } = req.body;
+  if (!name || !login || !password || !['admin','subadmin','student'].includes(role))
+    return res.status(400).json({ error: 'Données invalides' });
+  const db = loadDB();
+  if (db.users.find(u => u.login === login))
+    return res.status(409).json({ error: 'Identifiant déjà utilisé' });
+  const u = { id: db.nextId++, name, login, password: bcrypt.hashSync(password, 10), role };
+  db.users.push(u); saveDB(db);
+  res.json({ id: u.id, name, login, role });
+});
+app.delete('/api/users/:id', requireSuperAdmin, (req, res) => {
+  const id = parseInt(req.params.id);
+  if (id === req.session.userId) return res.status(400).json({ error: 'Impossible de supprimer votre propre compte' });
+  const db = loadDB(); db.users = db.users.filter(u => u.id !== id); saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── FOLDERS ───────────────────────────────────────────────────────────────────
+app.get('/api/folders', requireAuth, (req, res) => {
+  const db = loadDB();
+  res.json(db.folders.map(f => ({
+    id: f.id, name: f.name, createdAt: f.createdAt,
+    fileCount: (f.files||[]).length,
+    totalSize: (f.files||[]).reduce((s,fi) => s+fi.size, 0),
+    subfolders: (f.subfolders||[]).map(s => ({
+      id: s.id, name: s.name,
+      fileCount: (s.files||[]).length
+    }))
+  })));
+});
+app.post('/api/folders', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
+  const db = loadDB();
+  const folder = { id: db.nextId++, name: name.trim(), createdAt: new Date().toISOString().split('T')[0], files: [] };
+  db.folders.push(folder); saveDB(db);
+  res.json({ id: folder.id, name: folder.name, createdAt: folder.createdAt, fileCount: 0, totalSize: 0 });
+});
+app.delete('/api/folders/:id', requireAdmin, async (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.id));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  for (const file of (folder.files||[])) {
+    if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
+    else if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) fs.unlinkSync(p); }
+  }
+  db.folders = db.folders.filter(f => f.id !== parseInt(req.params.id)); saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
+app.post('/api/folders/:id/subfolders', requireAdmin, (req, res) => {
+  const parentId = parseInt(req.params.id);
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parentId);
+  if (!parent) return res.status(404).json({ error: 'Dossier parent introuvable' });
+  if (!parent.subfolders) parent.subfolders = [];
+  const sub = { id: db.nextId++, name: name.trim(), createdAt: new Date().toISOString().split('T')[0], files: [] };
+  parent.subfolders.push(sub);
+  saveDB(db);
+  res.json({ id: sub.id, name: sub.name, createdAt: sub.createdAt, fileCount: 0, totalSize: 0 });
+});
+
+app.get('/api/folders/:id/subfolders', requireAuth, (req, res) => {
+  const parentId = parseInt(req.params.id);
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parentId);
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const subs = (parent.subfolders || []).map(s => ({
+    id: s.id, name: s.name, createdAt: s.createdAt,
+    fileCount: (s.files || []).length,
+    totalSize: (s.files || []).reduce((a, f) => a + f.size, 0),
+  }));
+  res.json(subs);
+});
+
+app.delete('/api/folders/:parentId/subfolders/:subId', requireAdmin, async (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub = (parent.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+  for (const file of (sub.files || [])) {
+    if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
+  }
+  parent.subfolders = parent.subfolders.filter(s => s.id !== parseInt(req.params.subId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+app.get('/api/folders/:parentId/subfolders/:subId/files', requireAuth, (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub = (parent.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+  const requestingUser = db.users.find(u => u.id === req.session.userId);
+  const isAdmin = requestingUser?.role === 'admin';
+  const now = Date.now();
+  res.json((sub.files || [])
+    .filter(f => {
+      if (f.pending) {
+        const addedTime = new Date(f.addedAt).getTime();
+        if (now - addedTime > 2 * 60 * 1000) { f.pending = false; saveDB(db); }
+      }
+      return isAdmin || !f.pending;
+    })
+    .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false, views: f.views || 0 })));
+});
+
+app.post('/api/folders/:parentId/subfolders/:subId/files', requireAdmin, upload.array('files'), async (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub = (parent.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier' });
+  const added = [];
+  for (const file of req.files) {
+    const ext = path.extname(file.originalname).replace('.', '').toLowerCase();
+    const type = getFileType(ext);
+    const fileId = db.nextId++;
+    let record;
+    if (r2Enabled) {
+      const r2Key = `files/${req.params.parentId}/sub${req.params.subId}/${fileId}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      await uploadToR2(r2Key, file.buffer, file.mimetype);
+      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], r2Key, downloadable: true };
+    } else {
+      const filename = `${fileId}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      fs.writeFileSync(path.join(UPLOADS_DIR, filename), file.buffer);
+      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], filename, downloadable: true };
+    }
+    sub.files.push(record);
+    added.push({ id: record.id, name: record.name, size: record.size, type: record.type, addedAt: record.addedAt });
+  }
+  saveDB(db);
+  if (added.length > 0) {
+    const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+    const sub2 = (parent?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
+    const folderName = sub2 ? `${parent?.name} › ${sub2.name}` : 'Sous-dossier';
+  }
+  res.json(added);
+});
+
+app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/download', requireAuth, async (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (parent?.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (user?.role !== 'admin') {
+    if (file.type === 'video') return res.status(403).json({ error: 'Les vidéos ne peuvent pas être téléchargées' });
+    if (file.downloadable === false) return res.status(403).json({ error: 'Téléchargement non autorisé' });
+  }
+  if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, false, req); return; }
+  if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.download(p, file.name); }
+  res.status(500).json({ error: 'Erreur stockage' });
+});
+
+app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/preview', requireAuth, async (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (parent?.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  // Incrémenter le compteur de vues
+  file.views = (file.views || 0) + 1;
+  saveDB(db);
+  if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, true, req); return; }
+  if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.sendFile(p); }
+  res.status(500).json({ error: 'Erreur stockage' });
+});
+
+app.delete('/api/folders/:parentId/subfolders/:subId/files/:fileId', requireAdmin, async (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (parent?.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
+  sub.files = sub.files.filter(f => f.id !== parseInt(req.params.fileId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── STREAM VIDÉO ──────────────────────────────────────────────────────────────
+app.get('/api/folders/:folderId/files/:fileId/stream', requireAuth, (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file || file.type !== 'video') return res.status(404).json({ error: 'Fichier introuvable' });
+  if (!r2Enabled || !file.r2Key) {
+    return res.json({ url: null, fallback: `/api/folders/${req.params.folderId}/files/${req.params.fileId}/preview` });
+  }
+  try {
+    const signedUrl = getSignedVideoUrl(file.r2Key, false);
+    const legacyUrl = getSignedVideoUrl(file.r2Key, true);
+    console.log('[STREAM] URL générée pour:', file.r2Key);
+    res.json({ url: signedUrl, urlLegacy: legacyUrl });
+  } catch(e) {
+    console.error('[STREAM] Erreur:', e.message);
+    res.status(500).json({ error: 'Erreur génération URL' });
+  }
+});
+
+app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/stream', requireAuth, (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (parent?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file || file.type !== 'video') return res.status(404).json({ error: 'Fichier introuvable' });
+  if (!r2Enabled || !file.r2Key) {
+    return res.json({ url: null, fallback: `/api/folders/${req.params.parentId}/subfolders/${req.params.subId}/files/${req.params.fileId}/preview` });
+  }
+  try {
+    const signedUrl = getSignedVideoUrl(file.r2Key, false);
+    const legacyUrl = getSignedVideoUrl(file.r2Key, true);
+    console.log('[STREAM] URL générée pour:', file.r2Key);
+    res.json({ url: signedUrl, urlLegacy: legacyUrl });
+  } catch(e) {
+    console.error('[STREAM] Erreur:', e.message);
+    res.status(500).json({ error: 'Erreur génération URL' });
+  }
+});
+
+app.patch('/api/folders/:parentId/subfolders/:subId/files/:fileId/downloadable', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (parent?.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.downloadable = !file.downloadable;
+  saveDB(db);
+  res.json({ id: file.id, downloadable: file.downloadable });
+});
+
+// ── FILES ─────────────────────────────────────────────────────────────────────
+app.get('/api/folders/:id/files', requireAuth, (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.id));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const requestingUser = db.users.find(u => u.id === req.session.userId);
+  const isAdmin = requestingUser?.role === 'admin';
+  const now = Date.now();
+  res.json((folder.files||[])
+    .filter(f => {
+      if (f.pending) {
+        const addedTime = new Date(f.addedAt).getTime();
+        if (now - addedTime > 2 * 60 * 1000) { f.pending = false; saveDB(db); }
+      }
+      return isAdmin || !f.pending;
+    })
+    .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false, views: f.views || 0 })));
+});
+
+app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (req, res) => {
+  const folderId = parseInt(req.params.id);
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === folderId);
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
+
+  const added = [];
+  for (const file of req.files) {
+    const ext = path.extname(file.originalname).replace('.','').toLowerCase();
+    const type = getFileType(ext);
+    const fileId = db.nextId++;
+    let record;
+
+    if (r2Enabled) {
+      const safeBase = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const r2Key = `files/${folderId}/${fileId}-${safeBase}`;
+      await uploadToR2(r2Key, file.buffer, file.mimetype);
+      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], r2Key, downloadable: true };
+    } else {
+      const filename = `${fileId}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      fs.writeFileSync(path.join(UPLOADS_DIR, filename), file.buffer);
+      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], filename, downloadable: true };
+    }
+    folder.files.push(record);
+    added.push({ id: record.id, name: record.name, size: record.size, type: record.type, addedAt: record.addedAt });
+  }
+  saveDB(db);
+  // Envoyer notification push pour les nouveaux fichiers
+  if (added.length > 0) {
+    const folderName = db.folders.find(f=>f.id===parseInt(req.params.folderId))?.name || 'MasterPASS';
+    const fileNames = added.map(f=>f.name).join(', ');
+    sendPushToAll(
+      `📁 Nouveau fichier dans ${folderName}`,
+      added.length === 1 ? added[0].name : `${added.length} nouveaux fichiers`,
+      '/'
+    ).catch(()=>{});
+  }
+  res.json(added);
+});
+
+app.get('/api/folders/:folderId/files/:fileId/preview', requireAuth, async (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  // Incrémenter le compteur de vues
+  file.views = (file.views || 0) + 1;
+  saveDB(db);
+
+  if (r2Enabled && file.r2Key) {
+    await proxyFileFromR2(file.r2Key, res, true, req);
+    return;
+  } else if (file.filename) {
+    const p = path.join(UPLOADS_DIR, file.filename);
+    if (!fs.existsSync(p)) return res.status(404).json({ error: 'Fichier manquant' });
+    return res.sendFile(p);
+  }
+  res.status(500).json({ error: 'Erreur stockage' });
+});
+
+app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  const requestingUser = db.users.find(u => u.id === req.session.userId);
+  if (requestingUser?.role !== 'admin') {
+    if (file.type === 'video') return res.status(403).json({ error: 'Les vidéos ne peuvent pas être téléchargées' });
+    if (file.downloadable === false) return res.status(403).json({ error: "Téléchargement non autorisé par l'administrateur" });
+  }
+
+  if (r2Enabled && file.r2Key) {
+    await proxyFileFromR2(file.r2Key, res, false, req);
+    return;
+  } else if (file.filename) {
+    const p = path.join(UPLOADS_DIR, file.filename);
+    if (!fs.existsSync(p)) return res.status(404).json({ error: 'Fichier manquant' });
+    return res.download(p, file.name);
+  }
+  res.status(500).json({ error: 'Erreur de configuration stockage' });
+});
+
+app.patch('/api/folders/:folderId/files/:fileId/downloadable', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  // Search in root files first, then subfolders
+  let file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) {
+    for (const sub of (folder.subfolders||[])) {
+      file = (sub.files||[]).find(f => f.id === parseInt(req.params.fileId));
+      if (file) break;
+    }
+  }
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.downloadable = !file.downloadable;
+  saveDB(db);
+  res.json({ id: file.id, downloadable: file.downloadable });
+});
+
+app.delete('/api/folders/:folderId/files/:fileId', requireAdmin, async (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
+  else if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) fs.unlinkSync(p); }
+  folder.files = folder.files.filter(f => f.id !== parseInt(req.params.fileId));
+  saveDB(db); res.json({ ok: true });
+});
+
+// ── MOT DE PASSE OUBLIÉ ───────────────────────────────────────────────────────
+app.post('/api/forgot-password', async (req, res) => {
+  const { login } = req.body;
+  if (!login) return res.status(400).json({ error: 'Identifiant requis' });
+  const db = loadDB();
+  const user = db.users.find(u => u.login === login);
+  if (!user || !user.email) {
+    return res.json({ ok: true, message: 'Si ce compte existe et a un email, un lien a été envoyé.' });
+  }
+  const token = generateToken();
+  resetTokens[token] = { userId: user.id, expires: Date.now() + 15 * 60 * 1000 };
+  const resetLink = `${SITE_URL}?reset=${token}`;
+  console.log('RESET LINK:', resetLink);
+  res.json({ ok: true, resetLink: resetLink });
+});
+
+app.get('/api/reset-token/:token', (req, res) => {
+  const entry = resetTokens[req.params.token];
+  if (!entry || Date.now() > entry.expires) {
+    return res.status(400).json({ error: 'Lien invalide ou expiré' });
+  }
+  const user = loadDB().users.find(u => u.id === entry.userId);
+  res.json({ valid: true, name: user?.name || '' });
+});
+
+app.post('/api/reset-password', (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password || password.length < 6) {
+    return res.status(400).json({ error: 'Données invalides (mot de passe min. 6 caractères)' });
+  }
+  const entry = resetTokens[token];
+  if (!entry || Date.now() > entry.expires) {
+    return res.status(400).json({ error: 'Lien invalide ou expiré' });
+  }
+  const db = loadDB();
+  const user = db.users.find(u => u.id === entry.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  user.password = bcrypt.hashSync(password, 10);
+  saveDB(db);
+  delete resetTokens[token];
+  res.json({ ok: true });
+});
+
+// ── RÉGLAGES UTILISATEUR ──────────────────────────────────────────────────────
+app.patch('/api/users/:id/email', requireAuth, (req, res) => {
+  const id = parseInt(req.params.id);
+  const requestingUser = loadDB().users.find(u => u.id === req.session.userId);
+  if (requestingUser.id !== id && requestingUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Accès refusé' });
+  }
+  const { email } = req.body;
+  const db = loadDB();
+  const user = db.users.find(u => u.id === id);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  user.email = email;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+app.post('/api/users/change-password', requireAuth, (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: 'Données invalides (nouveau mot de passe min. 6 caractères)' });
+  }
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!bcrypt.compareSync(currentPassword, user.password)) {
+    return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+  }
+  user.password = bcrypt.hashSync(newPassword, 10);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── PRESIGN — upload direct navigateur → R2 ───────────────────────────────────
+app.post('/api/folders/:id/presign', requireAdmin, (req, res) => {
+  const folderId = parseInt(req.params.id);
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === folderId);
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+
+  const { filename, contentType, size } = req.body;
+  if (!filename || !contentType) return res.status(400).json({ error: 'Données manquantes' });
+
+  const fileId = db.nextId++;
+  const ext = filename.split('.').pop().toLowerCase();
+  const safeBase = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const r2Key = `files/${folderId}/${fileId}-${safeBase}`;
+
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const date = new Date();
+  const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const expires = 7200;
+  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
+
+  const qs = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expires)],
+    ['X-Amz-SignedHeaders', 'content-type;host'],
+  ].sort((a, b) => a[0].localeCompare(b[0]));
+
+  const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const encodedR2Path = `/${R2_BUCKET_NAME}/${encodeR2Key(r2Key)}`;
+  const canonicalRequest = [
+    'PUT',
+    encodedR2Path,
+    canonicalQS,
+    `content-type:${contentType}\nhost:${host}\n`,
+    'content-type;host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
+  const signature = hmac(signingKey, stringToSign, 'hex');
+  const putUrl = `https://${host}${encodedR2Path}?${canonicalQS}&X-Amz-Signature=${signature}`;
+
+  const type = getFileType(ext);
+  const today = new Date().toISOString().split('T')[0];
+  const record = { id: fileId, name: filename, size: size || 0, type, addedAt: today, r2Key, downloadable: true, pending: true };
+  folder.files.push(record);
+  db.nextId = fileId + 1;
+  saveDB(db);
+
+  res.json({ putUrl, fileId, r2Key });
+});
+
+app.post('/api/folders/:parentId/subfolders/:subId/presign', requireAdmin, (req, res) => {
+  const parentId = parseInt(req.params.parentId);
+  const subId    = parseInt(req.params.subId);
+  const db       = loadDB();
+  const parent   = db.folders.find(f => f.id === parentId);
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub = (parent.subfolders || []).find(s => s.id === subId);
+  if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+
+  const { filename, contentType, size } = req.body;
+  if (!filename || !contentType) return res.status(400).json({ error: 'Données manquantes' });
+
+  const fileId    = db.nextId++;
+  const safeBase  = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const r2Key     = `files/${parentId}/sub${subId}/${fileId}-${safeBase}`;
+  const ext       = filename.split('.').pop().toLowerCase();
+  const host      = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region    = 'auto';
+  const date      = new Date();
+  const amzDate   = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const expires   = 7200;
+  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
+
+  const qs = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expires)],
+    ['X-Amz-SignedHeaders', 'content-type;host'],
+  ].sort((a, b) => a[0].localeCompare(b[0]));
+
+  const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const encodedR2Path = `/${R2_BUCKET_NAME}/${encodeR2Key(r2Key)}`;
+  const canonicalRequest = [
+    'PUT',
+    encodedR2Path,
+    canonicalQS,
+    `content-type:${contentType}\nhost:${host}\n`,
+    'content-type;host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const scope      = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
+  const signature  = hmac(signingKey, stringToSign, 'hex');
+  const putUrl     = `https://${host}${encodedR2Path}?${canonicalQS}&X-Amz-Signature=${signature}`;
+
+  const type   = getFileType(ext);
+  const today  = new Date().toISOString().split('T')[0];
+  const record = { id: fileId, name: filename, size: size || 0, type, addedAt: today, r2Key, downloadable: true, pending: true };
+  sub.files.push(record);
+  db.nextId = fileId + 1;
+  saveDB(db);
+
+  res.json({ putUrl, fileId, r2Key });
+});
+
+app.post('/api/folders/:parentId/subfolders/:subId/files/:fileId/confirm', requireAdmin, (req, res) => {
+  const db     = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub  = (parent.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  if (!sub)  return res.status(404).json({ error: 'Sous-dossier introuvable' });
+  const file = (sub.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.pending = false;
+  if (req.body.size) file.size = req.body.size;
+  saveDB(db);
+  res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
+});
+
+app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = folder.files.find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.pending = false;
+  if (req.body.size) file.size = req.body.size;
+  saveDB(db);
+  res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
+});
+
+// ── CLEAR DOUBLE CONNECTION FLAG ─────────────────────────────────────────────
+app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === parseInt(req.params.id));
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  delete user.doubleConnectionAt;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── NOTIFICATIONS PUSH ───────────────────────────────────────────────────────
+// Clé publique VAPID pour le client
+app.get('/api/push/vapid-key', requireAuth, (req, res) => {
+  const key = process.env.VAPID_PUBLIC_KEY || 'BPAm2u-DCWr3oUwEtnXoa2Yb3J1y2zxRigqtA5UadyOjy15CX_zdDqx7-cOseKC6VxAlfhVpkmmyT_TpORJ8JRM';
+  res.json({ key });
+});
+
+// S'abonner aux notifications
+app.post('/api/push/subscribe', requireAuth, (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription) return res.status(400).json({ error: 'Subscription manquante' });
+  const db = loadDB();
+  if (!db.pushSubscriptions) db.pushSubscriptions = [];
+  // Éviter les doublons
+  const exists = db.pushSubscriptions.find(s => s.subscription.endpoint === subscription.endpoint);
+  if (!exists) {
+    db.pushSubscriptions.push({ userId: req.session.userId, subscription });
+    saveDB(db);
+  }
+  res.json({ ok: true });
+});
+
+// Se désabonner
+app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
+  const { endpoint } = req.body;
+  const db = loadDB();
+  db.pushSubscriptions = (db.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== endpoint);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── AVATAR ───────────────────────────────────────────────────────────────────
+app.post('/api/avatar', requireAuth, upload.single('avatar'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
+  // Accepter seulement les images
+  if (!req.file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'Format invalide' });
+  // Limiter à 2Mo
+  if (req.file.size > 2 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 2Mo)' });
+
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  // Stocker en base64 dans la DB (simple, pas besoin de R2 pour les avatars)
+  const base64 = req.file.buffer.toString('base64');
+  const dataUrl = `data:${req.file.mimetype};base64,${base64}`;
+  user.avatar = dataUrl;
+  saveDB(db);
+  res.json({ avatar: dataUrl });
+});
+
+app.get('/api/avatar/:userId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === parseInt(req.params.userId));
+  if (!user || !user.avatar) return res.status(404).json({ error: "Pas d'avatar" });
+  res.json({ avatar: user.avatar });
+});
+
+// Inclure l'avatar dans /me
+// ── DÉPLACER UN DOSSIER ──────────────────────────────────────────────────────
+app.post('/api/folders/:folderId/move', requireAdmin, (req, res) => {
+  const { toFolderId } = req.body;
+  const db = loadDB();
+  const folderId = parseInt(req.params.folderId);
+  const targetId = parseInt(toFolderId);
+  
+  if (folderId === targetId) return res.status(400).json({ error: 'Impossible de déplacer un dossier dans lui-même' });
+  
+  // Find the folder to move
+  const folderIdx = db.folders.findIndex(f => f.id === folderId);
+  if (folderIdx === -1) return res.status(404).json({ error: 'Dossier introuvable' });
+  const folder = db.folders[folderIdx];
+  
+  // Find the target folder
+  const targetFolder = db.folders.find(f => f.id === targetId);
+  if (!targetFolder) return res.status(404).json({ error: 'Dossier cible introuvable' });
+  
+  // Deep copy folder to preserve all content before splicing
+  const folderCopy = JSON.parse(JSON.stringify(folder));
+  db.folders.splice(folderIdx, 1);
+  if (!targetFolder.subfolders) targetFolder.subfolders = [];
+  targetFolder.subfolders.push(folderCopy);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Extraire un sous-dossier vers la racine
+app.post('/api/folders/:parentId/subfolders/:subId/extract', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  if (!parent) return res.status(404).json({ error: 'Dossier parent introuvable' });
+  const subIdx = (parent.subfolders||[]).findIndex(s => s.id === parseInt(req.params.subId));
+  if (subIdx === -1) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+  const subCopy = JSON.parse(JSON.stringify(parent.subfolders[subIdx]));
+  parent.subfolders.splice(subIdx, 1);
+  db.folders.push(subCopy);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── DÉPLACER UN FICHIER ──────────────────────────────────────────────────────
+app.post('/api/files/:fileId/move', requireAdmin, (req, res) => {
+  const { fromFolderId, fromSubId, toFolderId, toSubId } = req.body;
+  const db = loadDB();
+  
+  // Find source file - search in root and subfolders
+  const fromFolder = db.folders.find(f => f.id === parseInt(fromFolderId));
+  if (!fromFolder) return res.status(404).json({ error: 'Dossier source introuvable' });
+  let sourceList, file;
+  if (fromSubId) {
+    const sub = (fromFolder.subfolders||[]).find(s => s.id === parseInt(fromSubId));
+    sourceList = sub?.files;
+  } else {
+    // Try root files first
+    sourceList = fromFolder.files;
+    // If file not found in root, search subfolders
+    const fileInRoot = (fromFolder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+    if (!fileInRoot) {
+      for (const sub of (fromFolder.subfolders||[])) {
+        const f = (sub.files||[]).find(f => f.id === parseInt(req.params.fileId));
+        if (f) { sourceList = sub.files; break; }
+      }
+    }
+  }
+  if (!sourceList) return res.status(404).json({ error: 'Source introuvable' });
+  const fileIdx = sourceList.findIndex(f => f.id === parseInt(req.params.fileId));
+  if (fileIdx === -1) return res.status(404).json({ error: 'Fichier introuvable' });
+  file = sourceList[fileIdx];
+  
+  // Find destination
+  let destList;
+  if (toSubId) {
+    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
+    const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(toSubId));
+    destList = sub?.files;
+  } else {
+    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
+    destList = folder?.files;
+  }
+  if (!destList) return res.status(404).json({ error: 'Destination introuvable' });
+  
+  // Move
+  sourceList.splice(fileIdx, 1);
+  destList.push(file);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── RENOMMER UN FICHIER ──────────────────────────────────────────────────────
+app.patch('/api/folders/:folderId/files/:fileId/rename', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.folderId));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  // Search in root files
+  let file = (folder.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  // If not found, search in subfolders
+  if (!file) {
+    for (const sub of (folder.subfolders||[])) {
+      file = (sub.files||[]).find(f => f.id === parseInt(req.params.fileId));
+      if (file) break;
+    }
+  }
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+app.patch('/api/folders/:parentId/subfolders/:subId/files/:fileId/rename', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(req.params.subId));
+  const file = (sub?.files||[]).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+// ── RÉORGANISER LES DOSSIERS ──────────────────────────────────────────────────
+app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
+  const { order } = req.body; // array of folder ids in new order
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'Order invalide' });
+  const db = loadDB();
+  const reordered = [];
+  order.forEach(id => {
+    const f = db.folders.find(f => f.id === parseInt(id));
+    if (f) reordered.push(f);
+  });
+  // Add any folders not in the order array
+  db.folders.forEach(f => { if (!order.includes(f.id) && !order.includes(String(f.id))) reordered.push(f); });
+  db.folders = reordered;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── FILS DE DISCUSSION (THREADS) ────────────────────────────────────────────
+// Structure: db.threads = { fileId: [ { id, title, createdBy, createdAt, replies: [...] } ] }
+
+// GET all threads for a file
+app.get('/api/threads/all', requireAuth, (req, res) => {
+  const db = loadDB();
+  const threads = db.threads;
+  if (!threads || typeof threads !== 'object') return res.json([]);
+
+  // Build flat file map
+  const fileMap = {};
+  (db.folders||[]).forEach(folder => {
+    (folder.files||[]).forEach(f => {
+      fileMap[String(f.id)] = { name: f.name, folder: folder.name };
+    });
+    (folder.subfolders||[]).forEach(sub => {
+      (sub.files||[]).forEach(f => {
+        fileMap[String(f.id)] = { name: f.name, folder: folder.name + ' / ' + sub.name };
+      });
+    });
+  });
+
+  const result = [];
+  const keys = Object.keys(threads);
+  keys.forEach(fileId => {
+    const fileThreads = threads[fileId];
+    if (!Array.isArray(fileThreads) || !fileThreads.length) return;
+    const info = fileMap[String(fileId)] || { name: 'Fichier #' + fileId, folder: '' };
+    fileThreads.forEach(t => {
+      if (!t || !t.id) return;
+      result.push({
+        fileId: String(fileId),
+        fileName: info.name,
+        folderName: info.folder,
+        threadId: t.id,
+        title: t.title || 'Sans titre',
+        resolved: t.resolved || false,
+        createdAt: t.createdAt,
+        createdBy: t.createdBy,
+        replyCount: (t.replies||[]).length,
+        lastActivity: (t.replies&&t.replies.length) ? t.replies[t.replies.length-1].createdAt : t.createdAt
+      });
+    });
+  });
+
+  result.sort((a,b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+  res.json(result);
+});
+
+// Unread threads count
+app.get('/api/threads/:fileId', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.threads) db.threads = {};
+  const threads = (db.threads[req.params.fileId] || []).map(t => {
+    const creator = db.users.find(u => u.id === t.createdBy);
+    return {
+      ...t,
+      creatorName: creator?.name || 'Inconnu',
+      creatorAvatar: creator?.avatar || null,
+      creatorRole: creator?.role || 'student',
+      replyCount: (t.replies || []).length,
+      lastReplyAt: t.replies?.length ? t.replies[t.replies.length-1].createdAt : t.createdAt
+    };
+  });
+  res.json(threads);
+});
+
+// CREATE a thread
+app.post('/api/threads/:fileId', requireAuth, (req, res) => {
+  const { title } = req.body;
+  if (!title?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const db = loadDB();
+  if (!db.threads) db.threads = {};
+  if (!db.threads[req.params.fileId]) db.threads[req.params.fileId] = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const thread = {
+    id: db.nextId++,
+    fileId: req.params.fileId,
+    title: title.trim(),
+    createdBy: user.id,
+    createdAt: new Date().toISOString(),
+    replies: [],
+    resolved: false
+  };
+  db.threads[req.params.fileId].push(thread);
+  // Notif admin
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + ': ' + title.trim().substring(0, 80), '/').catch(()=>{});
+  }
+  saveDB(db);
+  res.json(thread);
+});
+
+// DELETE a thread (admin or creator)
+app.delete('/api/threads/:fileId/:threadId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const threads = db.threads?.[req.params.fileId] || [];
+  const thread = threads.find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (thread.createdBy !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  db.threads[req.params.fileId] = threads.filter(t => t.id !== parseInt(req.params.threadId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// MARK thread as resolved (admin only)
+app.patch('/api/threads/:fileId/:threadId/resolve', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  thread.resolved = !thread.resolved;
+  saveDB(db);
+  res.json({ ok: true, resolved: thread.resolved });
+});
+
+// GET replies for a thread
+app.get('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const replies = (thread.replies || []).map(r => {
+    const user = db.users.find(u => u.id === r.userId);
+    return { ...r, userAvatar: user?.avatar || null };
+  });
+  res.json({ thread: { id: thread.id, title: thread.title, resolved: thread.resolved }, replies });
+});
+
+// POST a reply to a thread
+app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
+  console.log('[reply] body keys:', Object.keys(req.body), 'replyToName:', req.body.replyToName);
+  const { message, audio, audioDuration, replyToId, replyToName, replyToPreview } = req.body;
+  if (!message?.trim() && !audio) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const reply = {
+    id: db.nextId++,
+    userId: user.id,
+    userName: user.name,
+    userRole: user.role,
+    message: message?.trim() || '',
+    audio: audio || null,
+    audioDuration: audioDuration || null,
+    replyToId: replyToId || null,
+    replyToName: replyToName || null,
+    replyToPreview: replyToPreview || null,
+    createdAt: new Date().toISOString()
+  };
+  if (!thread.replies) thread.replies = [];
+  thread.replies.push(reply);
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/').catch(()=>{});
+  }
+  saveDB(db);
+  res.json(reply);
+});
+
+// EDIT a reply
+app.patch('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId]||[]).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (reply.userId !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  reply.message = message.trim();
+  reply.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// REACT to a reply
+app.post('/api/threads/:fileId/:threadId/replies/:replyId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId]||[]).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  if (!reply.reactions) reply.reactions = {};
+  if (!reply.reactions[emoji]) reply.reactions[emoji] = [];
+  const uid = req.session.userId;
+  const idx = reply.reactions[emoji].indexOf(uid);
+  if (idx !== -1) reply.reactions[emoji].splice(idx, 1);
+  else reply.reactions[emoji].push(uid);
+  if (!reply.reactions[emoji].length) delete reply.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: reply.reactions });
+});
+
+// DELETE a reply
+app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
+  if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const reply = (thread.replies||[]).find(r => r.id === parseInt(req.params.replyId));
+  if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
+  if (reply.userId !== req.session.userId && user?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  thread.replies = thread.replies.filter(r => r.id !== parseInt(req.params.replyId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// MIGRATION manuelle comments → threads (appeler une fois)
+app.post('/api/admin/migrate-threads', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.comments || !Object.keys(db.comments).length) {
+    return res.json({ ok: true, migrated: 0, message: 'Pas de comments à migrer' });
+  }
+  if (!db.threads) db.threads = {};
+  let migrated = 0;
+  Object.entries(db.comments).forEach(([fileId, comments]) => {
+    if (!comments || !comments.length) return;
+    if (!db.threads[fileId]) db.threads[fileId] = [];
+    comments.forEach((c, idx) => {
+      // Chaque commentaire devient un fil séparé
+      const thread = {
+        id: db.nextId++,
+        fileId,
+        title: (c.message || 'Message vocal').substring(0, 80),
+        createdBy: c.userId,
+        createdAt: c.createdAt,
+        resolved: false,
+        replies: []
+      };
+      db.threads[fileId].push(thread);
+      migrated++;
+    });
+  });
+  saveDB(db);
+  res.json({ ok: true, migrated, threadsKeys: Object.keys(db.threads) });
+});
+
+// GET all threads across all files (for notification center)
+app.post('/api/threads/unread', requireAuth, (req, res) => {
+  const { fileIds, lastSeen } = req.body;
+  if (!Array.isArray(fileIds)) return res.status(400).json({ error: 'fileIds requis' });
+  const db = loadDB();
+  if (!db.threads) return res.json({});
+  const result = {};
+  fileIds.filter(id => id && id !== 'undefined' && id !== 'null').forEach(fileId => {
+    const threads = db.threads[String(fileId)] || [];
+    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
+    if (!lastSeenAt) {
+      // Jamais vu : compter tous les fils + toutes les réponses
+      result[fileId] = threads.reduce((acc, t) => acc + 1 + (t.replies||[]).length, 0);
+    } else {
+      // Compter les nouveaux fils + nouvelles réponses depuis lastSeen
+      let count = 0;
+      threads.forEach(t => {
+        if (new Date(t.createdAt) > lastSeenAt) count++;
+        else count += (t.replies||[]).filter(r => new Date(r.createdAt) > lastSeenAt).length;
+      });
+      result[fileId] = count;
+    }
+  });
+  res.json(result);
+});
+
+// POST a comment
+app.post('/api/comments/:fileId', requireAuth, (req, res) => {
+  const { message, replyTo, audio, audioDuration } = req.body;
+  if (!message?.trim() && !audio) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  if (!db.comments) db.comments = {};
+  if (!db.comments[req.params.fileId]) db.comments[req.params.fileId] = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const comment = {
+    id: db.nextId++,
+    fileId: req.params.fileId,
+    userId: user.id,
+    userName: user.name,
+    userRole: user.role,
+    userAvatar: user.avatar || null,
+    message: message?.trim() || '',
+    audio: audio || null,
+    audioDuration: audioDuration || null,
+    replyToId: req.body.replyToId || null,
+    replyToName: req.body.replyToName || null,
+    replyToPreview: req.body.replyToPreview || null,
+    replyTo: replyTo || null,
+    createdAt: new Date().toISOString(),
+  };
+  db.comments[req.params.fileId].push(comment);
+
+  // Notifier l'admin si c'est un étudiant qui commente
+  if (user.role !== 'admin') {
+    if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
+    db.adminUnreadDiscussions++;
+    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + (message?.trim() ? ': ' + message.trim().substring(0, 60) : ' a envoyé un vocal'), '/').catch(()=>{});
+    if (!db.adminNotifications) db.adminNotifications = [];
+    db.adminNotifications.unshift({
+      id: db.nextId++,
+      type: 'comment',
+      fileId: req.params.fileId,
+      userName: user.name,
+      message: message.trim().substring(0, 100),
+      at: new Date().toISOString(),
+      read: false,
+    });
+    if (db.adminNotifications.length > 50) db.adminNotifications = db.adminNotifications.slice(0, 50);
+  }
+
+  saveDB(db);
+  res.json(comment);
+});
+
+// GET unread comments count for multiple files
+app.post('/api/comments/unread', requireAuth, (req, res) => {
+  const { fileIds, lastSeen } = req.body; // lastSeen: { fileId: timestamp }
+  const db = loadDB();
+  if (!db.comments) return res.json({});
+  const result = {};
+  (fileIds || []).forEach(fileId => {
+    const comments = db.comments[fileId] || [];
+    const lastSeenAt = lastSeen?.[fileId] ? new Date(lastSeen[fileId]) : null;
+    result[fileId] = lastSeenAt
+      ? comments.filter(c => new Date(c.createdAt) > lastSeenAt).length
+      : comments.length;
+  });
+  res.json(result);
+});
+
+// Admin notifications
+app.get('/api/admin/notifications', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json(db.adminNotifications || []);
+});
+app.post('/api/admin/notifications/read', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (db.adminNotifications) db.adminNotifications.forEach(n => n.read = true);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// EDIT a comment
+app.patch('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
+  const { message } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  const comments = db.comments?.[req.params.fileId] || [];
+  const comment = comments.find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Commentaire introuvable' });
+  if (comment.userId !== req.session.userId && db.users.find(u=>u.id===req.session.userId)?.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  comment.message = message.trim();
+  comment.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ADD/REMOVE reaction
+app.post('/api/comments/:fileId/:commentId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  const comment = (db.comments?.[req.params.fileId] || []).find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Introuvable' });
+  if (!comment.reactions) comment.reactions = {};
+  if (!comment.reactions[emoji]) comment.reactions[emoji] = [];
+  const userId = req.session.userId;
+  const idx = comment.reactions[emoji].indexOf(userId);
+  if (idx !== -1) comment.reactions[emoji].splice(idx, 1);
+  else comment.reactions[emoji].push(userId);
+  if (!comment.reactions[emoji].length) delete comment.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: comment.reactions });
+});
+
+// DELETE a comment (admin or own comment)
+app.delete('/api/comments/:fileId/:commentId', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.comments?.[req.params.fileId]) return res.status(404).json({ error: 'Introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const comment = db.comments[req.params.fileId].find(c => c.id === parseInt(req.params.commentId));
+  if (!comment) return res.status(404).json({ error: 'Commentaire introuvable' });
+  if (comment.userId !== req.session.userId && user.role !== 'admin')
+    return res.status(403).json({ error: 'Accès refusé' });
+  db.comments[req.params.fileId] = db.comments[req.params.fileId].filter(c => c.id !== parseInt(req.params.commentId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Badge discussions non lues (admin)
+app.get('/api/comments/admin-unread', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json({ count: db.adminUnreadDiscussions || 0 });
+});
+app.post('/api/comments/admin-unread/reset', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  db.adminUnreadDiscussions = 0;
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── LOGS DE CONNEXION ────────────────────────────────────────────────────────
+app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json(db.connectionLogs || []);
+});
+
+// ── ANNONCES ─────────────────────────────────────────────────────────────────
+
+// Créer une annonce (admin)
+app.post('/api/announcements', requireSuperAdmin, (req, res) => {
+  const { title, message, color } = req.body;
+  if (!title?.trim() || !message?.trim()) return res.status(400).json({ error: 'Titre et message requis' });
+  const db = loadDB();
+  if (!db.announcements) db.announcements = [];
+  const ann = {
+    id: db.nextId++,
+    title: title.trim(),
+    message: message.trim(),
+    color: color || 'info',
+    createdAt: new Date().toISOString(),
+  };
+  db.announcements.unshift(ann); // Plus récent en premier
+  saveDB(db);
+  res.json(ann);
+});
+
+// Lister toutes les annonces
+app.get('/api/announcements', requireAuth, (req, res) => {
+  const db = loadDB();
+  res.json(db.announcements || []);
+});
+
+// Supprimer une annonce (admin)
+app.delete('/api/announcements/:id', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.announcements) db.announcements = [];
+  db.announcements = db.announcements.filter(a => a.id !== parseInt(req.params.id));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── CODES D'INVITATION ───────────────────────────────────────────────────────
+
+// Générer N codes (admin)
+app.post('/api/invite-codes/generate', requireSuperAdmin, (req, res) => {
+  const count = Math.min(parseInt(req.body.count) || 1, 100);
+  const db = loadDB();
+  if (!db.inviteCodes) db.inviteCodes = [];
+  const newCodes = [];
+  for (let i = 0; i < count; i++) {
+    let code;
+    do { code = generateInviteCode(); } while (db.inviteCodes.find(c => c.code === code));
+    const entry = { code, createdAt: new Date().toISOString(), usedAt: null, usedBy: null };
+    db.inviteCodes.push(entry);
+    newCodes.push(entry);
+  }
+  saveDB(db);
+  res.json(newCodes);
+});
+
+// Lister tous les codes (admin)
+app.get('/api/invite-codes', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json((db.inviteCodes || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+});
+
+// Supprimer un code (admin)
+app.delete('/api/invite-codes/:code', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.inviteCodes) db.inviteCodes = [];
+  db.inviteCodes = db.inviteCodes.filter(c => c.code !== req.params.code);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Supprimer tous les codes utilisés (admin)
+app.delete('/api/invite-codes/used/all', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.inviteCodes) db.inviteCodes = [];
+  const before = db.inviteCodes.length;
+  db.inviteCodes = db.inviteCodes.filter(c => !c.usedAt);
+  saveDB(db);
+  res.json({ deleted: before - db.inviteCodes.length });
+});
+
+// Inscription étudiant via code d'invitation (public)
+app.post('/api/register', (req, res) => {
+  const { code, firstName, lastName, login, email, password, mineure, discord } = req.body;
+  if (!code || !firstName || !lastName || !login || !email || !password) {
+    return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Mot de passe minimum 6 caractères' });
+  }
+  const db = loadDB();
+  if (!db.inviteCodes) db.inviteCodes = [];
+
+  const entry = db.inviteCodes.find(c => c.code === code.toUpperCase().trim());
+  if (!entry) return res.status(403).json({ error: "Code d'invitation invalide" });
+  if (entry.usedAt) return res.status(409).json({ error: 'Ce code a déjà été utilisé' });
+
+  // Si le login est déjà pris, ajouter un chiffre incrémental (jean.dupont.MP → jean.dupont2.MP)
+  let finalLogin = login;
+  if (db.users.find(u => u.login === finalLogin)) {
+    let n = 2;
+    while (db.users.find(u => u.login === `${login.replace(/\.MP$/, '')}.${n}.MP`)) n++;
+    finalLogin = `${login.replace(/\.MP$/, '')}.${n}.MP`;
+  }
+
+  if (db.users.find(u => u.email === email))
+    return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+
+  const newUser = {
+    id: db.nextId++,
+    name: `${firstName.trim()} ${lastName.trim()}`,
+    login: finalLogin,
+    email: email.trim(),
+    password: bcrypt.hashSync(password, 10),
+    role: 'student',
+    mineure: mineure ? mineure.trim() : '',
+    discord: discord ? discord.trim() : '',
+    registeredAt: new Date().toISOString(),
+  };
+  db.users.push(newUser);
+
+  // Consommer le code
+  entry.usedAt = new Date().toISOString();
+  entry.usedBy = newUser.login;
+  saveDB(db);
+
+  res.json({ ok: true, name: newUser.name, login: newUser.login });
+});
+
+// ── CLEAR DOUBLE CONNECTION FLAG ─────────────────────────────────────────────
+app.get('/api/stats', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json({
+    folders: db.folders.length,
+    files: db.folders.reduce((s,f) => s+(f.files||[]).length, 0),
+    students: db.users.filter(u => u.role==='student').length,
+    totalSize: db.folders.reduce((s,f) => s+(f.files||[]).reduce((ss,fi) => ss+fi.size, 0), 0),
+    storageMode: r2Enabled ? 'Cloudflare R2' : 'Local',
+  });
+});
+
+// ── Helper ────────────────────────────────────────────────────────────────────
+function getFileType(ext) {
+  if (['pdf'].includes(ext)) return 'pdf';
+  if (['doc','docx'].includes(ext)) return 'doc';
+  if (['xls','xlsx','csv'].includes(ext)) return 'xls';
+  if (['ppt','pptx'].includes(ext)) return 'ppt';
+  if (['jpg','jpeg','png','gif','svg','webp'].includes(ext)) return 'img';
+  if (['mp4','mov','avi','mkv','webm','m4v'].includes(ext)) return 'video';
+  if (['mp3','wav','m4a'].includes(ext)) return 'audio';
+  if (['zip','rar','7z','tar'].includes(ext)) return 'zip';
+  return 'other';
+}
+
+// Servir le service worker
+app.get('/sw.js', (req, res) => {
+  const swPath = path.join(__dirname, 'sw.js');
+  if (fs.existsSync(swPath)) {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.sendFile(swPath);
+  } else {
+    res.status(404).send('// sw.js not found');
+  }
+});
+
+app.get('*', (req, res) => {
+  const indexPath = fs.existsSync(path.join(__dirname, 'public', 'index.html'))
+    ? path.join(__dirname, 'public', 'index.html')
+    : path.join(__dirname, 'index.html');
+  res.sendFile(indexPath);
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n✅  MasterPASS → http://0.0.0.0:${PORT}`);
+  // Migrate old comments to threads (once at startup)
+  try {
+    const db = loadDB();
+    let migrated = 0;
+    if (db.comments && Object.keys(db.comments).length) {
+      if (!db.threads) db.threads = {};
+      Object.entries(db.comments).forEach(([fileId, comments]) => {
+        if (!comments || !comments.length) return;
+        if (db.threads[fileId] && db.threads[fileId].length > 0) return;
+        if (!db.threads[fileId]) db.threads[fileId] = [];
+        const first = comments[0];
+        db.threads[fileId].push({
+          id: db.nextId++,
+          fileId, title: (first.message||'Discussion importée').substring(0, 80),
+          createdBy: first.userId, createdAt: first.createdAt,
+          resolved: false,
+          replies: comments.slice(1).map(c => ({
+            id: c.id, userId: c.userId, userName: c.userName,
+            userRole: c.userRole||'student', message: c.message||'',
+            audio: c.audio||null, audioDuration: c.audioDuration||null,
+            createdAt: c.createdAt
+          }))
+        });
+        migrated++;
+      });
+      if (migrated > 0) { saveDB(db); console.log('✅ Migrated', migrated, 'discussions'); }
+    }
+  } catch(e) { console.error('Migration error:', e.message); }
+  console.log(`    Stockage : ${r2Enabled ? `R2 bucket «${R2_BUCKET_NAME}»` : 'Local'}\n`);
+});
