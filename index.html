@@ -5681,8 +5681,9 @@ function _onVoiceMouseMove(e) {
   if (_voiceLocked) return;
   const dx = e.clientX - _voiceMouseStartX;
   const dy = e.clientY - _voiceMouseStartY;
-  if (dy < -40) {
+if (dy < -40) {
     lockRecording(ctx);
+    _cleanVoiceMouseListeners();
     return;
   }
   if (dx < -60) {
