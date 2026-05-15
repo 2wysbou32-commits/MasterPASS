@@ -2683,9 +2683,16 @@ function switchCodesTab(tab) {
   });
 }
 
+function copyInviteCode(code) {
+  var msg = "Salut ! Tu es invité(e) à rejoindre MasterPASS, la plateforme de cours créée spécialement pour vous aider en PASS.\n\nVoici ton code d'invitation personnel (valable une seule fois) :\n\n" + code + "\n\nRends-toi sur https://masterpass-production.up.railway.app\nClique sur \"Créer mon compte avec un code d'invitation\" et entre ce code.\n\nC'est parti ! 🚀";
+  navigator.clipboard.writeText(msg).then(function(){ toast('Message copié ! 📋'); }).catch(function(){ toast(msg, 'info'); });
+}
+
 async function loadCodes() {
   try {
     var codes = await api('GET', '/invite-codes');
+    var users = [];
+    try { users = await api('GET', '/users'); } catch(e) {}
     var list = document.getElementById('codes-list');
     if (!list) return;
     if (!codes.length) {
@@ -2699,9 +2706,11 @@ async function loadCodes() {
     if (available.length) {
       html += '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Disponibles (' + available.length + ')</div>';
       html += available.map(function(c) {
+        var inviteMsg = "Salut ! Tu es invité(e) à rejoindre MasterPASS, la plateforme de cours créée spécialement pour vous aider en PASS.\n\nVoici ton code d'invitation personnel (valable une seule fois) :\n\n" + c.code + "\n\nRends-toi sur https://masterpass-production.up.railway.app\nClique sur \"Créer mon compte avec un code d'invitation\" et entre ce code.\n\nC'est parti ! 🚀";
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface,white);border-radius:10px;border:1.5px solid var(--border);margin-bottom:8px">' +
-          '<code style="flex:1;font-size:14px;font-weight:700;color:var(--teal-dark)">' + c.code + '</code>' +
+          '<code style="flex:1;font-size:15px;font-weight:800;color:var(--teal-dark);letter-spacing:1px">' + c.code + '</code>' +
           '<span style="font-size:11px;color:green;font-weight:600">✓ Disponible</span>' +
+          '<button onclick="copyInviteCode(' + JSON.stringify(c.code) + ')" style="padding:5px 10px;border-radius:7px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif">Copier</button>' +
           '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
           '</div>';
       }).join('');
@@ -2712,7 +2721,7 @@ async function loadCodes() {
         var usedDate = c.usedAt ? new Date(c.usedAt).toLocaleDateString('fr-FR') : '';
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface,white);border-radius:10px;border:1.5px solid var(--border);margin-bottom:8px;opacity:0.7">' +
           '<code style="flex:1;font-size:14px;font-weight:700;color:var(--text3)">' + c.code + '</code>' +
-          '<span style="font-size:11px;color:var(--text3)">Utilisé le ' + usedDate + '</span>' +
+          '<span style="font-size:11px;color:var(--text3)">Utilisé le ' + usedDate + (c.usedBy ? ' par ' + (users.find(function(u){return u.id===c.usedBy;})||{name:'?'}).name : '') + '</span>' +
           '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
           '</div>';
       }).join('');
