@@ -1747,6 +1747,9 @@ input[type="file"]{display:none;}
               <button id="cancel-selection-btn-main" onclick="exitThreadSelectionModeMain()" style="display:none;padding:8px 14px;border-radius:9px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif">
                 Annuler
               </button>
+              <button id="delete-selected-btn" onclick="deleteSelectedThreads()" style="display:none;padding:8px 14px;border-radius:9px;border:none;background:rgba(229,115,115,0.15);color:var(--danger);cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">
+                🗑 Supprimer la sélection
+              </button>
               <button id="cancel-selection-btn" onclick="exitThreadSelectionMode()" style="display:none;padding:8px 14px;border-radius:9px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif">
                 Annuler
               </button>
@@ -4525,11 +4528,15 @@ async function loadThreadsInline(silent) {
           enterThreadSelectionMode(tid);
         }, 500);
       }, { passive: true });
+      card.addEventListener('touchstart', function(e) {
+        startX = e.touches[0].clientX; startY = e.touches[0].clientY; longPressed = false;
+        timer = setTimeout(function() { longPressed = true; if (navigator.vibrate) navigator.vibrate(50); enterThreadSelectionMode(tid); }, 500);
+      }, { passive: true });
       card.addEventListener('touchmove', function(e) {
         if (Math.abs(e.touches[0].clientX-startX) > 10 || Math.abs(e.touches[0].clientY-startY) > 10) clearTimeout(timer);
       }, { passive: true });
-      card.addEventListener('touchend', function() { clearTimeout(timer); });
-      card.addEventListener('mousedown', function() { timer = setTimeout(function() { enterThreadSelectionMode(tid); }, 600); });
+      card.addEventListener('touchend', function(e) { clearTimeout(timer); if (longPressed) { longPressed = false; e.preventDefault(); e.stopPropagation(); } });
+      card.addEventListener('mousedown', function() { longPressed = false; timer = setTimeout(function() { longPressed = true; enterThreadSelectionMode(tid); }, 600); });
       card.addEventListener('mouseup', function() { clearTimeout(timer); });
       card.addEventListener('mouseleave', function() { clearTimeout(timer); });
     });
@@ -4698,6 +4705,43 @@ let _threadSelectionMode = false;
 let _threadLongPressTimer = null;
 let _threadSelectionModeMain = false;
 let _threadLongPressTimerMain = null;
+let _threadSelectionModeSb = false;
+
+function enterThreadSelectionModeSb(firstThreadId) {
+  _threadSelectionModeSb = true;
+  document.querySelectorAll('#threads-list .thread-select-cb-sb').forEach(cb => cb.style.display = 'inline-block');
+  const cb = document.querySelector('#threads-list .thread-select-cb-sb[data-tid="' + firstThreadId + '"]');
+  if (cb) cb.checked = true;
+  document.getElementById('delete-selected-btn-sb').style.display = 'block';
+  document.getElementById('cancel-selection-btn-sb').style.display = 'block';
+  document.getElementById('new-thread-btn-sb').style.display = 'none';
+  onThreadCheckboxChangeSb();
+}
+
+function exitThreadSelectionModeSb() {
+  _threadSelectionModeSb = false;
+  document.querySelectorAll('#threads-list .thread-select-cb-sb').forEach(cb => { cb.style.display = 'none'; cb.checked = false; });
+  document.getElementById('delete-selected-btn-sb').style.display = 'none';
+  document.getElementById('cancel-selection-btn-sb').style.display = 'none';
+  document.getElementById('new-thread-btn-sb').style.display = 'flex';
+}
+
+function onThreadCheckboxChangeSb() {
+  const checked = document.querySelectorAll('#threads-list .thread-select-cb-sb:checked');
+  document.getElementById('delete-selected-btn-sb').style.display = checked.length > 0 ? 'block' : 'none';
+}
+
+async function deleteSelectedThreadsSb() {
+  const checked = document.querySelectorAll('#threads-list .thread-select-cb-sb:checked');
+  if (!checked.length) return;
+  if (!confirm('Supprimer ' + checked.length + ' fil(s) ?')) return;
+  const ids = Array.from(checked).map(cb => cb.getAttribute('data-tid'));
+  for (const id of ids) {
+    try { await api('DELETE', '/threads/' + _discussionFileId + '/' + id); } catch(e) {}
+  }
+  exitThreadSelectionModeSb();
+  await loadThreads(false);
+}
 
 function threadLongPressStartMain(e, threadId) {
   _threadLongPressTimerMain = setTimeout(function() {
