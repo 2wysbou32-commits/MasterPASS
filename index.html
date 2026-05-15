@@ -5531,7 +5531,13 @@ function lockRecording(ctx) {
     lock.style.color = 'white';
     lock.onclick = () => { _voiceLocked = false; stopRecording(ctx); };
   }
-  if (lbl) lbl.textContent = '🔒 Mains libres – clique 🔒 pour arrêter';
+  if (lbl) {
+    lbl.textContent = '🔒 Mains libres – clique pour arrêter';
+    lbl.style.cursor = 'pointer';
+    lbl.style.color = 'var(--teal-dark)';
+    lbl.style.fontWeight = '700';
+    lbl.onclick = () => { _voiceLocked = false; stopRecording(ctx); };
+  }
   if (btn) {
     btn.style.borderColor = 'var(--teal)';
     btn.style.color = 'var(--teal)';
@@ -5565,7 +5571,13 @@ function resetVoiceUI(ctx) {
   const timer = document.getElementById(ids.timer);
   const lock = document.getElementById(ids.lock);
   if (btn) { btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text2)'; btn.style.background = 'transparent'; }
-  if (lbl) lbl.textContent = '🎤 Rester appuyé';
+  if (lbl) {
+    lbl.textContent = '🎤 Rester appuyé';
+    lbl.style.cursor = '';
+    lbl.style.color = '';
+    lbl.style.fontWeight = '';
+    lbl.onclick = null;
+  }
   if (timer) { timer.style.display = 'none'; timer.textContent = '0:00'; }
   if (lock) { lock.style.display = 'none'; lock.textContent = '🔓'; lock.style.background = 'transparent'; lock.style.color = ''; lock.onclick = () => lockRecording(ctx); }
 }
