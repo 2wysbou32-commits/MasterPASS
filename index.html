@@ -5438,7 +5438,6 @@ async function startRecording(ctx) {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     _voiceContext = ctx;
-    _voiceLocked = false;
     _voiceChunks = [];
     _voiceBlob = null;
     _voiceSeconds = 0;
