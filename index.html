@@ -3166,7 +3166,9 @@ async function deleteFolder(id){
 async function loadFiles(){
   const container=document.getElementById('files-list-body');
   if(container) container.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-state-title">Chargement…</div></div>';
-  try{const files=await api('GET',`/folders/${currentFolder.id}/files`);renderFilesSorted(files);}
+  try{const files = await apiGET(`folders/${currentFolder.id}/files`);
+currentVisibleFiles = files;
+renderFilesSorted(files););renderFilesSorted(files);}
   catch(e){if(container) container.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-state-title">Erreur de chargement</div></div>';}
 }
 
