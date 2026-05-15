@@ -2728,40 +2728,46 @@ async function loadCodes() {
     var codes = await api('GET', '/invite-codes');
     var users = [];
     try { users = await api('GET', '/users'); } catch(e) {}
-    var list = document.getElementById('codes-list');
-    if (!list) return;
+    var listBody = document.getElementById('codes-list-body');
+    if (!listBody) return;
+    var listAvail = listBody;
+    var listUsed = listBody;
     if (!codes.length) {
-      list.innerHTML = '<div style="padding:20px;color:var(--text3)">Aucun code</div>';
+      if (listAvail) listAvail.innerHTML = '<div style="padding:20px;color:var(--text3)">Aucun code disponible</div>';
+      if (listUsed) listUsed.innerHTML = '<div style="padding:20px;color:var(--text3)">Aucun code utilisé</div>';
       return;
     }
     var available = codes.filter(function(c) { return !c.usedBy; });
     var used = codes.filter(function(c) { return c.usedBy; });
     
-    var html = '';
+
+    var codesHtml = '';
     if (available.length) {
-      html += '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Disponibles (' + available.length + ')</div>';
-      html += available.map(function(c) {
-        var inviteMsg = "Salut ! Tu es invité(e) à rejoindre MasterPASS, la plateforme de cours créée spécialement pour vous aider en PASS.\n\nVoici ton code d'invitation personnel (valable une seule fois) :\n\n" + c.code + "\n\nRends-toi sur https://masterpass-production.up.railway.app\nClique sur \"Créer mon compte avec un code d'invitation\" et entre ce code.\n\nC'est parti ! 🚀";
-        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface,white);border-radius:10px;border:1.5px solid var(--border);margin-bottom:8px">' +
+      codesHtml += available.map(function(c) {
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;border-bottom:1px solid var(--border)">' +
           '<code style="flex:1;font-size:15px;font-weight:800;color:var(--teal-dark);letter-spacing:1px">' + c.code + '</code>' +
-          '<span style="font-size:11px;color:green;font-weight:600">✓ Disponible</span>' +
-          '<button onclick="copyInviteCode(' + JSON.stringify(c.code) + ')" style="padding:5px 10px;border-radius:7px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif">Copier</button>' +
+          '<button onclick="copyInviteCode(' + JSON.stringify(c.code) + ')" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif">Copier</button>' +
           '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
           '</div>';
       }).join('');
     }
     if (used.length) {
-      html += '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px">Utilisés (' + used.length + ')</div>';
-      html += used.map(function(c) {
+      codesHtml += used.map(function(c) {
         var usedDate = c.usedAt ? new Date(c.usedAt).toLocaleDateString('fr-FR') : '';
-        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface,white);border-radius:10px;border:1.5px solid var(--border);margin-bottom:8px;opacity:0.7">' +
+        var usedUser = c.usedBy ? (users.find(function(u){return u.id===c.usedBy;})||{name:'?'}).name : '';
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;border-bottom:1px solid var(--border);opacity:0.6">' +
           '<code style="flex:1;font-size:14px;font-weight:700;color:var(--text3)">' + c.code + '</code>' +
-          '<span style="font-size:11px;color:var(--text3)">Utilisé le ' + usedDate + (c.usedBy ? ' par ' + (users.find(function(u){return u.id===c.usedBy;})||{name:'?'}).name : '') + '</span>' +
+          '<span style="font-size:11px;color:var(--text3)">✅ ' + usedDate + (usedUser ? ' · ' + usedUser : '') + '</span>' +
           '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
           '</div>';
       }).join('');
     }
-    list.innerHTML = html;
+    if (!codesHtml) codesHtml = '<div style="padding:20px;color:var(--text3)">Aucun code</div>';
+    listBody.innerHTML = codesHtml;
+    var ba = document.getElementById('badge-available');
+    var bu = document.getElementById('badge-used');
+    if (ba) ba.textContent = available.length;
+    if (bu) bu.textContent = used.length;
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -4204,7 +4210,33 @@ function renderDiscCenter() {
         html += renderThreadCard(t, isNew);
       });
     });
-    list.innerHTML = html;
+    var codesHtml = '';
+    if (available.length) {
+      html += available.map(function(c) {
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;border-bottom:1px solid var(--border)">' +
+          '<code style="flex:1;font-size:15px;font-weight:800;color:var(--teal-dark);letter-spacing:1px">' + c.code + '</code>' +
+          '<button onclick="copyInviteCode(' + JSON.stringify(c.code) + ')" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif">Copier</button>' +
+          '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
+          '</div>';
+      }).join('');
+    }
+    if (used.length) {
+      codesHtml += used.map(function(c) {
+        var usedDate = c.usedAt ? new Date(c.usedAt).toLocaleDateString('fr-FR') : '';
+        var usedUser = c.usedBy ? (users.find(function(u){return u.id===c.usedBy;})||{name:'?'}).name : '';
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;border-bottom:1px solid var(--border);opacity:0.6">' +
+          '<code style="flex:1;font-size:14px;font-weight:700;color:var(--text3)">' + c.code + '</code>' +
+          '<span style="font-size:11px;color:var(--text3)">✅ ' + usedDate + (usedUser ? ' · ' + usedUser : '') + '</span>' +
+          '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
+          '</div>';
+      }).join('');
+    }
+    if (!codesHtml) codesHtml = '<div style="padding:20px;color:var(--text3)">Aucun code</div>';
+    listBody.innerHTML = codesHtml;
+    var ba = document.getElementById('badge-available');
+    var bu = document.getElementById('badge-used');
+    if (ba) ba.textContent = available.length;
+    if (bu) bu.textContent = used.length;
     return;
   }
 
