@@ -1795,7 +1795,7 @@ input[type="file"]{display:none;}
                     <span id="record-label2">🎤 Rester appuyé</span>
                   </button>
                   <span id="record-timer2" style="display:none;font-size:12px;color:#ef5350;font-weight:700">⏺ 0:00</span>
-                  <button id="record-lock-btn2" onclick="lockRecording('side')" style="display:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:14px">🔓</button>
+                  <button id="record-lock-btn2" onclick="handleLockBtnClick('side')" style="display:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:14px">🔓</button>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée</span>
@@ -1897,7 +1897,7 @@ input[type="file"]{display:none;}
             <span id="record-label">🎤 Rester appuyé</span>
           </button>
           <span id="record-timer" style="display:none;font-size:12px;color:#ef5350;font-weight:700">⏺ 0:00</span>
-          <button id="record-lock-btn" onclick="lockRecording('main')" title="Verrouiller l'enregistrement" style="display:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:14px">🔓</button>
+          <button id="record-lock-btn" onclick="handleLockBtnClick('main')" title="Verrouiller l'enregistrement" style="display:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:14px">🔓</button>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée</span>
@@ -5665,6 +5665,15 @@ async function sendVoiceMessage(ctx) {
 
 function toggleRecording() {}
 function toggleRecording2() {}
+
+function handleLockBtnClick(ctx) {
+  if (_voiceLocked) {
+    _voiceLocked = false;
+    stopRecording(ctx);
+  } else {
+    lockRecording(ctx);
+  }
+}
 
 // ── Gestion souris (desktop) ──────────────────────────────────────────────────
 let _voiceMouseCtx = null;
