@@ -2351,8 +2351,12 @@ async function checkSession() {
 setInterval(checkSession, 30000);
 
 async function doLogout(){await api('POST','/logout').catch(()=>{});currentUser=null;currentFolder=null;$('app').style.display='none';$('auth-page').style.display='flex';$('login-input').value='';$('password-input').value='';}
-$('password-input').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-$('login-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('password-input').focus();});
+document.addEventListener('DOMContentLoaded', function() {
+  var pwInput = $('password-input');
+  var loginInput = $('login-input');
+  if (pwInput) pwInput.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  if (loginInput) loginInput.addEventListener('keydown', e => { if(e.key==='Enter') { var pw = $('password-input'); if(pw) pw.focus(); } });
+});
 
 (async()=>{
   // Détecter token de reset dans l'URL
@@ -5635,3 +5639,7 @@ async function sendVoiceMessage(ctx) {
 
 function toggleRecording() {}
 function toggleRecording2() {}
+
+</script>
+</body>
+</html>
