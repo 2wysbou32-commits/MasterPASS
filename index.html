@@ -1696,7 +1696,9 @@ input[type="file"]{display:none;}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <div class="section-title">Toutes les discussions</div>
           <div style="display:flex;gap:8px">
-            <button onclick="loadDiscussionsCenter()" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif">↻ Actualiser</button>
+            <button onclick="loadDiscussionsCenter()" id="disc-refresh-btn" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif">↻ Actualiser</button>
+            <button id="disc-delete-selected-btn" onclick="deleteSelectedDiscCenter()" style="display:none;padding:6px 14px;border-radius:8px;border:none;background:rgba(229,115,115,0.15);color:var(--danger);cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">🗑 Supprimer</button>
+            <button id="disc-cancel-selection-btn" onclick="exitDiscCenterSelection()" style="display:none;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif">Annuler</button>
             <div style="position:relative">
               <button id="disc-sort-btn" onclick="toggleDiscSort(event,this)" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif">
                 ⋮
@@ -4392,8 +4394,6 @@ function renderDiscCenter() {
   const _lastSeen = loadLastSeen();
 
   list.innerHTML = threads.map(function(t) {
-    const date = new Date(t.lastActivity).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-    // New = thread has activity after last time we opened THIS specific thread
     const threadSeenKey = 'thread_' + t.threadId;
     const lastSeenTime = _lastSeen[threadSeenKey] ? new Date(_lastSeen[threadSeenKey]) : null;
     const isNew = lastSeenTime ? new Date(t.lastActivity) > lastSeenTime : true;
@@ -4410,32 +4410,105 @@ function renderDiscCenter() {
       '</div>' +
     '</div>';
   }).join('');
+  attachDiscCenterListeners();
 }
 
 function renderThreadCard(t, isNew) {
   var date = new Date(t.lastActivity).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
   var div = document.createElement('div');
-  div.style.cssText = 'padding:14px 16px;border-radius:12px;border:1.5px solid ' + (isNew ? 'var(--teal)' : 'var(--border)') + ';background:' + (isNew ? 'rgba(0,151,167,0.04)' : 'var(--surface,white)') + ';margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s';
+  div.className = 'disc-center-card';
+  div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:12px;border:1.5px solid ' + (isNew ? 'var(--teal)' : 'var(--border)') + ';background:' + (isNew ? 'rgba(0,151,167,0.04)' : 'var(--surface,white)') + ';margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s';
   div.onmouseover = function() { this.style.boxShadow = '0 4px 12px var(--shadow)'; };
   div.onmouseout = function() { this.style.boxShadow = ''; };
   div.setAttribute('data-fid', t.fileId);
   div.setAttribute('data-fname', encodeURIComponent(t.fileName));
   div.setAttribute('data-tid', t.threadId);
-  div.setAttribute('onclick', 'goToThreadEl(this)');
-  div.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
-    (isNew ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0;display:inline-block"></span>' : '') +
-    (t.resolved ? '<span style="background:#2E7D32;color:white;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">✓ Résolu</span>' : '<span style="background:rgba(0,151,167,0.1);color:var(--teal-dark);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">💬 Ouvert</span>') +
-    '<span style="font-size:11px;color:var(--text3)">' + (t.folderName || '') + '</span>' +
+  div.innerHTML =
+    '<input type="checkbox" class="disc-center-cb" data-tid="' + t.threadId + '" data-fid="' + t.fileId + '" onclick="event.stopPropagation()" onchange="onDiscCenterCheckboxChange()" style="display:none;width:18px;height:18px;cursor:pointer;accent-color:var(--teal);flex-shrink:0">' +
+    '<div style="flex:1;min-width:0">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">' +
+      (isNew ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0;display:inline-block"></span>' : '') +
+      (t.resolved ? '<span style="background:#2E7D32;color:white;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">✓ Résolu</span>' : '<span style="background:rgba(0,151,167,0.1);color:var(--teal-dark);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">💬 Ouvert</span>') +
+      '<span style="font-size:11px;color:var(--text3)">' + (t.folderName || '') + '</span>' +
     '</div>' +
     '<div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px">' + t.title + '</div>' +
     '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text3)">' +
       '<span>📄 ' + t.fileName + '</span>' +
       '<span>' + t.replyCount + ' rép. · ' + date + '</span>' +
+    '</div>' +
     '</div>';
   return div.outerHTML;
 }
 
-function goToThreadEl(el) {
+// ── Sélection multiple "Toutes les discussions" ───────────────────────────────
+let _discCenterSelectionMode = false;
+
+function attachDiscCenterListeners() {
+  document.querySelectorAll('#disc-center-list .disc-center-card').forEach(function(card) {
+    var fid = card.getAttribute('data-fid');
+    var fname = card.getAttribute('data-fname');
+    var tid = parseInt(card.getAttribute('data-tid'));
+    var timer = null; var startX = 0; var startY = 0; var longPressed = false;
+    card.addEventListener('touchstart', function(e) {
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY; longPressed = false;
+      timer = setTimeout(function() { longPressed = true; if (navigator.vibrate) navigator.vibrate(50); enterDiscCenterSelection(tid); }, 500);
+    }, { passive: true });
+    card.addEventListener('touchmove', function(e) {
+      if (Math.abs(e.touches[0].clientX-startX) > 10 || Math.abs(e.touches[0].clientY-startY) > 10) clearTimeout(timer);
+    }, { passive: true });
+    card.addEventListener('touchend', function(e) {
+      clearTimeout(timer);
+      if (longPressed) { longPressed = false; e.preventDefault(); e.stopPropagation(); return; }
+      if (_discCenterSelectionMode) { var cb = card.querySelector('.disc-center-cb'); if (cb) { cb.checked = !cb.checked; onDiscCenterCheckboxChange(); } }
+      else goToThread(fid, decodeURIComponent(fname), tid);
+    });
+    card.addEventListener('mousedown', function() { longPressed = false; timer = setTimeout(function() { longPressed = true; enterDiscCenterSelection(tid); }, 600); });
+    card.addEventListener('mouseup', function() { clearTimeout(timer); });
+    card.addEventListener('mouseleave', function() { clearTimeout(timer); });
+    card.addEventListener('click', function(e) {
+      if (longPressed) { e.stopPropagation(); return; }
+      if (_discCenterSelectionMode) { var cb = card.querySelector('.disc-center-cb'); if (cb) { cb.checked = !cb.checked; onDiscCenterCheckboxChange(); } }
+      else goToThread(fid, decodeURIComponent(fname), tid);
+    });
+  });
+}
+
+function enterDiscCenterSelection(firstTid) {
+  _discCenterSelectionMode = true;
+  document.querySelectorAll('#disc-center-list .disc-center-cb').forEach(cb => cb.style.display = 'inline-block');
+  const cb = document.querySelector('#disc-center-list .disc-center-cb[data-tid="' + firstTid + '"]');
+  if (cb) cb.checked = true;
+  document.getElementById('disc-delete-selected-btn').style.display = 'block';
+  document.getElementById('disc-cancel-selection-btn').style.display = 'block';
+  document.getElementById('disc-refresh-btn').style.display = 'none';
+  onDiscCenterCheckboxChange();
+}
+
+function exitDiscCenterSelection() {
+  _discCenterSelectionMode = false;
+  document.querySelectorAll('#disc-center-list .disc-center-cb').forEach(cb => { cb.style.display = 'none'; cb.checked = false; });
+  document.getElementById('disc-delete-selected-btn').style.display = 'none';
+  document.getElementById('disc-cancel-selection-btn').style.display = 'none';
+  document.getElementById('disc-refresh-btn').style.display = 'block';
+}
+
+function onDiscCenterCheckboxChange() {
+  const checked = document.querySelectorAll('#disc-center-list .disc-center-cb:checked');
+  document.getElementById('disc-delete-selected-btn').style.display = checked.length > 0 ? 'block' : 'none';
+}
+
+async function deleteSelectedDiscCenter() {
+  const checked = document.querySelectorAll('#disc-center-list .disc-center-cb:checked');
+  if (!checked.length) return;
+  if (!confirm('Supprimer ' + checked.length + ' fil(s) ?')) return;
+  for (const cb of checked) {
+    var fid = cb.getAttribute('data-fid');
+    var tid = cb.getAttribute('data-tid');
+    try { await api('DELETE', '/threads/' + fid + '/' + tid); } catch(e) {}
+  }
+  exitDiscCenterSelection();
+  await loadDiscussionsCenter();
+}
   var fid = el.getAttribute('data-fid');
   var fname = el.getAttribute('data-fname');
   var tid = parseInt(el.getAttribute('data-tid'));
