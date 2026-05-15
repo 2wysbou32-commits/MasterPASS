@@ -740,6 +740,43 @@ app.delete('/api/folders/:parentId/subfolders/:subId/files/:fileId', requireAdmi
   res.json({ ok: true });
 });
 
+app.post('/api/folders/:folderId/subfolders/:subId/files/bulk-delete', requireAdmin, async (req, res) => {
+  const folderId = parseInt(req.params.folderId);
+  const subId = parseInt(req.params.subId);
+  const { fileIds } = req.body;
+
+  if (!Array.isArray(fileIds) || !fileIds.length) {
+    return res.status(400).json({ error: 'Aucun fichier sélectionné' });
+  }
+
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === folderId);
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+
+  const sub = folder.subfolders?.find(s => s.id === subId);
+  if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+
+  const ids = fileIds.map(id => parseInt(id)).filter(Number.isFinite);
+  const toDelete = sub.files.filter(f => ids.includes(f.id));
+
+  if (!toDelete.length) {
+    return res.status(404).json({ error: 'Aucun fichier trouvé' });
+  }
+
+  for (const file of toDelete) {
+    if (r2Enabled && file.r2Key) {
+      await deleteFromR2(file.r2Key);
+    } else if (file.filename) {
+      const p = path.join(UPLOADSDIR, file.filename);
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+  }
+
+  sub.files = sub.files.filter(f => !ids.includes(f.id));
+  saveDB(db);
+  res.json({ ok: true, deleted: toDelete.length });
+});
+
 // ── STREAM VIDÉO ──────────────────────────────────────────────────────────────
 app.get('/api/folders/:folderId/files/:fileId/stream', requireAuth, (req, res) => {
   const db = loadDB();
