@@ -2322,10 +2322,12 @@ async function doRegister() {
   const email = document.getElementById('reg-email')?.value?.trim();
   const password = document.getElementById('reg-password')?.value?.trim();
   const code = document.getElementById('reg-code')?.value?.trim();
-  const mineure = document.getElementById('reg-mineure')?.value?.trim();
+  const mineureEl = document.querySelector('input[name="reg-mineure-radio"]:checked');
+  const mineure = mineureEl ? mineureEl.value : '';
+  const discord = document.getElementById('reg-discord')?.value?.trim() || '';
   if (!firstName || !lastName || !login || !password || !code) { toast('Tous les champs requis', 'error'); return; }
   try {
-    await api('POST', '/register', { firstName, lastName, login, email, password, code, mineure });
+    await api('POST', '/register', { firstName, lastName, login, email, password, code, mineure, discord });
     toast('Compte créé ! Connecte-toi. 🎉');
     showLoginForm();
   } catch(e) { toast(e.message, 'error'); }
