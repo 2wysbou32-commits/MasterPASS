@@ -5651,6 +5651,51 @@ async function sendVoiceMessage(ctx) {
 function toggleRecording() {}
 function toggleRecording2() {}
 
+// ── Gestion souris (desktop) ──────────────────────────────────────────────────
+let _voiceMouseCtx = null;
+let _voiceMouseStartX = 0;
+let _voiceMouseStartY = 0;
+
+function handleVoiceMouseDown(e, ctx) {
+  _voiceMouseCtx = ctx;
+  _voiceMouseStartX = e.clientX;
+  _voiceMouseStartY = e.clientY;
+  startRecording(ctx);
+  document.addEventListener('mousemove', _onVoiceMouseMove);
+  document.addEventListener('mouseup', _onVoiceMouseUp);
+}
+
+function _onVoiceMouseMove(e) {
+  const ctx = _voiceMouseCtx;
+  if (!ctx) return;
+  if (_voiceLocked) return;
+  const dx = e.clientX - _voiceMouseStartX;
+  const dy = e.clientY - _voiceMouseStartY;
+  // Glissement vers le haut = mode mains libres
+  if (dy < -40) {
+    lockRecording(ctx);
+    return;
+  }
+  // Glissement vers la gauche = annuler
+  if (dx < -60) {
+    cancelRecording(ctx);
+    _cleanVoiceMouseListeners();
+  }
+}
+
+function _onVoiceMouseUp() {
+  const ctx = _voiceMouseCtx;
+  _cleanVoiceMouseListeners();
+  if (_voiceLocked) return;
+  if (ctx) stopRecordingHold(ctx);
+}
+
+function _cleanVoiceMouseListeners() {
+  document.removeEventListener('mousemove', _onVoiceMouseMove);
+  document.removeEventListener('mouseup', _onVoiceMouseUp);
+  _voiceMouseCtx = null;
+}
+
 </script>
 </body>
 </html>
