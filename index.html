@@ -2812,13 +2812,15 @@ async function saveAvatar() {
 
 // ── CODES D'INVITATION ────────────────────────────────────────────────────────
 function switchCodesTab(tab) {
-  var tabs = ['codes-active', 'codes-used'];
-  tabs.forEach(function(t) {
-    var el = document.getElementById(t);
-    if (el) el.style.display = t === tab ? 'block' : 'none';
-    var btn = document.getElementById('tab-' + t);
-    if (btn) btn.classList.toggle('active', t === tab);
-  });
+  // tab is 'available' or 'used'
+  var listBody = document.getElementById('codes-list-body');
+  var tabAvail = document.getElementById('tab-available');
+  var tabUsed = document.getElementById('tab-used');
+  // Visual active state on buttons
+  if (tabAvail) { tabAvail.style.background = tab === 'available' ? 'var(--teal-dark)' : 'transparent'; tabAvail.style.color = tab === 'available' ? 'white' : 'var(--text2)'; }
+  if (tabUsed) { tabUsed.style.background = tab === 'used' ? 'var(--teal-dark)' : 'transparent'; tabUsed.style.color = tab === 'used' ? 'white' : 'var(--text2)'; }
+  // Reload codes filtered by tab
+  if (listBody) loadCodes(tab);
 }
 
 function toggleDarkMode() {
@@ -2852,7 +2854,8 @@ function copyInviteCode(code, btn) {
   }).catch(function(){ toast(msg, 'info'); });
 }
 
-async function loadCodes() {
+async function loadCodes(tab) {
+  tab = tab || 'available';
   try {
     var codes = await api('GET', '/invite-codes');
     var users = [];
@@ -2870,8 +2873,9 @@ async function loadCodes() {
     var used = codes.filter(function(c) { return c.usedBy; });
     
 
+    var showAvail = tab === 'available';
     var codesHtml = '';
-    if (available.length) {
+    if (showAvail && available.length) {
       codesHtml += available.map(function(c) {
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;border-bottom:1px solid var(--border)">' +
           '<code style="flex:1;font-size:15px;font-weight:800;color:var(--teal-dark);letter-spacing:1px">' + c.code + '</code>' +
@@ -2880,7 +2884,7 @@ async function loadCodes() {
           '</div>';
       }).join('');
     }
-    if (used.length) {
+    if (!showAvail && used.length) {
       codesHtml += used.map(function(c) {
         var usedDate = c.usedAt ? new Date(c.usedAt).toLocaleDateString('fr-FR') : '';
         var usedUser = c.usedBy ? (users.find(function(u){return u.id===c.usedBy;})||{name:'?'}).name : '';
@@ -2891,7 +2895,7 @@ async function loadCodes() {
           '</div>';
       }).join('');
     }
-    if (!codesHtml) codesHtml = '<div style="padding:20px;color:var(--text3)">Aucun code</div>';
+    if (!codesHtml) codesHtml = '<div style="padding:20px;color:var(--text3)">Aucun code ' + (showAvail ? 'disponible' : 'utilisé') + '</div>';
     listBody.innerHTML = codesHtml;
     var ba = document.getElementById('badge-available');
     var bu = document.getElementById('badge-used');
@@ -4349,7 +4353,7 @@ function renderDiscCenter() {
           '</div>';
       }).join('');
     }
-    if (used.length) {
+    if (!showAvail && used.length) {
       codesHtml += used.map(function(c) {
         var usedDate = c.usedAt ? new Date(c.usedAt).toLocaleDateString('fr-FR') : '';
         var usedUser = c.usedBy ? (users.find(function(u){return u.id===c.usedBy;})||{name:'?'}).name : '';
@@ -4360,7 +4364,7 @@ function renderDiscCenter() {
           '</div>';
       }).join('');
     }
-    if (!codesHtml) codesHtml = '<div style="padding:20px;color:var(--text3)">Aucun code</div>';
+    if (!codesHtml) codesHtml = '<div style="padding:20px;color:var(--text3)">Aucun code ' + (showAvail ? 'disponible' : 'utilisé') + '</div>';
     listBody.innerHTML = codesHtml;
     var ba = document.getElementById('badge-available');
     var bu = document.getElementById('badge-used');
@@ -4880,6 +4884,10 @@ function toggleFileMenu(e, btn) {
 
   menu.style.left = Math.round(left) + 'px';
   menu.style.top = Math.round(top) + 'px';
+  menu.style.zIndex = '99999';
+  menu.style.minHeight = '120px';
+  menu.style.overflow = 'visible';
+  document.body.style.overflow = 'visible';
   menu.classList.add('open');
   setTimeout(() => document.addEventListener('click', closeAllFileMenus, { once: true }), 10);
 }
