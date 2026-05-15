@@ -2180,6 +2180,18 @@ function toast(msg,type='success'){
   el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200);
 }
 
+function updateRegLogin() {
+  var nameEl = document.getElementById('reg-name');
+  var loginEl = document.getElementById('reg-login');
+  if (!nameEl || !loginEl) return;
+  var name = nameEl.value.trim();
+  var parts = name.split(' ').filter(function(p) { return p.length > 0; });
+  if (parts.length >= 2) {
+    var login = (parts[0] + '.' + parts[parts.length-1] + '.MP').toLowerCase().replace(/[^a-z0-9.]/g, '');
+    loginEl.value = login;
+  }
+}
+
 function showRegisterForm() {
   var reg = document.getElementById('register-form');
   var login = document.querySelector('.auth-card-body:not(#register-form)') || document.querySelector('[id*="login"]');
@@ -2733,9 +2745,24 @@ function toggleDarkMode() {
   }
 })();
 
-function copyInviteCode(code) {
+function copyInviteCode(code, btn) {
   var msg = "Salut ! Tu es invité(e) à rejoindre MasterPASS, la plateforme de cours créée spécialement pour vous aider en PASS.\n\nVoici ton code d'invitation personnel (valable une seule fois) :\n\n" + code + "\n\nRends-toi sur https://masterpass-production.up.railway.app\nClique sur \"Créer mon compte avec un code d'invitation\" et entre ce code.\n\nC'est parti ! 🚀";
-  navigator.clipboard.writeText(msg).then(function(){ toast('Message copié ! 📋'); }).catch(function(){ toast(msg, 'info'); });
+  navigator.clipboard.writeText(msg).then(function(){
+    toast('Message copié ! 📋');
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = 'Copié !';
+      btn.style.background = '#2E7D32';
+      btn.style.color = 'white';
+      btn.style.borderColor = '#2E7D32';
+      setTimeout(function() {
+        btn.textContent = orig;
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--teal-dark)';
+        btn.style.borderColor = 'var(--teal)';
+      }, 2000);
+    }
+  }).catch(function(){ toast(msg, 'info'); });
 }
 
 async function loadCodes() {
@@ -2761,7 +2788,7 @@ async function loadCodes() {
       codesHtml += available.map(function(c) {
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;border-bottom:1px solid var(--border)">' +
           '<code style="flex:1;font-size:15px;font-weight:800;color:var(--teal-dark);letter-spacing:1px">' + c.code + '</code>' +
-          '<button data-code="' + c.code + '" onclick="copyInviteCode(this.dataset.code)" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif">Copier</button>' +
+          '<button data-code="' + c.code + '" onclick="copyInviteCode(this.dataset.code,this)" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif">Copier</button>' +
           '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
           '</div>';
       }).join('');
@@ -4230,7 +4257,7 @@ function renderDiscCenter() {
       html += available.map(function(c) {
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;border-bottom:1px solid var(--border)">' +
           '<code style="flex:1;font-size:15px;font-weight:800;color:var(--teal-dark);letter-spacing:1px">' + c.code + '</code>' +
-          '<button data-code="' + c.code + '" onclick="copyInviteCode(this.dataset.code)" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif">Copier</button>' +
+          '<button data-code="' + c.code + '" onclick="copyInviteCode(this.dataset.code,this)" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif">Copier</button>' +
           '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
           '</div>';
       }).join('');
