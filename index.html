@@ -2689,16 +2689,35 @@ async function loadCodes() {
     var list = document.getElementById('codes-list');
     if (!list) return;
     if (!codes.length) {
-      list.innerHTML = '<div style="padding:20px;color:var(--text3)">Aucun code actif</div>';
+      list.innerHTML = '<div style="padding:20px;color:var(--text3)">Aucun code</div>';
       return;
     }
-    list.innerHTML = codes.map(function(c) {
-      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface,white);border-radius:10px;border:1.5px solid var(--border);margin-bottom:8px">' +
-        '<code style="flex:1;font-size:14px;font-weight:700;color:var(--teal-dark)">' + c.code + '</code>' +
-        (c.usedBy ? '<span style="font-size:11px;color:var(--text3)">Utilisé</span>' : '<span style="font-size:11px;color:green">Disponible</span>') +
-        '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer">🗑</button>' +
-        '</div>';
-    }).join('');
+    var available = codes.filter(function(c) { return !c.usedBy; });
+    var used = codes.filter(function(c) { return c.usedBy; });
+    
+    var html = '';
+    if (available.length) {
+      html += '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Disponibles (' + available.length + ')</div>';
+      html += available.map(function(c) {
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface,white);border-radius:10px;border:1.5px solid var(--border);margin-bottom:8px">' +
+          '<code style="flex:1;font-size:14px;font-weight:700;color:var(--teal-dark)">' + c.code + '</code>' +
+          '<span style="font-size:11px;color:green;font-weight:600">✓ Disponible</span>' +
+          '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
+          '</div>';
+      }).join('');
+    }
+    if (used.length) {
+      html += '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px">Utilisés (' + used.length + ')</div>';
+      html += used.map(function(c) {
+        var usedDate = c.usedAt ? new Date(c.usedAt).toLocaleDateString('fr-FR') : '';
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface,white);border-radius:10px;border:1.5px solid var(--border);margin-bottom:8px;opacity:0.7">' +
+          '<code style="flex:1;font-size:14px;font-weight:700;color:var(--text3)">' + c.code + '</code>' +
+          '<span style="font-size:11px;color:var(--text3)">Utilisé le ' + usedDate + '</span>' +
+          '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
+          '</div>';
+      }).join('');
+    }
+    list.innerHTML = html;
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -2707,7 +2726,9 @@ async function generateCodes() { return generateCode(); }
 async function generateCode() {
   try {
     var res = await api('POST', '/invite-codes/generate');
-    toast('Code créé : ' + res.code);
+    // Server returns array of codes
+    var code = Array.isArray(res) ? res[0].code : res.code;
+    toast('Code créé : ' + code);
     loadCodes();
   } catch(e) { toast(e.message, 'error'); }
 }
