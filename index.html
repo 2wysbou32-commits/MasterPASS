@@ -5666,6 +5666,7 @@ let _voiceMouseStartX = 0;
 let _voiceMouseStartY = 0;
 
 function handleVoiceMouseDown(e, ctx) {
+  if (_voiceJustCancelled) return;
   _voiceMouseCtx = ctx;
   _voiceMouseStartX = e.clientX;
   _voiceMouseStartY = e.clientY;
@@ -5680,12 +5681,10 @@ function _onVoiceMouseMove(e) {
   if (_voiceLocked) return;
   const dx = e.clientX - _voiceMouseStartX;
   const dy = e.clientY - _voiceMouseStartY;
-  // Glissement vers le haut = mode mains libres
   if (dy < -40) {
     lockRecording(ctx);
     return;
   }
-  // Glissement vers la gauche = annuler
   if (dx < -60) {
     cancelRecording(ctx);
     _cleanVoiceMouseListeners();
