@@ -5514,7 +5514,7 @@ function lockRecording(ctx) {
     lock.style.display = 'flex';
     lock.style.background = 'var(--teal-dark)';
     lock.style.color = 'white';
-    lock.onclick = () => stopRecording(ctx);
+    lock.onclick = () => { _voiceLocked = false; stopRecording(ctx); };
   }
   if (lbl) lbl.textContent = '🔒 Mains libres – clique 🔒 pour arrêter';
   if (btn) {
