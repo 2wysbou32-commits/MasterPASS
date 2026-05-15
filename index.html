@@ -2755,12 +2755,6 @@ function copyInviteCode(code, btn) {
       btn.style.background = '#2E7D32';
       btn.style.color = 'white';
       btn.style.borderColor = '#2E7D32';
-      setTimeout(function() {
-        btn.textContent = orig;
-        btn.style.background = 'transparent';
-        btn.style.color = 'var(--teal-dark)';
-        btn.style.borderColor = 'var(--teal)';
-      }, 2000);
     }
   }).catch(function(){ toast(msg, 'info'); });
 }
