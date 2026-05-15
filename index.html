@@ -4509,10 +4509,12 @@ async function deleteSelectedDiscCenter() {
   exitDiscCenterSelection();
   await loadDiscussionsCenter();
 }
+
+function goToThreadEl(el) {
   var fid = el.getAttribute('data-fid');
   var fname = el.getAttribute('data-fname');
   var tid = parseInt(el.getAttribute('data-tid'));
-  goToThread(fid, fname, tid);
+  goToThread(fid, decodeURIComponent(fname), tid);
 }
 
 async function goToThread(fileId, fileName, threadId) {
