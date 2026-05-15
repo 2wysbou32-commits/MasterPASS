@@ -2180,6 +2180,41 @@ function toast(msg,type='success'){
   el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200);
 }
 
+function showRegisterForm() {
+  var reg = document.getElementById('register-form');
+  var login = document.querySelector('.auth-card-body:not(#register-form)') || document.querySelector('[id*="login"]');
+  document.querySelectorAll('.auth-card-body').forEach(function(el) { el.style.display = 'none'; });
+  if (reg) reg.style.display = 'block';
+}
+
+function showLoginForm() {
+  document.querySelectorAll('.auth-card-body').forEach(function(el) { el.style.display = 'none'; });
+  var login = document.querySelector('.auth-card-body:not(#register-form)');
+  if (login) login.style.display = 'block';
+  else {
+    var reg = document.getElementById('register-form');
+    if (reg) reg.style.display = 'none';
+    // Show the default login card body
+    var bodies = document.querySelectorAll('.auth-card-body');
+    if (bodies[0]) bodies[0].style.display = 'block';
+  }
+}
+
+async function doRegister() {
+  const name = document.getElementById('reg-name')?.value?.trim();
+  const login = document.getElementById('reg-login')?.value?.trim();
+  const email = document.getElementById('reg-email')?.value?.trim();
+  const password = document.getElementById('reg-password')?.value?.trim();
+  const code = document.getElementById('reg-code')?.value?.trim();
+  const mineure = document.getElementById('reg-mineure')?.value?.trim();
+  if (!name || !login || !password || !code) { toast('Tous les champs requis', 'error'); return; }
+  try {
+    await api('POST', '/register', { name, login, email, password, inviteCode: code, mineure });
+    toast('Compte créé ! Connecte-toi.');
+    showLoginForm();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 async function doLogin(){
   const login=$('login-input').value.trim(),password=$('password-input').value;
   const btn=$('login-btn');btn.disabled=true;btn.textContent='Connexion…';
