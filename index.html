@@ -1828,10 +1828,12 @@ input[type="file"]{display:none;}
         <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:var(--text)" id="discussion-filename">Discussion</div>
         <div style="font-size:12px;color:var(--text3)" id="threads-count">0 fil</div>
       </div>
-      <button onclick="showNewThreadForm()" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">
+      <button onclick="showNewThreadForm()" id="new-thread-btn-sb" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
         Poser une question
       </button>
+      <button id="delete-selected-btn-sb" onclick="deleteSelectedThreadsSb()" style="display:none;padding:10px 18px;border-radius:12px;border:none;background:rgba(229,115,115,0.15);color:var(--danger);cursor:pointer;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">🗑 Supprimer</button>
+      <button id="cancel-selection-btn-sb" onclick="exitThreadSelectionModeSb()" style="display:none;padding:10px 18px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif">Annuler</button>
     </div>
 
     <!-- Formulaire nouveau fil -->
@@ -5242,8 +5244,8 @@ async function loadThreads(silent) {
       var date = new Date(t.lastReplyAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       var isAdmin = currentUser?.role === 'admin';
       var canDelete = t.createdBy === currentUser?.id || isAdmin;
-      return '<div onclick="handleThreadCardClickMain(event,' + t.id + ')" onmousedown="threadLongPressStartMain(event,' + t.id + ')" onmouseup="threadLongPressEndMain()" ontouchstart="threadLongPressStartMain(event,' + t.id + ')" ontouchend="threadLongPressEndMain()" style="display:flex;align-items:center;gap:10px;padding:16px 20px;background:var(--surface,white);border-radius:14px;border:1.5px solid ' + (t.resolved ? 'rgba(46,125,50,0.3)' : 'var(--border)') + ';margin-bottom:10px;cursor:pointer;transition:box-shadow 0.15s" class="thread-card-main">' +
-        '<input type="checkbox" class="thread-select-cb-main" data-tid="' + t.id + '" onclick="event.stopPropagation()" onchange="onThreadCheckboxChangeMain()" style="display:none;width:18px;height:18px;cursor:pointer;accent-color:var(--teal);flex-shrink:0">' +
+      return '<div data-thread-id="' + t.id + '" style="display:flex;align-items:center;gap:10px;padding:16px 20px;background:var(--surface,white);border-radius:14px;border:1.5px solid ' + (t.resolved ? 'rgba(46,125,50,0.3)' : 'var(--border)') + ';margin-bottom:10px;cursor:pointer;transition:box-shadow 0.15s" class="thread-card-sb">' +
+        '<input type="checkbox" class="thread-select-cb-sb" data-tid="' + t.id + '" onclick="event.stopPropagation()" onchange="onThreadCheckboxChangeSb()" style="display:none;width:18px;height:18px;cursor:pointer;accent-color:var(--teal);flex-shrink:0">' +
         '<div style="display:flex;align-items:flex-start;gap:14px;flex:1;min-width:0">' +
         '<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--teal-dark));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;flex-shrink:0;overflow:hidden">' +
           (t.creatorAvatar ? '<img src="' + t.creatorAvatar + '" style="width:100%;height:100%;object-fit:cover">' : (t.creatorName||'?')[0].toUpperCase()) +
@@ -5265,6 +5267,22 @@ async function loadThreads(silent) {
         '</div>' +
       '</div>';
     }).join('');
+    document.querySelectorAll('#threads-list .thread-card-sb').forEach(function(card) {
+      var tid = parseInt(card.getAttribute('data-thread-id'));
+      var timer = null; var startX = 0; var startY = 0; var longPressed = false;
+      card.addEventListener('touchstart', function(e) {
+        startX = e.touches[0].clientX; startY = e.touches[0].clientY; longPressed = false;
+        timer = setTimeout(function() { longPressed = true; if (navigator.vibrate) navigator.vibrate(50); enterThreadSelectionModeSb(tid); }, 500);
+      }, { passive: true });
+      card.addEventListener('touchmove', function(e) {
+        if (Math.abs(e.touches[0].clientX-startX) > 10 || Math.abs(e.touches[0].clientY-startY) > 10) clearTimeout(timer);
+      }, { passive: true });
+      card.addEventListener('touchend', function(e) { clearTimeout(timer); if (longPressed) { longPressed = false; e.preventDefault(); e.stopPropagation(); return; } if (!_threadSelectionModeSb) openThread(tid); else { var cb = card.querySelector('.thread-select-cb-sb'); if (cb) { cb.checked = !cb.checked; onThreadCheckboxChangeSb(); } } });
+      card.addEventListener('mousedown', function() { longPressed = false; timer = setTimeout(function() { longPressed = true; enterThreadSelectionModeSb(tid); }, 600); });
+      card.addEventListener('mouseup', function() { clearTimeout(timer); });
+      card.addEventListener('mouseleave', function() { clearTimeout(timer); });
+      card.addEventListener('click', function(e) { if (longPressed) { e.stopPropagation(); return; } if (!_threadSelectionModeSb) openThread(tid); else { var cb = card.querySelector('.thread-select-cb-sb'); if (cb) { cb.checked = !cb.checked; onThreadCheckboxChangeSb(); } } });
+    });
   } catch(e) {
     list.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
   }
