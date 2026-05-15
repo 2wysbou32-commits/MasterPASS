@@ -5498,7 +5498,9 @@ function handleVoiceTouchEnd(ctx) {
 
 function stopRecordingHold(ctx) {
   if (_voiceLocked) return;
-  stopRecording(ctx);
+  if (!_voiceRecorder || _voiceRecorder.state !== 'recording') return;
+  _voiceRecorder.stop();
+  resetVoiceUI(ctx);
 }
 
 function lockRecording(ctx) {
@@ -5537,11 +5539,10 @@ function cancelRecording(ctx) {
 
 function stopRecording(ctx) {
   if (!_voiceRecorder || _voiceRecorder.state !== 'recording') return;
-  _voiceLocked = false;
+  if (_voiceLocked) return;
   _voiceRecorder.stop();
   resetVoiceUI(ctx);
 }
-
 function resetVoiceUI(ctx) {
   const ids = getVoiceIds(ctx);
   const btn = document.getElementById(ids.btn);
