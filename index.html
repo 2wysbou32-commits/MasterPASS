@@ -1787,6 +1787,8 @@ input[type="file"]{display:none;}
               <textarea id="reply-input2" placeholder="Ajoute une réponse..." style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
               <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px">
                 <div style="display:flex;align-items:center;gap:8px">
+                  <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
+                  <button id="record-lock-btn2" onclick="handleLockBtnClick('side')" style="display:none;position:absolute;top:-38px;left:50%;transform:translateX(-50%);width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">🔓</button>
                   <button id="record-btn2"
                   onmousedown="handleVoiceMouseDown(event,'side')"
                     ontouchstart="handleVoiceTouchStart(event,'side')" ontouchmove="handleVoiceTouchMove(event,'side'); event.preventDefault();" ontouchend="handleVoiceTouchEnd(event,'side')" ontouchcancel="handleVoiceTouchEnd(event,'side')"
@@ -1794,8 +1796,8 @@ input[type="file"]{display:none;}
                     <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 4.19-3.97 7-7.91 7s-7.42-2.81-7.91-7H0c.51 5.06 4.45 9 9 9.46V23h2v-2.54c4.55-.46 8.49-4.4 9-9.46h-2.09z"/></svg>
                     <span id="record-label2">🎤 Rester appuyé</span>
                   </button>
+                  </div>
                   <span id="record-timer2" style="display:none;font-size:12px;color:#ef5350;font-weight:700">⏺ 0:00</span>
-                  <button id="record-lock-btn2" onclick="handleLockBtnClick('side')" style="display:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:14px">🔓</button>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée</span>
@@ -1889,6 +1891,8 @@ input[type="file"]{display:none;}
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px">
         <div style="display:flex;align-items:center;gap:8px">
+          <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
+          <button id="record-lock-btn" onclick="handleLockBtnClick('main')" title="Verrouiller l'enregistrement" style="display:none;position:absolute;top:-38px;left:50%;transform:translateX(-50%);width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">🔓</button>
           <button id="record-btn"
            onmousedown="handleVoiceMouseDown(event,'main')"
             ontouchstart="handleVoiceTouchStart(event,'main')" ontouchmove="handleVoiceTouchMove(event,'main'); event.preventDefault();" ontouchend="handleVoiceTouchEnd(event,'main')" ontouchcancel="handleVoiceTouchEnd(event,'main')"
@@ -1896,8 +1900,8 @@ input[type="file"]{display:none;}
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 4.19-3.97 7-7.91 7s-7.42-2.81-7.91-7H0c.51 5.06 4.45 9 9 9.46V23h2v-2.54c4.55-.46 8.49-4.4 9-9.46h-2.09z"/></svg>
             <span id="record-label">🎤 Rester appuyé</span>
           </button>
+          </div>
           <span id="record-timer" style="display:none;font-size:12px;color:#ef5350;font-weight:700">⏺ 0:00</span>
-          <button id="record-lock-btn" onclick="handleLockBtnClick('main')" title="Verrouiller l'enregistrement" style="display:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:14px">🔓</button>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:11px;color:var(--text3)">Ctrl+Entrée</span>
