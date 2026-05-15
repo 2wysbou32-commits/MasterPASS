@@ -4588,7 +4588,7 @@ async function loadThreadRepliesInline() {
         var aId = 'ia-' + r.id; var bId = 'ib-' + r.id; var barId = 'ic-' + r.id; var tId = 'it-' + r.id;
         msgHtml = '<audio id="' + aId + '" src="' + r.audio + '" style="display:none"></audio>' +
           '<div style="display:flex;align-items:center;gap:10px;padding:4px 0;min-width:160px">' +
-          '<button id="' + bId + '" onclick="toggleInlineAudio(\'' + aId + '\',\'' + bId + '\',\'' + barId + '\',\'' + tId + '\')" style="width:32px;height:32px;border-radius:50%;background:' + (isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)') + ';color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>' +
+          '<button id="' + bId + '" onclick="toggleInlineAudio(\'' + aId + '\',\'' + bId + '\',\'' + barId + '\',\'' + tId + '\',event" style="width:32px;height:32px;border-radius:50%;background:' + (isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)') + ';color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>' +
           '<canvas id="' + barId + '" data-mine="' + isMine + '" height="28" style="width:120px;height:28px;border-radius:3px;display:block"></canvas>' +
           '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>';
       } else {
@@ -4773,13 +4773,14 @@ function drawAllWaveformsInContainer(container) {
   });
 }
 
-function toggleInlineAudio(audioId, btnId, barId, timeId) {
+function toggleInlineAudio(audioId, btnId, barId, timeId, e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
   var audio = document.getElementById(audioId);
   var btn = document.getElementById(btnId);
   var canvas = document.getElementById(barId);
   if (!audio || !btn) return;
   if (audio.paused) {
-    audio.play();
+    audio.play().catch(function(){});
     btn.textContent = '⏸';
     audio.ontimeupdate = function() {
       var pct = audio.duration ? (audio.currentTime / audio.duration) : 0;
@@ -5414,6 +5415,8 @@ let _previewAudio = null;
 let _voiceTouchStartX = 0;
 let _voiceTouchStartY = 0;
 let _voiceJustCancelled = false;
+let _voiceStarting = false;
+let _voicePendingStop = false;
 
 function getVoiceIds(ctx) {
   return {
@@ -5428,9 +5431,10 @@ function getVoiceIds(ctx) {
   };
 }
 
-  async function startRecording(ctx) {
+async function startRecording(ctx) {
   if (_voiceJustCancelled) return;
   if (_voiceRecorder && _voiceRecorder.state === 'recording') return;
+  _voiceStarting = true;
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     _voiceContext = ctx;
@@ -5449,6 +5453,8 @@ function getVoiceIds(ctx) {
       showVoicePreview(ctx);
     };
     _voiceRecorder.start();
+    _voiceStarting = false;
+    if (_voicePendingStop) { _voicePendingStop = false; stopRecordingHold(ctx); return; }
 
     const btn = document.getElementById(ids.btn);
     const lbl = document.getElementById(ids.label);
@@ -5503,6 +5509,7 @@ function handleVoiceTouchEnd(e, ctx) {
 
 function stopRecordingHold(ctx) {
   if (_voiceLocked) return;
+  if (_voiceStarting) { _voicePendingStop = true; return; }
   if (!_voiceRecorder || _voiceRecorder.state !== 'recording') return;
   _voiceRecorder.stop();
   resetVoiceUI(ctx);
