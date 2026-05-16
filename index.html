@@ -3798,6 +3798,13 @@ async function loadAnnouncements() {
         <div class="ann-card-title">${colors[a.color] || 'ℹ️'} ${a.title}</div>
         <div class="ann-card-message">${a.message}</div>
         <div class="ann-card-date">${new Date(a.createdAt).toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric'})}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap">
+          ${['👍','❤️','🔥','😮','👏'].map(em => {
+            const users = (a.reactions && a.reactions[em]) || [];
+            const iReacted = users.includes(currentUser?.id);
+            return `<button onclick="reactAnnouncement(${a.id},'${em}')" style="display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;border:1.5px solid ${iReacted ? 'var(--teal)' : 'var(--border)'};background:${iReacted ? 'rgba(0,151,167,0.1)' : 'transparent'};cursor:pointer;font-size:13px;transition:all 0.15s" id="ann-react-${a.id}-${em}">${em}${users.length ? ' <span style="font-size:11px;font-weight:700;color:var(--teal-dark)">' + users.length + '</span>' : ''}</button>`;
+          }).join('')}
+        </div>
       </div>`).join('');
   } catch(e) {
     list.innerHTML = '<div style="padding:20px;color:var(--danger)">Erreur de chargement</div>';
