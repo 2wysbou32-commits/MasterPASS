@@ -575,7 +575,9 @@ app.delete('/api/users/:id', requireSuperAdmin, (req, res) => {
   }
   saveDB(db);
   res.json({ ok: true });
-});FOLDERS ───────────────────────────────────────────────────────────────────
+});
+
+// ── FOLDERS ───────────────────────────────────────────────────────────────────
 app.get('/api/folders', requireAuth, (req, res) => {
   const db = loadDB();
   res.json(db.folders.map(f => ({
