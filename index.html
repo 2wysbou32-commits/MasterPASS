@@ -1413,6 +1413,7 @@ input[type="file"]{display:none;}
               <span class="files-list-header-title">Fichiers</span>
               <span class="files-count-badge" id="files-count-tag">0</span>
               <button id="files-delete-selected-btn" onclick="deleteSelectedFiles()" style="display:none;padding:6px 14px;border-radius:9px;border:none;background:rgba(229,115,115,0.15);color:var(--danger);cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">🗑 Supprimer</button>
+              <button id="files-download-selected-btn" onclick="downloadSelectedFiles()" style="display:none;padding:6px 14px;border-radius:9px;border:none;background:rgba(0,151,167,0.15);color:var(--teal-dark);cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">⬇️ Télécharger</button>
               <button id="files-cancel-selection-btn" onclick="exitFileSelectionMode()" style="display:none;padding:6px 14px;border-radius:9px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif">Annuler</button>
             </div>
             <!-- Bouton de tri -->
@@ -3261,7 +3262,7 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
 
   const fileIsRead = isFileRead(f.id, folderId, subId);
   return `<div class="file-row${fileIsRead ? ' is-read' : ''}" data-file-id="${f.id}" data-subfolder="${subId||''}" ${canPreview ? `onclick="if(!_fileSelectionMode){${previewFn}}" style="cursor:pointer"` : ''}>    <div class="file-left" style="display:flex;align-items:center;gap:10px">
-      <input type="checkbox" class="file-select-cb" data-id="${f.id}" onclick="event.stopPropagation()" onchange="onFileCheckboxChange()" style="display:none;width:18px;height:18px;cursor:pointer;accent-color:var(--teal);flex-shrink:0">
+      <input type="checkbox" class="file-select-cb" data-id="${f.id}" data-download-url="${downloadUrl}" data-can-download="${canDownload}" onclick="event.stopPropagation()" onchange="onFileCheckboxChange()" style="display:none;width:18px;height:18px;cursor:pointer;accent-color:var(--teal);flex-shrink:0">
       ${getFileTypeBadge(f.type)}
       <div class="file-info">
         <div class="file-name" title="${f.name}">${f.name}${fileIsRead ? '<span class="file-read-badge">✓ Lu</span>' : ''}${(function(){ const added = f.addedAt ? new Date(f.addedAt) : null; const isNew = added && (Date.now() - added.getTime()) < 7 * 24 * 60 * 60 * 1000; return isNew ? '<span style="margin-left:6px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border-radius:6px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:0.5px;vertical-align:middle">NOUVEAU</span>' : ''; })()}</div>
@@ -3505,7 +3506,7 @@ function enterFileSelectionMode(firstId) {
     const cb = document.querySelector(`.file-select-cb[data-id="${firstId}"]`);
     if (cb) cb.checked = true;
   }
-  document.getElementById('files-delete-selected-btn').style.display = 'block';
+  if (currentUser?.role === 'admin') document.getElementById('files-delete-selected-btn').style.display = 'block';
   document.getElementById('files-cancel-selection-btn').style.display = 'block';
   onFileCheckboxChange();
 }
@@ -3514,12 +3515,35 @@ function exitFileSelectionMode() {
   _fileSelectionMode = false;
   document.querySelectorAll('.file-select-cb').forEach(cb => { cb.style.display = 'none'; cb.checked = false; });
   document.getElementById('files-delete-selected-btn').style.display = 'none';
+  document.getElementById('files-download-selected-btn').style.display = 'none';
   document.getElementById('files-cancel-selection-btn').style.display = 'none';
 }
 
 function onFileCheckboxChange() {
-  const checked = document.querySelectorAll('.file-select-cb:checked');
-  document.getElementById('files-delete-selected-btn').style.display = checked.length > 0 ? 'block' : 'none';
+  const checked = Array.from(document.querySelectorAll('.file-select-cb:checked'));
+  if (currentUser?.role === 'admin') {
+    document.getElementById('files-delete-selected-btn').style.display = checked.length > 0 ? 'block' : 'none';
+  }
+  const canDownloadAny = checked.some(cb => cb.getAttribute('data-can-download') === 'true');
+  document.getElementById('files-download-selected-btn').style.display = canDownloadAny ? 'block' : 'none';
+}
+
+async function downloadSelectedFiles() {
+  const checked = Array.from(document.querySelectorAll('.file-select-cb:checked'));
+  const downloadable = checked.filter(cb => cb.getAttribute('data-can-download') === 'true');
+  if (!downloadable.length) return;
+  for (const cb of downloadable) {
+    const url = cb.getAttribute('data-download-url');
+    if (!url) continue;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    await new Promise(r => setTimeout(r, 500));
+  }
+  exitFileSelectionMode();
 }
 
 async function deleteSelectedFiles() {
