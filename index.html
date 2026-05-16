@@ -4740,7 +4740,7 @@ async function loadThreadRepliesInline() {
     container.scrollTop = container.scrollHeight;
     setTimeout(function() {
       container.querySelectorAll('canvas[data-mine]').forEach(function(canvas) {
-        canvas.width = canvas.parentElement ? canvas.parentElement.offsetWidth || 120 : 120;
+        canvas.width = 120;
         canvas.height = 28;
         redrawWaveformProgress(canvas, 0);
       });
