@@ -910,7 +910,32 @@ app.get('/api/folders/:folderId/files/:fileId/preview', requireAuth, async (req,
   // Incrémenter le compteur de vues
   file.views = (file.views || 0) + 1;
   saveDB(db);
-
+  const _reqUser2 = db.users.find(u => u.id === req.session.userId);
+  const _isPDF2 = file.name && file.name.toLowerCase().endsWith('.pdf');
+  if (_isPDF2 && _reqUser2?.role !== 'admin') {
+    const userName = _reqUser2?.login || _reqUser2?.name || 'Inconnu';
+    try {
+      let pdfBuffer;
+      if (r2Enabled && file.r2Key) {
+        const chunks = []; const https = require('https');
+        const date = new Date();
+        const { authorization, datetime, host, canonicalPath } = buildAuthHeader('GET', file.r2Key, 'application/octet-stream', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4de2b7537d23f10d5aff7b62', date, 'auto');
+        await new Promise((resolve, reject) => {
+          const req2 = https.request({ hostname: host, path: canonicalPath, method: 'GET', headers: { 'Authorization': authorization, 'x-amz-date': datetime, 'x-amz-content-sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4de2b7537d23f10d5aff7b62' } }, r2res => { r2res.on('data', c => chunks.push(c)); r2res.on('end', resolve); r2res.on('error', reject); });
+          req2.on('error', reject); req2.end();
+        });
+        pdfBuffer = Buffer.concat(chunks);
+      } else if (file.filename) {
+        pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename));
+      }
+      if (pdfBuffer) {
+        const watermarked = await addWatermark(pdfBuffer, userName);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline');
+        return res.send(Buffer.from(watermarked));
+      }
+    } catch(e) { console.error('Watermark error folder:', e.message); }
+  }
   if (r2Enabled && file.r2Key) {
     await proxyFileFromR2(file.r2Key, res, true, req);
     return;
