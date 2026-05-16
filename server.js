@@ -584,9 +584,11 @@ app.get('/api/folders', requireAuth, (req, res) => {
     id: f.id, name: f.name, createdAt: f.createdAt,
     fileCount: (f.files||[]).length,
     totalSize: (f.files||[]).reduce((s,fi) => s+fi.size, 0),
+    files: (f.files||[]).map(fi => ({ id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, views: fi.views||0, downloadable: fi.downloadable })),
     subfolders: (f.subfolders||[]).map(s => ({
       id: s.id, name: s.name,
-      fileCount: (s.files||[]).length
+      fileCount: (s.files||[]).length,
+      files: (s.files||[]).map(fi => ({ id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, views: fi.views||0, downloadable: fi.downloadable }))
     }))
   })));
 });
