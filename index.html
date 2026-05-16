@@ -4738,11 +4738,13 @@ async function loadThreadRepliesInline() {
       return row;
     }).join('');
     container.scrollTop = container.scrollHeight;
-    requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        drawAllWaveformsInContainer(container);
+    setTimeout(function() {
+      container.querySelectorAll('canvas[data-mine]').forEach(function(canvas) {
+        canvas.width = canvas.parentElement ? canvas.parentElement.offsetWidth || 120 : 120;
+        canvas.height = 28;
+        redrawWaveformProgress(canvas, 0);
       });
-    });
+    }, 300);
     data.replies.forEach(function(r) {
       _commentDataMap[r.id] = { id: r.id, userId: r.userId, userName: r.userName, message: r.message||'', audio: r.audio||null, isOwn: r.userId === currentUser?.id, canDelete: (currentUser?.role==='admin') || r.userId === currentUser?.id };
     });
