@@ -5283,8 +5283,14 @@ let _discussionRefreshTimer = null;
 function startDiscussionRefresh() {
   stopDiscussionRefresh();
   _discussionRefreshTimer = setInterval(async function() {
-    if (_currentThreadId) await loadThreadReplies(true);
-    else if (_discussionFileId) await loadThreads(true);
+    var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+    if (_currentThreadId) {
+      if (isInline) await loadThreadRepliesInline();
+      else await loadThreadReplies(true);
+    } else if (_discussionFileId) {
+      if (isInline) await loadThreadsInline(true);
+      else await loadThreads(true);
+    }
   }, 5000);
 }
 
