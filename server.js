@@ -5,6 +5,7 @@ const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 
 // R2 via API HTTP directe (pas de SDK — évite les problèmes SSL)
 const crypto = require('crypto');
@@ -713,6 +714,28 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/download', requi
   if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.download(p, file.name); }
   res.status(500).json({ error: 'Erreur stockage' });
 });
+
+async function addWatermark(pdfBuffer, userName) {
+  try {
+    const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const pages = pdfDoc.getPages();
+    const watermarkText = `${userName} — MasterPASS (confidentiel)`;
+    for (const page of pages) {
+      const { width } = page.getSize();
+      page.drawText(watermarkText, {
+        x: width / 2 - (watermarkText.length * 2.8),
+        y: 10, size: 8, font,
+        color: rgb(0.45, 0.45, 0.45),
+        opacity: 0.75,
+      });
+    }
+    return await pdfDoc.save();
+  } catch(e) {
+    console.error('Watermark error:', e.message);
+    return pdfBuffer;
+  }
+}
 
 app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/preview', requireAuth, async (req, res) => {
   const db = loadDB();
