@@ -724,10 +724,10 @@ async function addWatermark(pdfBuffer, userName) {
     for (const page of pages) {
       const { width } = page.getSize();
       page.drawText(watermarkText, {
-        x: width / 2 - (watermarkText.length * 2.8),
-        y: 10, size: 8, font,
-        color: rgb(0.45, 0.45, 0.45),
-        opacity: 0.75,
+        x: width / 2 - (watermarkText.length * 3.2),
+        y: 18, size: 10, font,
+        color: rgb(0.35, 0.35, 0.35),
+        opacity: 0.85,
       });
     }
     return await pdfDoc.save();
