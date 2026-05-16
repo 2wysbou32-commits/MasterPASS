@@ -744,7 +744,7 @@ async function addWatermark(pdfBuffer, userName) {
     const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const pages = pdfDoc.getPages();
-    const watermarkText = `${userName} — MasterPASS (confidentiel)`;
+    const watermarkText = `${userName} — MasterPASS`;
     for (const page of pages) {
       const { width } = page.getSize();
       page.drawText(watermarkText, {
