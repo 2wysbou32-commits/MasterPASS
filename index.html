@@ -2566,7 +2566,7 @@ async function loadDashboard() {
       $('db-stat-folders').textContent = stats.folders || 0;
       $('db-stat-files').textContent = stats.files || 0;
       $('db-stat-students').textContent = stats.students || 0;
-      const gb = ((stats.storage || 0) / 1073741824).toFixed(2);
+      const gb = ((stats.totalSize || 0) / 1073741824).toFixed(2);
       $('db-stat-storage').textContent = gb + ' Go';
       document.querySelector('#dashboard-admin-stats .dashboard-stat:last-child .dashboard-stat-label').textContent = 'Stockage R2';
     } catch(e) {}
