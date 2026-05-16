@@ -5326,7 +5326,7 @@ function startDiscussionRefresh() {
       if (isInline) await loadThreadsInline(true);
       else await loadThreads(true);
     }
-  }, 5000);
+  }, 30000);
 }
 
 function stopDiscussionRefresh() {
@@ -5488,6 +5488,9 @@ async function loadThreadReplies(silent) {
       return;
     }
     var wasAtBottom = container.scrollHeight - container.clientHeight - container.scrollTop < 80;
+    // Ne pas reconstruire le HTML si un audio est en cours de lecture
+    var audioPlaying = Array.from(container.querySelectorAll('audio')).some(function(a) { return !a.paused; });
+    if (audioPlaying) return;
     container.innerHTML = data.replies.map(function(r) {
       var isAdmin = r.userRole === 'admin';
       var isOwn = r.userId === currentUser?.id;
