@@ -776,18 +776,24 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/preview', requir
     const userName = _reqUser1?.login || _reqUser1?.name || 'Inconnu';
     try {
       let pdfBuffer;
+      console.log('[WATERMARK] r2Enabled:', r2Enabled, '| r2Key:', file.r2Key);
       if (r2Enabled && file.r2Key) {
         pdfBuffer = await fetchFromR2ToBuffer(file.r2Key);
+        console.log('[WATERMARK] pdfBuffer size:', pdfBuffer ? pdfBuffer.length : 'NULL');
       } else if (file.filename) {
         pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename));
+        console.log('[WATERMARK] local file size:', pdfBuffer.length);
       }
       if (pdfBuffer) {
         const watermarked = await addWatermark(pdfBuffer, userName);
+        console.log('[WATERMARK] watermarked size:', watermarked ? watermarked.length : 'NULL');
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline');
         return res.send(Buffer.from(watermarked));
+      } else {
+        console.log('[WATERMARK] pdfBuffer est null, pas de watermark');
       }
-    } catch(e) { console.error('Watermark error subfolder:', e.message); }
+    } catch(e) { console.error('[WATERMARK] Erreur:', e.message, e.stack); }
   }
   if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, true, req); return; }
   if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.sendFile(p); }
