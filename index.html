@@ -2503,7 +2503,7 @@ function setupApp(){
   $('nav-settings').style.display=isAnyAdmin?'none':'flex';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-files').classList.add('active');
-  $('admin-stats').style.display=isAdmin?'grid':'none';
+  $('admin-stats').style.display='none';
   $('student-banner').style.display=isAnyAdmin?'none':'flex';
   $('upload-zone-container').style.display=isAnyAdmin?'block':'none';
   $('storage-indicator').style.display=isAdmin?'block':'none';
