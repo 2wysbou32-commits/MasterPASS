@@ -4995,19 +4995,24 @@ function redrawWaveformProgress(canvas, pct) {
   if (!ctx2d) return;
   var W = canvas.width || canvas.offsetWidth || 120;
   var H = canvas.height || 28;
+  canvas.width = W; canvas.height = H;
   var isMine = canvas.getAttribute('data-mine') === 'true';
-  var playedColor = isMine ? 'rgba(255,255,255,0.95)' : '#006064';
-  var unplayedColor = isMine ? 'rgba(255,255,255,0.35)' : 'rgba(0,96,100,0.3)';
-  var seed = canvas.id ? canvas.id.charCodeAt(canvas.id.length-1) : 42;
+  var playedColor = isMine ? 'rgba(255,255,255,1)' : 'var(--teal-dark)';
+  var unplayedColor = isMine ? 'rgba(255,255,255,0.3)' : 'rgba(0,151,167,0.25)';
+  // Utilise l'id pour générer une forme d'onde cohérente (même seed = même forme)
+  var seed = 0;
+  var idStr = canvas.id || '';
+  for (var k = 0; k < idStr.length; k++) seed += idStr.charCodeAt(k) * (k + 1);
   var bars = Math.floor(W / 4);
   ctx2d.clearRect(0, 0, W, H);
   for (var i = 0; i < bars; i++) {
-    var rnd = Math.abs(Math.sin((i + seed) * 2.3) * 0.7 + Math.sin((i + seed) * 1.7) * 0.3);
-    var h = Math.max(3, Math.round(rnd * 20 + 4));
+    var rnd = Math.abs(Math.sin((i + seed) * 2.3 + 1) * 0.5 + Math.sin((i * 0.7 + seed) * 1.3) * 0.3 + Math.sin((i * 0.3 + seed) * 3.1) * 0.2);
+    var h = Math.max(3, Math.round(rnd * (H * 0.75) + H * 0.15));
     var y = (H - h) / 2;
-    ctx2d.fillStyle = (i / bars) < pct ? playedColor : unplayedColor;
+    var played = (i / bars) < pct;
+    ctx2d.fillStyle = played ? playedColor : unplayedColor;
     ctx2d.beginPath();
-    ctx2d.rect(i * 4, y, 3, h);
+    ctx2d.roundRect ? ctx2d.roundRect(i * 4, y, 3, h, 1.5) : ctx2d.rect(i * 4, y, 3, h);
     ctx2d.fill();
   }
 }
