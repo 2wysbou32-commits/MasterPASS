@@ -4738,7 +4738,11 @@ async function loadThreadRepliesInline() {
       return row;
     }).join('');
     container.scrollTop = container.scrollHeight;
-    setTimeout(function() { drawAllWaveformsInContainer(container); }, 200);
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        drawAllWaveformsInContainer(container);
+      });
+    });
     data.replies.forEach(function(r) {
       _commentDataMap[r.id] = { id: r.id, userId: r.userId, userName: r.userName, message: r.message||'', audio: r.audio||null, isOwn: r.userId === currentUser?.id, canDelete: (currentUser?.role==='admin') || r.userId === currentUser?.id };
     });
@@ -5546,9 +5550,16 @@ async function loadThreadReplies(silent) {
       var bar=document.getElementById('abar-'+r.id);
       var timeEl=document.getElementById('atime-'+r.id);
       if(!audio||!btn)return;
-      btn.onclick=function(){if(audio.paused){audio.play();btn.innerHTML='⏸';}else{audio.pause();btn.innerHTML='▶';}};
-      audio.ontimeupdate=function(){if(audio.duration){bar.style.width=(audio.currentTime/audio.duration*100).toFixed(1)+'%';var s=Math.floor(audio.currentTime);timeEl.textContent=Math.floor(s/60)+':'+(s%60<10?'0':'')+s%60;}};
-      audio.onended=function(){btn.innerHTML='▶';bar.style.width='0%';timeEl.textContent='0:00';};
+      (function(audio, btn, bar, timeEl) {
+        btn.onclick = function() {
+          if (audio.paused) { audio.play().catch(function(){}); btn.innerHTML = '⏸'; }
+          else { audio.pause(); btn.innerHTML = '▶'; }
+        };
+        audio.ontimeupdate = function() {
+          if (audio.duration && bar) { bar.style.width = (audio.currentTime / audio.duration * 100).toFixed(1) + '%'; var s = Math.floor(audio.currentTime); timeEl.textContent = Math.floor(s/60) + ':' + (s%60<10?'0':'') + s%60; }
+        };
+        audio.onended = function() { btn.innerHTML = '▶'; if (bar) bar.style.width = '0%'; timeEl.textContent = '0:00'; };
+      })(audio, btn, bar, timeEl);
     });
     if (!silent || wasAtBottom) container.scrollTop = container.scrollHeight;
     // Init long press context menu for replies
