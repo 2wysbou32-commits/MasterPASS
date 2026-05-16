@@ -3834,7 +3834,12 @@ async function submitAnnouncement() {
     toast('Annonce publiée ✅');
   } catch(e) { toast(e.message, 'error'); }
 }
-
+async function reactAnnouncement(id, emoji) {
+  try {
+    const res = await api('POST', '/announcements/' + id + '/react', { emoji });
+    await loadAnnouncements();
+  } catch(e) { toast(e.message, 'error'); }
+}
 async function deleteAnnouncement(id) {
   if (!confirm('Supprimer cette annonce ?')) return;
   try {
