@@ -2721,7 +2721,7 @@ async function doSearch(query) {
         });
       });
     });
-    vvar list = document.getElementById('search-results-list');
+    var list = document.getElementById('search-results-list');
     if (!list) return;
     if (!results.length) {
       list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Aucun résultat pour "' + query + '"</div>';
