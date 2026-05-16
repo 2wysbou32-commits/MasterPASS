@@ -2845,20 +2845,43 @@ function switchCodesTab(tab) {
 
 function toggleDarkMode() {
   var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
-  localStorage.setItem('mp_dark_mode', isDark ? '0' : '1');
+  var newDark = !isDark;
+  document.documentElement.setAttribute('data-theme', newDark ? 'dark' : '');
+  localStorage.setItem('mp_dark_mode', newDark ? '1' : '0');
   var icon = document.getElementById('dark-mode-icon');
   var label = document.getElementById('dark-mode-label');
-  if (icon) icon.textContent = isDark ? '🌙' : '☀️';
-  if (label) label.textContent = isDark ? 'Mode sombre' : 'Mode clair';
+  if (icon) icon.textContent = newDark ? '☀️' : '🌙';
+  if (label) label.textContent = newDark ? 'Mode clair' : 'Mode sombre';
 }
 
-// Apply saved dark mode preference
+// Apply saved dark mode preference (auto si pas de choix manuel)
 (function() {
-  if (localStorage.getItem('mp_dark_mode') === '1') {
+  var saved = localStorage.getItem('mp_dark_mode');
+  if (saved === '1') {
     document.documentElement.setAttribute('data-theme', 'dark');
+  } else if (saved === null) {
+    // Pas de choix manuel → mode auto selon l'heure
+    var h = new Date().getHours();
+    if (h >= 20 || h < 7) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
   }
 })();
+
+// Vérifie toutes les minutes si on doit changer automatiquement
+setInterval(function() {
+  if (localStorage.getItem('mp_dark_mode') !== null) return; // L'utilisateur a choisi manuellement
+  var h = new Date().getHours();
+  var shouldBeDark = h >= 20 || h < 7;
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (shouldBeDark !== isDark) {
+    document.documentElement.setAttribute('data-theme', shouldBeDark ? 'dark' : '');
+    var icon = document.getElementById('dark-mode-icon');
+    var label = document.getElementById('dark-mode-label');
+    if (icon) icon.textContent = shouldBeDark ? '☀️' : '🌙';
+    if (label) label.textContent = shouldBeDark ? 'Mode clair' : 'Mode sombre';
+  }
+}, 60000);
 
 function copyInviteCode(code, btn) {
   var msg = "Salut ! Tu es invité(e) à rejoindre MasterPASS, la plateforme de cours créée spécialement pour vous aider en PASS.\n\nVoici ton code d'invitation personnel (valable une seule fois) :\n\n" + code + "\n\nRends-toi sur https://masterpass-production.up.railway.app\nClique sur \"Créer mon compte avec un code d'invitation\" et entre ce code.\n\nC'est parti ! 🚀";
