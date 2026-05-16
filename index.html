@@ -5017,10 +5017,15 @@ async function deleteReplyInline(replyId) {
   } catch(e) { toast(e.message, 'error'); }
 }
 
+let _sendingReply2 = false;
 async function postReply2() {
+  if (_sendingReply2) return;
+  _sendingReply2 = true;
   const input = document.getElementById('reply-input2');
   const message = input.value.trim();
-  if (!message) return;
+  if (!message) { _sendingReply2 = false; return; }
+  const btn = document.querySelector('button[onclick="postReply2()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const body = { message };
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
@@ -5029,8 +5034,8 @@ async function postReply2() {
     cancelReply();
     await loadThreadRepliesInline();
   } catch(e) { toast(e.message, 'error'); }
+  finally { _sendingReply2 = false; if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
 }
-
 async function toggleResolve2() {
   try {
     await api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/resolve');
@@ -5523,10 +5528,13 @@ async function loadThreadReplies(silent) {
   }
 }
 
+let _sendingReply = false;
 async function postReply() {
+  if (_sendingReply) return;
+  _sendingReply = true;
   const input = document.getElementById('reply-input');
   const message = input.value.trim();
-  if (!message && !_discussionFileId) return;
+  if (!message || !_discussionFileId) { _sendingReply = false; return; }
   const btn = document.querySelector('#thread-detail-view button[onclick="postReply()"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
@@ -5537,7 +5545,7 @@ async function postReply() {
     cancelReply();
     await loadThreadReplies(false);
   } catch(e) { toast(e.message, 'error'); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
+  finally { _sendingReply = false; if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
 }
 
 async function deleteReply(replyId) {
