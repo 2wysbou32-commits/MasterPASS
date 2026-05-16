@@ -771,7 +771,7 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/preview', requir
   file.views = (file.views || 0) + 1;
   saveDB(db);
   const _reqUser1 = db.users.find(u => u.id === req.session.userId);
-  const _isPDF1 = file.name && file.name.toLowerCase().endsWith('.pdf');
+  const _isPDF1 = (file.name && file.name.toLowerCase().endsWith('.pdf')) || file.type === 'pdf';
   console.log('[WM-SUB] user:', _reqUser1?.login, '| role:', _reqUser1?.role, '| isPDF:', _isPDF1, '| file:', file.name);
   if (_isPDF1 && _reqUser1?.role !== 'admin') {
     const userName = _reqUser1?.login || _reqUser1?.name || 'Inconnu';
@@ -935,7 +935,7 @@ app.get('/api/folders/:folderId/files/:fileId/preview', requireAuth, async (req,
   file.views = (file.views || 0) + 1;
   saveDB(db);
   const _reqUser2 = db.users.find(u => u.id === req.session.userId);
-  const _isPDF2 = file.name && file.name.toLowerCase().endsWith('.pdf');
+  const _isPDF2 = (file.name && file.name.toLowerCase().endsWith('.pdf')) || file.type === 'pdf';
   console.log('[WM-ROOT] user:', _reqUser2?.login, '| role:', _reqUser2?.role, '| isPDF:', _isPDF2, '| file:', file.name);
   if (_isPDF2 && _reqUser2?.role !== 'admin') {
     const userName = _reqUser2?.login || _reqUser2?.name || 'Inconnu';
