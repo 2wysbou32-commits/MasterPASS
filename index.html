@@ -3181,7 +3181,7 @@ async function uploadSubfolderFiles(files, subId, parentId) {
     fd.append('file', files[i]);
     try {
       await fetch('/api/folders/' + parentId + '/subfolders/' + subId + '/files', {
-        method: 'POST', body: fd
+        method: 'POST', body: fd, credentials: 'include'
       });
     } catch(e) { toast('Erreur: ' + e.message, 'error'); }
   }
