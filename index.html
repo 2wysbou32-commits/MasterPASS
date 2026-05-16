@@ -2660,6 +2660,8 @@ function startSessionPolling() {
 }
 
 function showPanel(name){
+  $('dashboard-view').style.display = 'none';
+  $('nav-dashboard').classList.remove('active');
   if((name==='users'||name==='codes')&&currentUser?.role!=='admin')return;
   // Always hide discussion when switching panels
   const dp = document.getElementById('discussion-panel');
