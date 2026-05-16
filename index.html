@@ -2504,7 +2504,7 @@ function setupApp(){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-dashboard').classList.add('active');
   $('admin-stats').style.display='none';
-  $('student-banner').style.display=isAnyAdmin?'none':'flex';
+  $('student-banner').style.display='none';
   $('upload-zone-container').style.display=isAnyAdmin?'block':'none';
   $('storage-indicator').style.display=isAdmin?'block':'none';
   if(!isAnyAdmin)$('student-banner-title').textContent=`Bienvenue, ${currentUser.name.split(' ')[0]} !`;
@@ -3333,7 +3333,8 @@ function backToRoot(){
   if(topbarEl) topbarEl.style.display = 'flex';
   // Réafficher le banner étudiant et les stats à la racine
   const isAnyAdmin = currentUser?.role==='admin'||currentUser?.role==='subadmin';
-  if($('student-banner') && !isAnyAdmin) $('student-banner').style.display='flex';
+  const _isAnyAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
+  if($('student-banner') && !_isAnyAdmin) $('student-banner').style.display='flex';
   if($('admin-stats')) $('admin-stats').style.display='none';
   const ft = document.getElementById('folder-page-title');
   if(ft) ft.style.display='none';
