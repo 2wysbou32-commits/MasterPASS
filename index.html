@@ -1792,7 +1792,7 @@ input[type="file"]{display:none;}
                 </div>
                 <button onclick="cancelReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px">×</button>
               </div>
-              <textarea id="reply-input2" placeholder="Ajoute une réponse..." style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+              <textarea id="reply-input2" placeholder="Ajoute une réponse..." style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();postReply2();}"></textarea>
               <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px">
                 <div style="display:flex;align-items:center;gap:8px">
                   <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
@@ -1891,7 +1891,7 @@ input[type="file"]{display:none;}
       <textarea id="reply-input" placeholder="Ajoute une réponse..."
         style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box"
         oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
-        onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))postReply()"></textarea>
+        onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();postReply();}"></textarea>
       <div id="voice-preview-main" style="display:none;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap">
         <button onclick="playVoicePreview('main')" id="preview-play-btn-main" style="width:32px;height:32px;border-radius:50%;background:var(--teal-dark);color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>
         <canvas id="preview-waveform-main" height="32" style="flex:1;max-width:160px;border-radius:4px"></canvas>
