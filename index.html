@@ -3482,6 +3482,18 @@ function openPreviewById(btn) {
   }
 }
 
+function openSubPreviewById(btn) {
+  const fileId = parseInt(btn.getAttribute('data-fileid'));
+  const type = btn.getAttribute('data-type');
+  const basePath = btn.getAttribute('data-basepath');
+  const file = currentFiles.find(f => f.id === fileId);
+  const filename = file ? file.name : 'Fichier';
+  const previewUrl = basePath + '/preview';
+  const downloadUrl = basePath + '/download';
+  const streamUrl = basePath + '/stream';
+  openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl);
+}
+  
 function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl) {
   var overlay = document.getElementById('preview-overlay');
   var body = document.getElementById('preview-body');
