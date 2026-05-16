@@ -714,7 +714,31 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/download', requi
   if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.download(p, file.name); }
   res.status(500).json({ error: 'Erreur stockage' });
 });
-
+async function fetchFromR2ToBuffer(key) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const date = new Date();
+  const amzDate = date.toISOString().replace(/[:-]|\.\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const bodyHash = hashSHA256('');
+  const pathNew    = `/${R2_BUCKET_NAME}/${encodeR2Key(key)}`;
+  const pathLegacy = `/${R2_BUCKET_NAME}/${encodeR2KeyLegacy(key)}`;
+  async function tryFetch(canonicalPath) {
+    const headers = buildR2GetHeaders(canonicalPath, host, region, amzDate, dateStamp, bodyHash);
+    const r2res = await r2GetRequest(host, canonicalPath, headers);
+    if (r2res.statusCode === 404) { r2res.resume(); return null; }
+    if (r2res.statusCode >= 400) { r2res.resume(); throw new Error(`R2 fetch error: ${r2res.statusCode}`); }
+    return new Promise((resolve, reject) => {
+      const chunks = [];
+      r2res.on('data', c => chunks.push(c));
+      r2res.on('end', () => resolve(Buffer.concat(chunks)));
+      r2res.on('error', reject);
+    });
+  }
+  let buf = await tryFetch(pathNew);
+  if (!buf) buf = await tryFetch(pathLegacy);
+  return buf;
+}
 async function addWatermark(pdfBuffer, userName) {
   try {
     const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
