@@ -4704,7 +4704,7 @@ async function loadThreadRepliesInline() {
         var aId = 'ia-' + r.id; var bId = 'ib-' + r.id; var barId = 'ic-' + r.id; var tId = 'it-' + r.id;
         msgHtml = '<audio id="' + aId + '" src="' + r.audio + '" style="display:none"></audio>' +
           '<div style="display:flex;align-items:center;gap:10px;padding:4px 0;min-width:160px">' +
-          '<button id="' + bId + '" onclick="toggleInlineAudio(\'' + aId + '\',\'' + bId + '\',\'' + barId + '\',\'' + tId + '\',event" style="width:32px;height:32px;border-radius:50%;background:' + (isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)') + ';color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>' +
+          '<button id="' + bId + '" onclick="toggleInlineAudio(\'' + aId + '\',\'' + bId + '\',\'' + barId + '\',\'' + tId + '\',event)" style="width:32px;height:32px;border-radius:50%;background:' + (isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)') + ';color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>' +
           '<canvas id="' + barId + '" data-mine="' + isMine + '" height="28" style="width:120px;height:28px;border-radius:3px;display:block"></canvas>' +
           '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>';
       } else {
@@ -4738,7 +4738,7 @@ async function loadThreadRepliesInline() {
       return row;
     }).join('');
     container.scrollTop = container.scrollHeight;
-    setTimeout(function() { drawAllWaveformsInContainer(container); }, 50);
+    setTimeout(function() { drawAllWaveformsInContainer(container); }, 200);
     data.replies.forEach(function(r) {
       _commentDataMap[r.id] = { id: r.id, userId: r.userId, userName: r.userName, message: r.message||'', audio: r.audio||null, isOwn: r.userId === currentUser?.id, canDelete: (currentUser?.role==='admin') || r.userId === currentUser?.id };
     });
