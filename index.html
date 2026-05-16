@@ -3260,8 +3260,7 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer</button>` : '';
 
   const fileIsRead = isFileRead(f.id, folderId, subId);
-  return `<div class="file-row${fileIsRead ? ' is-read' : ''}" data-file-id="${f.id}" data-subfolder="${subId||''}" ${canPreview ? `onclick="handleFileCardClick(event,this,'${previewFn}')" style="cursor:pointer"` : `onclick="handleFileCardClick(event,this,null)"`}>
-    <div class="file-left" style="display:flex;align-items:center;gap:10px">
+  return `<div class="file-row${fileIsRead ? ' is-read' : ''}" data-file-id="${f.id}" data-subfolder="${subId||''}" ${canPreview ? `onclick="if(!_fileSelectionMode){${previewFn}}" style="cursor:pointer"` : ''}>    <div class="file-left" style="display:flex;align-items:center;gap:10px">
       <input type="checkbox" class="file-select-cb" data-id="${f.id}" onclick="event.stopPropagation()" onchange="onFileCheckboxChange()" style="display:none;width:18px;height:18px;cursor:pointer;accent-color:var(--teal);flex-shrink:0">
       ${getFileTypeBadge(f.type)}
       <div class="file-info">
