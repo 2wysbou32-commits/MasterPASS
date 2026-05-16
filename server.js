@@ -569,19 +569,13 @@ app.delete('/api/users/:id', requireSuperAdmin, (req, res) => {
   const db = loadDB();
   const user = db.users.find(u => u.id === id);
   db.users = db.users.filter(u => u.id !== id);
-  // Libérer aussi le code d'invitation pour permettre une nouvelle inscription avec le même email
+  // Supprimer aussi le code d'invitation lié à ce compte
   if (user && db.inviteCodes) {
-    db.inviteCodes.forEach(c => {
-      if (c.usedBy === user.login || c.usedBy === user.id) {
-        c.usedAt = null;
-        c.usedBy = null;
-      }
-    });
+    db.inviteCodes = db.inviteCodes.filter(c => c.usedBy !== user.login && c.usedBy !== user.id);
   }
   saveDB(db);
   res.json({ ok: true });
-});
-// ── FOLDERS ───────────────────────────────────────────────────────────────────
+});FOLDERS ───────────────────────────────────────────────────────────────────
 app.get('/api/folders', requireAuth, (req, res) => {
   const db = loadDB();
   res.json(db.folders.map(f => ({
