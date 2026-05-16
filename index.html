@@ -3463,7 +3463,73 @@ async function uploadFiles(files){
   if(uploaded>0)toast(`${uploaded} fichier${uploaded>1?'s':''} ajouté${uploaded>1?'s':''}`);
   setTimeout(()=>{prog.style.display='none';bar.style.width='0%';},600);
 }
+// ── Sélection multiple fichiers ───────────────────────────────────────────────
+let _fileSelectionMode = false;
 
+function handleFileCardClick(e, card, previewFn) {
+  if (_fileSelectionMode) {
+    e.stopPropagation();
+    const cb = card.querySelector('.file-select-cb');
+    if (cb) { cb.checked = !cb.checked; onFileCheckboxChange(); }
+    return;
+  }
+  if (previewFn) {
+    const btn = card;
+    eval(previewFn.replace('this', JSON.stringify(btn)));
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('long-press-file', function(e) {
+    enterFileSelectionMode(e.detail.id);
+  });
+});
+
+function enterFileSelectionMode(firstId) {
+  _fileSelectionMode = true;
+  document.querySelectorAll('.file-select-cb').forEach(cb => cb.style.display = 'inline-block');
+  if (firstId) {
+    const cb = document.querySelector(`.file-select-cb[data-id="${firstId}"]`);
+    if (cb) cb.checked = true;
+  }
+  document.getElementById('files-delete-selected-btn').style.display = 'block';
+  document.getElementById('files-cancel-selection-btn').style.display = 'block';
+  onFileCheckboxChange();
+}
+
+function exitFileSelectionMode() {
+  _fileSelectionMode = false;
+  document.querySelectorAll('.file-select-cb').forEach(cb => { cb.style.display = 'none'; cb.checked = false; });
+  document.getElementById('files-delete-selected-btn').style.display = 'none';
+  document.getElementById('files-cancel-selection-btn').style.display = 'none';
+}
+
+function onFileCheckboxChange() {
+  const checked = document.querySelectorAll('.file-select-cb:checked');
+  document.getElementById('files-delete-selected-btn').style.display = checked.length > 0 ? 'block' : 'none';
+}
+
+async function deleteSelectedFiles() {
+  const checked = document.querySelectorAll('.file-select-cb:checked');
+  if (!checked.length) return;
+  if (!confirm(`Supprimer ${checked.length} fichier(s) ?`)) return;
+  for (const cb of checked) {
+    const id = cb.getAttribute('data-id');
+    const card = cb.closest('.file-row');
+    const subId = card ? card.getAttribute('data-subfolder') : '';
+    try {
+      if (subId) {
+        await api('DELETE', `/folders/${currentFolder.id}/subfolders/${subId}/files/${id}`);
+      } else {
+        await api('DELETE', `/folders/${currentFolder.id}/files/${id}`);
+      }
+    } catch(e) { console.error(e); }
+  }
+  exitFileSelectionMode();
+  await loadFiles();
+  loadStats();
+  toast('Fichiers supprimés');
+}
 async function deleteFile(id){
   if(!confirm('Supprimer ce fichier ?'))return;
   try{await api('DELETE',`/folders/${currentFolder.id}/files/${id}`);await loadFiles();loadStats();toast('Fichier supprimé');}
