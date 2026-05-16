@@ -3262,7 +3262,7 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
     <div class="file-left">
       ${getFileTypeBadge(f.type)}
       <div class="file-info">
-        <div class="file-name" title="${f.name}">${f.name}${fileIsRead ? '<span class="file-read-badge">✓ Lu</span>' : ''}</div>
+        <div class="file-name" title="${f.name}">${f.name}${fileIsRead ? '<span class="file-read-badge">✓ Lu</span>' : ''}${(function(){ const added = f.addedAt ? new Date(f.addedAt) : null; const isNew = added && (Date.now() - added.getTime()) < 7 * 24 * 60 * 60 * 1000; return isNew ? '<span style="margin-left:6px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border-radius:6px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:0.5px;vertical-align:middle">NOUVEAU</span>' : ''; })()}</div>
         <div class="file-meta-row">
           ${isAdmin && f.views ? `<span class="file-meta-pill" style="color:var(--teal-dark);font-weight:600">👁 ${f.views} vue${f.views > 1 ? 's' : ''}</span><span class="file-meta-pill" style="color:var(--teal-light)">·</span>` : ''}
           <span class="file-meta-pill"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.07-.33.18-.65.18-1a2 2 0 0 0-4 0c0 .35.11.67.18 1H4v2h.18l2 9.91C6.37 18.79 7.2 19.5 8 19.5c.53 0 1-.39 1-.89V19h6v.61c0 .5.47.89 1 .89.8 0 1.63-.71 1.82-1.59L19.82 8H20V6zM12 2a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1z"/></svg>${formatSize(f.size)}</span>
