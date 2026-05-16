@@ -2049,7 +2049,12 @@ app.get('/api/stats', requireSuperAdmin, (req, res) => {
     folders: db.folders.length,
     files: db.folders.reduce((s,f) => s+(f.files||[]).length, 0),
     students: db.users.filter(u => u.role==='student').length,
-    totalSize: db.folders.reduce((s,f) => s+(f.files||[]).reduce((ss,fi) => ss+fi.size, 0), 0),
+    totalSize: db.folders.reduce((s,f) => {
+      const rootSize = (f.files||[]).reduce((ss,fi) => ss+fi.size, 0);
+      const subSize = (f.subfolders||[]).reduce((ss,sub) => ss+(sub.files||[]).reduce((sss,fi) => sss+fi.size, 0), 0);
+      return s + rootSize + subSize;
+    }, 0),
+    files: db.folders.reduce((s,f) => s+(f.files||[]).length+(f.subfolders||[]).reduce((ss,sub) => ss+(sub.files||[]).length, 0), 0),
     storageMode: r2Enabled ? 'Cloudflare R2' : 'Local',
   });
 });
