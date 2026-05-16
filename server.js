@@ -566,10 +566,21 @@ app.post('/api/users', requireSuperAdmin, (req, res) => {
 app.delete('/api/users/:id', requireSuperAdmin, (req, res) => {
   const id = parseInt(req.params.id);
   if (id === req.session.userId) return res.status(400).json({ error: 'Impossible de supprimer votre propre compte' });
-  const db = loadDB(); db.users = db.users.filter(u => u.id !== id); saveDB(db);
+  const db = loadDB();
+  const user = db.users.find(u => u.id === id);
+  db.users = db.users.filter(u => u.id !== id);
+  // Libérer aussi le code d'invitation pour permettre une nouvelle inscription avec le même email
+  if (user && db.inviteCodes) {
+    db.inviteCodes.forEach(c => {
+      if (c.usedBy === user.login || c.usedBy === user.id) {
+        c.usedAt = null;
+        c.usedBy = null;
+      }
+    });
+  }
+  saveDB(db);
   res.json({ ok: true });
 });
-
 // ── FOLDERS ───────────────────────────────────────────────────────────────────
 app.get('/api/folders', requireAuth, (req, res) => {
   const db = loadDB();
