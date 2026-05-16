@@ -5484,6 +5484,7 @@ async function loadThreadReplies(silent) {
         (isMine?'':'<div style="width:32px;height:32px;border-radius:50%;background:'+avatarBg+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">'+avatarHtml+'</div>')+
         '<div>'+(isAdmin&&!isMine?'<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;padding-left:4px"><span style="font-size:10px;font-weight:700;color:var(--teal-dark);background:rgba(0,151,167,0.1);border:1px solid var(--teal);border-radius:6px;padding:2px 7px">👨‍🏫 Réponse officielle</span></div>':'')+
         '<div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+';border-left:'+(isAdmin&&!isMine?'3px solid var(--teal-dark)':bubbleBorder)+'">'+
+        msgHtml+
         (isMine?'<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">'+date+'</div>':'')+
         // Reactions
         (function(){
