@@ -710,6 +710,21 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/download', requi
     if (file.type === 'video') return res.status(403).json({ error: 'Les vidéos ne peuvent pas être téléchargées' });
     if (file.downloadable === false) return res.status(403).json({ error: 'Téléchargement non autorisé' });
   }
+  const isPDF1 = (file.name && file.name.toLowerCase().endsWith('.pdf')) || file.type === 'pdf';
+  if (isPDF1 && user?.role !== 'admin') {
+    try {
+      let pdfBuffer;
+      if (r2Enabled && file.r2Key) { pdfBuffer = await fetchFromR2ToBuffer(file.r2Key); }
+      else if (file.filename) { pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename)); }
+      if (pdfBuffer) {
+        const userName = user?.login || user?.name || 'Inconnu';
+        const watermarked = await addWatermark(pdfBuffer, userName);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${file.name}.pdf"`);
+        return res.send(Buffer.from(watermarked));
+      }
+    } catch(e) { console.error('Watermark download subfolder:', e.message); }
+  }
   if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, false, req); return; }
   if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) return res.download(p, file.name); }
   res.status(500).json({ error: 'Erreur stockage' });
@@ -977,6 +992,21 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
     if (file.downloadable === false) return res.status(403).json({ error: "Téléchargement non autorisé par l'administrateur" });
   }
 
+  const isPDF2 = (file.name && file.name.toLowerCase().endsWith('.pdf')) || file.type === 'pdf';
+  if (isPDF2 && requestingUser?.role !== 'admin') {
+    try {
+      let pdfBuffer;
+      if (r2Enabled && file.r2Key) { pdfBuffer = await fetchFromR2ToBuffer(file.r2Key); }
+      else if (file.filename) { pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename)); }
+      if (pdfBuffer) {
+        const userName = requestingUser?.login || requestingUser?.name || 'Inconnu';
+        const watermarked = await addWatermark(pdfBuffer, userName);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${file.name}.pdf"`);
+        return res.send(Buffer.from(watermarked));
+      }
+    } catch(e) { console.error('Watermark download folder:', e.message); }
+  }
   if (r2Enabled && file.r2Key) {
     await proxyFileFromR2(file.r2Key, res, false, req);
     return;
