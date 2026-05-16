@@ -1911,6 +1911,22 @@ app.post('/api/announcements', requireSuperAdmin, (req, res) => {
 });
 
 // Lister toutes les annonces
+app.post('/api/announcements/:id/react', requireAuth, (req, res) => {
+  const db = loadDB();
+  const ann = (db.announcements || []).find(a => a.id === parseInt(req.params.id));
+  if (!ann) return res.status(404).json({ error: 'Annonce introuvable' });
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji requis' });
+  const uid = req.session.userId;
+  if (!ann.reactions) ann.reactions = {};
+  if (!ann.reactions[emoji]) ann.reactions[emoji] = [];
+  const idx = ann.reactions[emoji].indexOf(uid);
+  if (idx !== -1) ann.reactions[emoji].splice(idx, 1);
+  else ann.reactions[emoji].push(uid);
+  if (!ann.reactions[emoji].length) delete ann.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: ann.reactions });
+});
 app.get('/api/announcements', requireAuth, (req, res) => {
   const db = loadDB();
   res.json(db.announcements || []);
