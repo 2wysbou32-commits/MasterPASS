@@ -3490,10 +3490,7 @@ function handleFileCardClick(e, card, previewFn) {
     if (cb) { cb.checked = !cb.checked; onFileCheckboxChange(); }
     return;
   }
-  if (previewFn) {
-    const btn = card;
-    eval(previewFn.replace('this', JSON.stringify(btn)));
-  }
+  // Ne rien faire ici, le onclick original gère le preview
 }
 
 document.addEventListener('DOMContentLoaded', function() {
