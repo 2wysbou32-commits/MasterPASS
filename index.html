@@ -1406,7 +1406,10 @@ input[type="file"]{display:none;}
             <div style="padding:24px 24px 0">
               <h2 id="dashboard-title" style="font-size:22px;font-weight:800;color:var(--text);margin:0 0 4px">Bonjour 👋</h2>
               <p id="dashboard-sub" style="font-size:14px;color:var(--text2);margin:0">Voici un résumé de votre espace</p>
-              <p id="dashboard-motivation" style="display:none;font-size:14px;font-weight:600;color:white;margin:12px 0 0;background:linear-gradient(135deg,var(--teal),var(--teal-dark));padding:12px 18px;border-radius:12px;box-shadow:0 4px 12px rgba(0,151,167,0.3)"></p>
+              <div id="dashboard-motivation" style="display:none;margin:14px 0 0;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:16px 20px;text-align:center">
+                <div id="dashboard-motivation-text" style="font-size:14px;font-weight:600;color:var(--text);line-height:1.6"></div>
+                <div id="dashboard-motivation-author" style="font-size:12px;color:var(--teal-dark);font-weight:700;margin-top:6px"></div>
+              </div>
             </div>
             <!-- Stats admin -->
             <div id="dashboard-admin-stats" style="display:none;grid-template-columns:repeat(4,1fr);gap:16px;padding:20px 24px" class="dashboard-grid">
@@ -2559,44 +2562,47 @@ async function loadDashboard() {
   $('dashboard-sub').textContent = isAdmin ? 'Vue d\'ensemble de votre plateforme' : 'Voici ce qui se passe sur MasterPASS';
   if (!isAdmin) {
     const _motivations = [
-      "Les concours, c'est un marathon, pas un sprint. 💪",
-      "Chaque heure de travail aujourd'hui, c'est un pas de plus vers ton objectif. 🎯",
-      "Tu n'as pas besoin d'être parfait(e), juste constant(e). 📚",
-      "La réussite appartient à ceux qui ne lâchent pas. 🔥",
-      "Un jour à la fois, une leçon à la fois. 🌱",
-      "Les grands résultats viennent des petits efforts répétés. ⭐",
-      "Ce que tu apprends aujourd'hui, tu t'en souviendras toute ta vie. 🧠",
-      "Le PASS est dur, mais toi t'es plus dur(e). 💊",
-      "Chaque QCM raté est une leçon pour le suivant. 📝",
-      "Tes efforts d'aujourd'hui seront tes résultats de demain. ⚕️",
-      "Les meilleurs médecins ont tous commencé par une première année difficile. 🩺",
-      "Tu étudies pour sauver des vies. Ça vaut le coup. 🫀",
-      "Chaque cours maîtrisé te rapproche de la blouse blanche. 🏥",
-      "Les futurs médecins se construisent aujourd'hui. 💉",
-      "Même les jours difficiles comptent. Continue. 🌿",
-      "Tu es plus avancé(e) qu'hier. C'est tout ce qui compte. ✨",
-      "Le doute fait partie du chemin, pas de la destination. 🧭",
-      "Fais confiance au processus. Les résultats suivront. 🎓",
-      "La fatigue d'aujourd'hui sera la fierté de demain. 💫",
-      "Même un petit pas en avant reste un pas en avant. 👣",
-      "Les difficultés d'aujourd'hui forgent le médecin de demain. 🔬",
-      "Le succès n'est pas final, l'échec n'est pas fatal. Ce qui compte c'est le courage de continuer. 🦁",
-      "Travaille en silence, laisse tes résultats parler. 🤫",
-      "Ta seule compétition, c'est la version d'hier de toi-même. 🪞",
-      "Les rêves ne fonctionnent que si tu travailles. 🌟",
-      "Sois fier(e) de chaque progrès, même minime. 🏆",
-      "La discipline d'aujourd'hui, c'est la liberté de demain. 🕊️",
-      "Croire en soi, c'est déjà la moitié du chemin. 💙",
-      "Chaque expert a d'abord été un débutant. 🌄",
-      "Rappelle-toi pourquoi tu as commencé. 💎"
+      { text: "La patience est amère, mais son fruit est doux.", author: "— Aristote" },
+      { text: "Ce n'est pas parce que les choses sont difficiles que nous n'osons pas, c'est parce que nous n'osons pas qu'elles sont difficiles.", author: "— Sénèque" },
+      { text: "Celui qui déplace une montagne commence par enlever de petites pierres.", author: "— Confucius" },
+      { text: "Il n'y a pas de vent favorable pour celui qui ne sait pas où il va.", author: "— Sénèque" },
+      { text: "Le commencement de la sagesse, c'est de s'étonner.", author: "— Aristote" },
+      { text: "Douter de tout ou tout croire sont deux solutions également commodes, qui l'une et l'autre nous dispensent de réfléchir.", author: "— Henri Poincaré" },
+      { text: "Vouloir, c'est pouvoir.", author: "— Hegel" },
+      { text: "L'homme est condamné à être libre.", author: "— Sartre" },
+      { text: "Ce qui ne me tue pas me rend plus fort.", author: "— Nietzsche" },
+      { text: "Le génie, c'est 1% d'inspiration et 99% de transpiration.", author: "— Edison" },
+      { text: "Il n'est jamais trop tard pour devenir ce qu'on aurait pu être.", author: "— George Eliot" },
+      { text: "La vie, c'est comme une bicyclette : il faut avancer pour ne pas perdre l'équilibre.", author: "— Einstein" },
+      { text: "Le moment présent a toujours été et sera toujours.", author: "— Eckhart Tolle" },
+      { text: "Les concours, c'est un marathon, pas un sprint. 💪", author: "" },
+      { text: "Chaque heure de travail aujourd'hui, c'est un pas de plus vers ton objectif. 🎯", author: "" },
+      { text: "Tu n'as pas besoin d'être parfait(e), juste constant(e). 📚", author: "" },
+      { text: "La réussite appartient à ceux qui ne lâchent pas. 🔥", author: "" },
+      { text: "Un jour à la fois, une leçon à la fois. 🌱", author: "" },
+      { text: "Les grands résultats viennent des petits efforts répétés. ⭐", author: "" },
+      { text: "Ce que tu apprends aujourd'hui, tu t'en souviendras toute ta vie. 🧠", author: "" },
+      { text: "Le PASS est dur, mais toi t'es plus dur(e). 💊", author: "" },
+      { text: "Chaque QCM raté est une leçon pour le suivant. 📝", author: "" },
+      { text: "Tu étudies pour sauver des vies. Ça vaut le coup. 🫀", author: "" },
+      { text: "Même les jours difficiles comptent. Continue. 🌿", author: "" },
+      { text: "Le doute fait partie du chemin, pas de la destination. 🧭", author: "" },
+      { text: "La fatigue d'aujourd'hui sera la fierté de demain. 💫", author: "" },
+      { text: "Ta seule compétition, c'est la version d'hier de toi-même. 🪞", author: "" },
+      { text: "La discipline d'aujourd'hui, c'est la liberté de demain. 🕊️", author: "" },
+      { text: "Rappelle-toi pourquoi tu as commencé. 💎", author: "" }
     ];
-    // Phrase unique par étudiant ET par jour (change chaque jour)
     const today = new Date();
     const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
     const seed = (currentUser.id * 7 + dayOfYear * 13) % _motivations.length;
     const motiv = document.getElementById('dashboard-motivation');
-    if (motiv) { motiv.textContent = _motivations[seed]; motiv.style.display = 'block'; }
-  }
+    const motivText = document.getElementById('dashboard-motivation-text');
+    const motivAuthor = document.getElementById('dashboard-motivation-author');
+    if (motiv && motivText) {
+      motivText.textContent = '\u201C' + _motivations[seed].text + '\u201D';
+      motivAuthor.textContent = _motivations[seed].author;
+      motiv.style.display = 'block';
+    }
   $('dashboard-admin-stats').style.display = 'none';
   $('db-topfiles-card').style.display = 'none';
 
