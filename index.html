@@ -2524,7 +2524,7 @@ function setupApp(){
   if(isAdmin)loadStats();
   // Afficher bouton nouvelle annonce pour admin principal seulement
   const annAdminActions = $('ann-admin-actions');
-  if(annAdminActions) annAdminActions.style.display = isAdmin ? 'flex' : 'none';
+  if(annAdminActions) annAdminActions.style.display = isAnyAdmin ? 'flex' : 'none';
   checkAndShowTutorial();
   updateAnnouncementsBadge();
   // Load discussions center badge
@@ -4136,7 +4136,7 @@ async function loadAnnouncements() {
       </div>`;
       return;
     }
-    const isAdmin = currentUser?.role === 'admin';
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
     const colors = { info:'ℹ️', success:'✅', urgent:'🚨', tip:'💡' };
     list.innerHTML = anns.map(a => `
       <div class="ann-card ${a.color}">
