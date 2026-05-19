@@ -720,7 +720,7 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/download', requi
     if (file.downloadable === false) return res.status(403).json({ error: 'Téléchargement non autorisé' });
   }
   const isPDF1 = (file.name && file.name.toLowerCase().endsWith('.pdf')) || file.type === 'pdf';
-  if (isPDF1 && user?.role !== 'admin') {
+  if (isPDF1 && user?.role !== 'admin' && user?.role !== 'subadmin') {
     try {
       let pdfBuffer;
       if (r2Enabled && file.r2Key) { pdfBuffer = await fetchFromR2ToBuffer(file.r2Key); }
