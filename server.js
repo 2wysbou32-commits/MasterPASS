@@ -961,7 +961,7 @@ app.get('/api/folders/:folderId/files/:fileId/preview', requireAuth, async (req,
   const _reqUser2 = db.users.find(u => u.id === req.session.userId);
   const _isPDF2 = (file.name && file.name.toLowerCase().endsWith('.pdf')) || file.type === 'pdf';
   console.log('[WM-ROOT] user:', _reqUser2?.login, '| role:', _reqUser2?.role, '| isPDF:', _isPDF2, '| file:', file.name);
-  if (_isPDF2 && _reqUser2?.role !== 'admin') {
+  if (_isPDF2 && _reqUser2?.role !== 'admin' && _reqUser2?.role !== 'subadmin') {
     const userName = _reqUser2?.login || _reqUser2?.name || 'Inconnu';
     try {
       let pdfBuffer;
