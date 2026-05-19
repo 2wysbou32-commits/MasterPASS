@@ -1002,7 +1002,7 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
   }
 
   const isPDF2 = (file.name && file.name.toLowerCase().endsWith('.pdf')) || file.type === 'pdf';
-  if (isPDF2 && requestingUser?.role !== 'admin') {
+  if (isPDF2 && requestingUser?.role !== 'admin' && requestingUser?.role !== 'subadmin') {
     try {
       let pdfBuffer;
       if (r2Enabled && file.r2Key) { pdfBuffer = await fetchFromR2ToBuffer(file.r2Key); }
