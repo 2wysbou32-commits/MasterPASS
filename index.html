@@ -2521,7 +2521,7 @@ function setupApp(){
   if($('topbar-search')) $('topbar-search').style.display='block';
   updateTopbar();updateBreadcrumb();
   loadFolders();
-  if(isAdmin)loadStats();
+  if(isAnyAdmin)loadStats();
   // Afficher bouton nouvelle annonce pour admin principal seulement
   const annAdminActions = $('ann-admin-actions');
   if(annAdminActions) annAdminActions.style.display = isAnyAdmin ? 'flex' : 'none';
