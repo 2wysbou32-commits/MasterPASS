@@ -2749,8 +2749,7 @@ function showPanel(name){
   // Masquer toute la topbar sauf sur le panel fichiers
   const topbar = document.querySelector('.topbar');
   // Topbar visible sur tous les panels sur mobile (pour le bouton hamburger)
-  if(topbar) topbar.style.display = (name==='files' || window.innerWidth <= 768) ? 'flex' : 'none';
-  updateTopbar();
+  if(topbar) topbar.style.display = (name==='files' || name==='users' || window.innerWidth <= 768) ? 'flex' : 'none';  updateTopbar();
   // Sur mobile, fermer la sidebar pour tous les panels
   if(window.innerWidth <= 768) closeSidebar();
 }
