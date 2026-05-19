@@ -2686,7 +2686,7 @@ async function loadDashboard() {
   } catch(e) {}
 }
 async function updateAdminDiscBadge() {
-  if (currentUser?.role !== 'admin') return;
+  if (currentUser?.role !== 'admin' && currentUser?.role !== 'subadmin') return;
   try {
     const { count } = await api('GET', '/comments/admin-unread');
     const badge = document.getElementById('admin-disc-badge');
