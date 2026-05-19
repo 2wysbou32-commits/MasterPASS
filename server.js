@@ -1902,7 +1902,7 @@ app.get('/api/connection-logs', requireSuperAdmin, (req, res) => {
 // ── ANNONCES ─────────────────────────────────────────────────────────────────
 
 // Créer une annonce (admin)
-app.post('/api/announcements', requireSuperAdmin, (req, res) => {
+app.post('/api/announcements', requireAdmin, (req, res) => {
   const { title, message, color } = req.body;
   if (!title?.trim() || !message?.trim()) return res.status(400).json({ error: 'Titre et message requis' });
   const db = loadDB();
@@ -1942,7 +1942,7 @@ app.get('/api/announcements', requireAuth, (req, res) => {
 });
 
 // Supprimer une annonce (admin)
-app.delete('/api/announcements/:id', requireSuperAdmin, (req, res) => {
+app.delete('/api/announcements/:id', requireAdmin, (req, res) => {
   const db = loadDB();
   if (!db.announcements) db.announcements = [];
   db.announcements = db.announcements.filter(a => a.id !== parseInt(req.params.id));
