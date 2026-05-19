@@ -2745,7 +2745,7 @@ function showPanel(name){
   if(name==='settings'){$('topbar-title').textContent='Mes réglages';loadSettingsPanel();}
   // Afficher la barre de recherche uniquement sur le panel fichiers
   const searchBar = $('topbar-search');
-  if(searchBar) searchBar.style.display = name==='files' ? 'block' : 'none';
+  if(searchBar) searchBar.style.display = 'block';
   // Masquer toute la topbar sauf sur le panel fichiers
   const topbar = document.querySelector('.topbar');
   // Topbar visible sur tous les panels sur mobile (pour le bouton hamburger)
@@ -2911,6 +2911,7 @@ function clearSearch() {
 }
 
 async function doSearch(query) {
+  var panel = document.getElementById('panel-search');
   if (!query || query.length < 2) {
     var rt = document.getElementById('search-results-title');
     var rs = document.getElementById('search-results-sub');
@@ -2918,8 +2919,11 @@ async function doSearch(query) {
     if (rt) rt.style.display = 'none';
     if (rs) rs.style.display = 'none';
     if (rl) rl.innerHTML = '';
+    if (panel) panel.style.display = 'none';
     return;
   }
+  // Afficher le panel de recherche
+  if (panel) panel.style.display = 'block';
   var clearBtn = document.getElementById('search-clear');
   if (clearBtn) clearBtn.style.display = 'block';
   var rt = document.getElementById('search-results-title');
