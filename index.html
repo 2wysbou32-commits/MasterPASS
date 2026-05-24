@@ -3848,7 +3848,26 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
   if (fnEl) fnEl.textContent = filename;
   var html = '';
   if (type === 'pdf') {
-    html = '<iframe src="' + previewUrl + '" style="width:100%;height:100%;border:none"></iframe>';
+    html = '<div style="width:100%;height:100%;position:relative" id="pdf-preview-wrap">' +
+  '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#111;color:white;font-size:13px" id="pdf-loading">Chargement du document...</div>' +
+  '</div>';
+// Fetch le PDF avec session puis créer un blob URL pour l'iframe
+fetch(previewUrl, { credentials: 'include' })
+  .then(function(r) {
+    if (!r.ok) throw new Error('Erreur ' + r.status);
+    return r.blob();
+  })
+  .then(function(blob) {
+    var blobUrl = URL.createObjectURL(blob);
+    var wrap = document.getElementById('pdf-preview-wrap');
+    if (wrap) {
+      wrap.innerHTML = '<iframe src="' + blobUrl + '" style="width:100%;height:100%;border:none"></iframe>';
+    }
+  })
+  .catch(function(err) {
+    var loading = document.getElementById('pdf-loading');
+    if (loading) loading.textContent = 'Erreur de chargement : ' + err.message;
+  });
   } else if (type === 'img') {
     html = '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:20px"><img src="' + previewUrl + '" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px"></div>';
   } else if (type === 'video') {
@@ -3904,9 +3923,14 @@ function closePreview() {
   var overlay = document.getElementById('preview-overlay');
   var body = document.getElementById('preview-body');
   if (overlay) overlay.classList.remove('open');
-  if (body) body.innerHTML = '';
+  if (body) {
+    // Libérer les blob URLs pour éviter les fuites mémoire
+    body.querySelectorAll('iframe[src^="blob:"]').forEach(function(el) {
+      URL.revokeObjectURL(el.src);
+    });
+    body.innerHTML = '';
+  }
   document.body.style.overflow = '';
-  if (typeof removeWatermark === 'function') removeWatermark();
 }
 
 // Fermer avec Échap
