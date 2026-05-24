@@ -15,29 +15,36 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  /* ── Palette mode CLAIR ── */
-  --teal:       #00C4D4;
+  --teal:       #00B8CC;
   --teal-light: #4DD9E8;
   --teal-pale:  #CFFAFE;
-  --teal-dark:  #0891A8;
-  --accent:     #00C4D4;
-  --bg:         #F0F4F8;
-  --surface:    #FFFFFF;
-  --surface2:   #F3F8FA;
-  --glass:      rgba(255,255,255,0.72);
-  --glass-border: rgba(0,196,212,0.18);
-  --text:       #0C1A2E;
-  --text2:      #3A5568;
-  --text3:      #7A9BB5;
-  --border:     rgba(0,140,160,0.15);
+  --teal-dark:  #007A8C;
+  --accent:     #00B8CC;
+  --bg:         #0D1B2A;
+  --surface:    rgba(255,255,255,0.07);
+  --surface2:   rgba(255,255,255,0.04);
+  --glass:      rgba(255,255,255,0.07);
+  --glass-border: rgba(255,255,255,0.1);
+  --text:       #E8F4F8;
+  --text2:      #8BB8CC;
+  --text3:      #4A7A90;
+  --border:     rgba(255,255,255,0.08);
   --danger:     #F06C6C;
-  --danger-bg:  #FFF1F1;
-  --success-bg: #ECFDF5;
-  --shadow:     rgba(0,100,120,0.12);
-  --shadow2:    rgba(0,100,120,0.06);
+  --danger-bg:  rgba(255,100,100,0.08);
+  --success-bg: rgba(52,211,153,0.08);
+  --shadow:     rgba(0,0,0,0.4);
+  --shadow2:    rgba(0,0,0,0.2);
   --radius-lg:  20px;
   --radius-md:  14px;
   --radius-sm:  10px;
+}
+body {
+  background: #0D1B2A;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 20% 20%, rgba(0,180,210,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 70%, rgba(0,80,160,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 30% at 60% 10%, rgba(0,120,200,0.08) 0%, transparent 50%);
+  background-attachment: fixed;
 }
 
 [data-theme="dark"] {
@@ -61,7 +68,14 @@
   --success-bg:   rgba(52,211,153,0.08);
 }
 [data-theme="dark"] body {
-  background: var(--bg);
+  background: #060C18;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 20% 20%, rgba(0,180,210,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 70%, rgba(0,80,180,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 30% at 60% 10%, rgba(0,150,220,0.10) 0%, transparent 50%);
+  background-attachment: fixed;
+  color: var(--text);
+}
   background-image: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0,180,210,0.10) 0%, transparent 70%),
                     radial-gradient(ellipse 50% 40% at 90% 80%, rgba(0,100,180,0.07) 0%, transparent 60%);
   background-attachment: fixed;
