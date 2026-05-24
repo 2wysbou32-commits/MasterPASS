@@ -2262,7 +2262,7 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- ANNOUNCEMENTS PANEL -->
-      <div class="panel" id="panel-announcements-student" style="display:none">
+      <div class="panel" id="panel-announcements" style="display:none">
         <div class="section-header" style="margin-bottom:24px">
           <div>
             <div class="section-title">📢 Annonces</div>
@@ -2976,6 +2976,7 @@ function showPanel(name){
   });
   // Afficher le panel cible
   const target=$('panel-'+name);
+  if (!target) { console.error('Panel introuvable: panel-' + name); return; }
   target.classList.add('active');
   target.style.display='block';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -2998,7 +2999,8 @@ function showPanel(name){
   // Masquer toute la topbar sauf sur le panel fichiers
   const topbar = document.querySelector('.topbar');
   // Topbar visible sur tous les panels sur mobile (pour le bouton hamburger)
-  if(topbar) topbar.style.display = (name==='files' || name==='users' || window.innerWidth <= 768) ? 'flex' : 'none';  updateTopbar();
+  if(topbar) topbar.style.display = 'flex';
+  updateTopbar();
   // Sur mobile, fermer la sidebar pour tous les panels
   if(window.innerWidth <= 768) closeSidebar();
 }
