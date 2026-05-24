@@ -5353,6 +5353,7 @@ async function loadThreadRepliesInline() {
     }
     container.innerHTML = data.replies.map(function(r) {
       var isMine = String(r.userId) === String(currentUser?.id);
+console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, typeof currentUser?.id, '->', isMine);
       var isAdmin = r.userRole === 'admin' || r.userRole === 'subadmin';
       var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       var initials = (r.userName||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
