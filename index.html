@@ -2795,10 +2795,14 @@ function showDashboard() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   $('nav-dashboard').classList.add('active');
   document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
+  // panel-files doit rester visible car dashboard-view est à l'intérieur
+  $('panel-files').style.display = 'block';
   $('view-folders').style.display = 'none';
   $('view-files').style.display = 'none';
   $('dashboard-view').style.display = 'block';
   const dp = document.getElementById('discussion-panel'); if(dp) dp.style.display='none';
+  const topbar = document.querySelector('.topbar');
+  if(topbar) topbar.style.display = 'flex';
   $('topbar-title').textContent = 'Accueil';
   loadDashboard();
 }
