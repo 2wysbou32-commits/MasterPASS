@@ -2005,6 +2005,8 @@ input[type="file"]{display:none;}
     <button onclick="reactMsg('🔥')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">🔥</button>
     <button onclick="reactMsg('😮')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">😮</button>
     <button onclick="reactMsg('👏')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">👏</button>
+    <button onclick="reactMsg('✅')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">✅</button>
+    <button onclick="reactMsg('🐏')" style="font-size:22px;background:none;border:none;cursor:pointer;border-radius:8px;padding:4px 6px;transition:transform 0.1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">🐏</button>
   </div>
   <div id="ctx-reply" onclick="ctxReply()" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;font-size:14px;color:var(--text)" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
     <span>↩</span> Répondre
@@ -4444,7 +4446,7 @@ async function loadAnnouncements() {
         <div class="ann-card-message">${a.message}</div>
         <div class="ann-card-date">${new Date(a.createdAt).toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric'})}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap">
-          ${['👍','❤️','🔥','😮','👏'].map(em => {
+          ${['👍','❤️','🔥','😮','👏','✅','🐏','😂','⏱️','💪🏽','😉'].map(em => {
             const users = (a.reactions && a.reactions[em]) || [];
             const iReacted = users.includes(currentUser?.id);
             return `<button onclick="reactAnnouncement(${a.id},'${em}')" style="display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;border:1.5px solid ${iReacted ? 'var(--teal)' : 'var(--border)'};background:${iReacted ? 'rgba(0,151,167,0.1)' : 'transparent'};cursor:pointer;font-size:13px;transition:all 0.15s" id="ann-react-${a.id}-${em}">${em}${users.length ? ' <span style="font-size:11px;font-weight:700;color:var(--teal-dark)">' + users.length + '</span>' : ''}</button>`;
