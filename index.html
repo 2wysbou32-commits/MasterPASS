@@ -1350,7 +1350,7 @@ input[type="file"]{display:none;}
         <input type="password" class="field-input" id="password-input" placeholder="••••••••" autocomplete="current-password">
       </div>
       <div style="font-size:11.5px;color:#c62828;text-align:center;margin-top:8px;margin-bottom:4px;font-weight:600">🔒 Accès personnel — le partage de compte entraîne la suppression de l'accès.</div>
-      <button class="btn-primary" id="login-btn" onclick="doLogin()">Se connecter</button>
+      <button class="btn-primary" id="login-btn" onclick="if(typeof doLogin==='function')doLogin()">Se connecter</button>
       <div class="error-msg" id="login-error" style="display:none"></div>
       <div class="error-msg" id="auth-error">Identifiant ou mot de passe incorrect.</div>
       <div class="success-msg" id="auth-success"></div>
@@ -2262,7 +2262,7 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- ANNOUNCEMENTS PANEL -->
-      <div class="panel" id="panel-announcements" style="display:none">
+      <div class="panel" id="panel-announcements-student" style="display:none">
         <div class="section-header" style="margin-bottom:24px">
           <div>
             <div class="section-title">📢 Annonces</div>
@@ -2305,7 +2305,7 @@ input[type="file"]{display:none;}
       </div>
 
       <!-- ANNOUNCEMENTS PANEL -->
-      <div class="panel" id="panel-announcements" style="display:none">
+      <div class="panel" id="panel-announcements-student" style="display:none">
         <div class="section-header" style="margin-bottom:24px" id="announcements-header-admin" style="display:none">
           <div><div class="section-title">📢 Annonces</div><div class="section-sub">Publie des messages pour tous tes étudiants</div></div>
           <button class="btn-action primary-action" onclick="showNewAnnouncementForm()">
@@ -2701,6 +2701,8 @@ document.addEventListener('DOMContentLoaded', function() {
   var pwInput = $('password-input');
   var loginInput = $('login-input');
   if (pwInput) pwInput.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  var loginBtn = $('login-btn');
+if (loginBtn) loginBtn.onclick = function() { doLogin(); };
   if (loginInput) loginInput.addEventListener('keydown', e => { if(e.key==='Enter') { var pw = $('password-input'); if(pw) pw.focus(); } });
 });
 
@@ -2792,6 +2794,7 @@ function setupApp(){
 function showDashboard() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   $('nav-dashboard').classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
   $('view-folders').style.display = 'none';
   $('view-files').style.display = 'none';
   $('dashboard-view').style.display = 'block';
@@ -2956,6 +2959,8 @@ function startSessionPolling() {
 }
 
 function showPanel(name){
+  if (name === 'home' || name === 'accueil') { showDashboard(); return; }
+  document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
   $('dashboard-view').style.display = 'none';
   $('nav-dashboard').classList.remove('active');
   if((name==='users'||name==='codes')&&currentUser?.role!=='admin')return;
