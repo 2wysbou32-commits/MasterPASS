@@ -5352,8 +5352,8 @@ async function loadThreadRepliesInline() {
       var avatarBg = isAdmin ? 'linear-gradient(135deg,#004D61,#003340)' : 'linear-gradient(135deg,var(--teal),var(--teal-dark))';
       var avatarHtml = r.userAvatar ? '<img src="' + r.userAvatar + '" style="width:100%;height:100%;object-fit:cover">' : initials;
       var bubbleBg = isMine ? 'rgba(0,180,200,0.35)' : (isAdmin ? 'rgba(0,151,167,0.08)' : 'rgba(255,255,255,0.15)');
-      vvar bubbleColor = isMine ? 'var(--text)' : 'var(--text)';
-      var bubbleBorder = isMine ? '1px solid rgba(0,220,240,0.4)' : (isAdmin ? '1px solid var(--teal)' : '1px solid rgba(255,255,255,0.2))')
+      var bubbleColor = isMine ? 'var(--text)' : 'var(--text)';
+      var bubbleBorder = isMine ? '1px solid rgba(0,220,240,0.4)' : (isAdmin ? '1px solid var(--teal)' : '1px solid rgba(255,255,255,0.2)')
       // Audio
       var msgHtml;
       if (r.audio) {
