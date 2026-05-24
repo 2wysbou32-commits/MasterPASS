@@ -781,7 +781,30 @@ input[type="file"]{display:none;}
 /* ── STUDENT BANNER ── */
 /* ── Tableau de bord ─────────────────────────────────────────────────────── */
 .dashboard-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; padding:24px; }
-.dashboard-card { background:var(--surface,white); border:1.5px solid var(--border); border-radius:16px; padding:20px; }
+.dashboard-card {
+  background: rgba(255,255,255,0.35);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius:18px;
+  padding:20px;
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: 0 4px 24px rgba(0,100,120,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
+  transition: all 0.2s;
+}
+.dashboard-card:hover {
+  background: rgba(255,255,255,0.45);
+  box-shadow: 0 8px 32px rgba(0,100,120,0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+}
+[data-theme="dark"] .dashboard-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+[data-theme="dark"] .dashboard-card:hover {
+  background: rgba(255,255,255,0.08);
+}
 .dashboard-card-title { font-size:13px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
 .dashboard-file-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer; }
 .dashboard-file-item:last-child { border-bottom:none; }
