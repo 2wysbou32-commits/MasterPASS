@@ -3429,7 +3429,7 @@ async function openFolder(id,name){
 if(wrap){ wrap.style.display='flex'; }
 if(folderTitle){ folderTitle.textContent=name; }
 const backBtn = document.getElementById('btn-back-folder');
-if(backBtn) backBtn.style.display='none'; // pas de retour depuis un dossier racine
+if(backBtn) backBtn.style.display='flex';
   // Masquer le banner étudiant et les stats
   if($('student-banner')) $('student-banner').style.display='none';
   if($('admin-stats')) $('admin-stats').style.display='none';
@@ -3447,11 +3447,12 @@ if(backBtn) backBtn.style.display='none'; // pas de retour depuis un dossier rac
     subContainer = document.createElement('div');
     subContainer.id = 'subfolders-container';
     // Insert after folder-page-title
-    const ft = document.getElementById('folder-page-title');
-    if(ft && ft.nextSibling) {
-      container.insertBefore(subContainer, ft.nextSibling);
+    const wrap = document.getElementById('folder-page-title-wrap');
+    const insertAfter = wrap || document.getElementById('folder-page-title');
+    if(insertAfter && insertAfter.nextSibling) {
+      container.insertBefore(subContainer, insertAfter.nextSibling);
     } else {
-      container.insertBefore(subContainer, container.firstChild);
+      container.appendChild(subContainer);
     }
   }
   subContainer.innerHTML = subHtml;
