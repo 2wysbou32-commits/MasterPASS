@@ -5392,9 +5392,9 @@ console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, 
         });
         reactHtml += '</div>';
       }
-      var row = '<div style="display:flex;flex-direction:column;align-items:' + (isMine?'flex-end':'flex-start') + ';margin-bottom:12px;">';
+      var row = '<div style="width:100%;display:flex;flex-direction:column;align-items:' + (isMine?'flex-end':'flex-start') + ';margin-bottom:12px;">';
       if (!isMine) row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:42px"><span style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + '">' + (r.userName||'') + (isAdmin?' 👨‍🏫':'') + '</span><span style="font-size:10px;color:var(--text3)">' + date + '</span></div>';
-      row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%;' + (isMine?'flex-direction:row-reverse':'') + '">';
+      row += '<div style="display:flex;align-items:flex-end;gap:8px;width:70%;' + (isMine?'flex-direction:row-reverse;margin-left:auto':'margin-right:auto') + '">';
       if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">' + avatarHtml + '</div>';
       row += '<div>';
       if (isAdmin && !isMine) row += '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px"><span style="font-size:10px;font-weight:700;color:var(--teal-dark);background:rgba(0,151,167,0.1);border:1px solid var(--teal);border-radius:6px;padding:2px 7px">👨‍🏫 Réponse officielle</span></div>';
