@@ -2799,6 +2799,7 @@ function showDashboard() {
   $('panel-files').style.display = 'block';
   $('view-folders').style.display = 'none';
   $('view-files').style.display = 'none';
+  if($('student-banner')) $('student-banner').style.display = 'none';
   $('dashboard-view').style.display = 'block';
   const dp = document.getElementById('discussion-panel'); if(dp) dp.style.display='none';
   const topbar = document.querySelector('.topbar');
@@ -3632,7 +3633,7 @@ function backToRoot(){
   // Réafficher le banner étudiant et les stats à la racine
   const isAnyAdmin = currentUser?.role==='admin'||currentUser?.role==='subadmin';
   const _isAnyAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
-  if($('student-banner') && !_isAnyAdmin) $('student-banner').style.display='flex';
+  if($('student-banner') && !_isAnyAdmin && $('dashboard-view').style.display !== 'block') $('student-banner').style.display='flex';
   if($('admin-stats')) $('admin-stats').style.display='none';
   const wrap = document.getElementById('folder-page-title-wrap');
 if(wrap) wrap.style.display='none';
@@ -5386,7 +5387,7 @@ async function loadThreadRepliesInline() {
         });
         reactHtml += '</div>';
       }
-      var row = '<div style="display:flex;flex-direction:column;align-items:' + (isMine?'flex-end':'flex-start') + ';margin-bottom:12px">';
+      var row = '<div style="display:flex;flex-direction:column;align-items:' + (isMine?'flex-end':'flex-start') + ';margin-bottom:12px;width:100%">';
       if (!isMine) row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:42px"><span style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + '">' + (r.userName||'') + (isAdmin?' 👨‍🏫':'') + '</span><span style="font-size:10px;color:var(--text3)">' + date + '</span></div>';
       row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%;' + (isMine?'flex-direction:row-reverse':'') + '">';
       if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">' + avatarHtml + '</div>';
