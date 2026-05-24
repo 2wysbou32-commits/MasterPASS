@@ -2799,6 +2799,10 @@ function showDashboard() {
   $('panel-files').style.display = 'block';
   $('view-folders').style.display = 'none';
   $('view-files').style.display = 'none';
+  const bc = document.getElementById('breadcrumb');
+if(bc) bc.style.display = 'none';
+const titleWrap = document.getElementById('folder-page-title-wrap');
+if(titleWrap) titleWrap.style.display = 'none';
   if($('student-banner')) $('student-banner').style.display = 'none';
   $('dashboard-view').style.display = 'block';
   const dp = document.getElementById('discussion-panel'); if(dp) dp.style.display='none';
