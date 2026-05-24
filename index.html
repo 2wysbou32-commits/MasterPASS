@@ -4070,6 +4070,13 @@ function loadSettingsPanel() {
 }
 
 // ── AUTH FORMS ────────────────────────────────────────────────────────────────
+function openLegal(e) {
+  if (e) e.preventDefault();
+  document.getElementById('legal-modal').style.display = 'block';
+}
+function closeLegal() {
+  document.getElementById('legal-modal').style.display = 'none';
+}
 function showLoginForm() {
   document.getElementById('forgot-form').style.display = 'none';
   document.getElementById('reset-form').style.display = 'none';
