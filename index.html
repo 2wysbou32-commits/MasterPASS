@@ -2891,7 +2891,7 @@ async function loadDashboard() {
     allFiles.sort((a,b) => new Date(b.addedAt) - new Date(a.addedAt));
     const recent = allFiles.slice(0, 5);
     $('db-new-files').innerHTML = recent.length ? recent.map(f => `
-      <div class="dashboard-file-item" onclick="showPanel('panel-files')">
+      <div class="dashboard-file-item" onclick="showPanel('files');setTimeout(()=>openFolder(${f.folderId},'${f.folderName}'),300)">
         ${getFileTypeBadge(f.type)}
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
@@ -2932,7 +2932,7 @@ async function loadDashboard() {
     const threads = await api('GET', '/threads/all');
     const recent = (threads||[]).slice(0,5);
     $('db-discussions').innerHTML = recent.length ? recent.map(t => `
-      <div class="dashboard-disc-item" onclick="showPanel('panel-files')">
+      <div class="dashboard-disc-item" onclick="showPanel('files');setTimeout(()=>{openFolder(${t.folderId},'${t.folderName||''}');setTimeout(()=>openDiscussion('${t.fileId}','${t.fileName||''}'),600);},300)">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
           <span style="font-size:11px;padding:1px 7px;border-radius:5px;font-weight:700;background:${t.resolved?'rgba(46,125,50,0.1)':'rgba(0,151,167,0.1)'};color:${t.resolved?'#2E7D32':'var(--teal-dark)'}">${t.resolved?'✓ Résolu':'💬 Ouvert'}</span>
           <span style="font-size:12px;font-weight:600;color:var(--text)">${t.title||''}</span>
