@@ -1467,7 +1467,12 @@ input[type="file"]{display:none;}
         </div>
 
         <div id="view-files" style="display:none">
-          <div id="folder-page-title" style="display:none;font-family:'Plus Jakarta Sans',sans-serif;font-size:32px;font-weight:800;color:var(--text);margin-bottom:6px;letter-spacing:-0.5px;line-height:1.1"></div>
+          <div style="display:none;align-items:center;gap:14px;margin-bottom:6px" id="folder-page-title-wrap">
+  <button id="btn-back-folder" onclick="goBack()" title="Retour" style="display:none;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface,white);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text2)">
+    <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+  </button>
+  <div id="folder-page-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:32px;font-weight:800;color:var(--text);letter-spacing:-0.5px;line-height:1.1"></div>
+</div>
           <div id="folder-progress-bar" style="display:none;margin-bottom:20px"></div>
           <div class="section-header">
             <div><div class="section-title" id="current-folder-name" style="display:none">Dossier</div><div class="section-sub" id="files-count-sub">—</div></div>
@@ -2812,8 +2817,12 @@ async function openSubfolder(subId, subName, parentId, parentName) {
   const vd = $('view-folders');
   if(vd) vd.style.display = 'none';
   if(vf) vf.style.display = 'block';
-  const ft = document.getElementById('folder-page-title');
-  if(ft) { ft.textContent = parentName + ' / ' + subName; ft.style.display = 'block'; }
+  const wrap = document.getElementById('folder-page-title-wrap');
+if(wrap) wrap.style.display='flex';
+const ft = document.getElementById('folder-page-title');
+if(ft) ft.textContent = subName;
+const backBtn = document.getElementById('btn-back-folder');
+if(backBtn) backBtn.style.display='flex'; // bouton retour visible dans un sous-dossier
   if($('student-banner')) $('student-banner').style.display = 'none';
   if($('admin-stats')) $('admin-stats').style.display = 'none';
   const subContainerOld = document.getElementById('subfolders-container');
@@ -3387,11 +3396,18 @@ function backToRoot(){
   const _isAnyAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
   if($('student-banner') && !_isAnyAdmin) $('student-banner').style.display='flex';
   if($('admin-stats')) $('admin-stats').style.display='none';
-  const ft = document.getElementById('folder-page-title');
-  if(ft) ft.style.display='none';
+  const wrap = document.getElementById('folder-page-title-wrap');
+if(wrap) wrap.style.display='none';
   updateBreadcrumb();loadFolders();updateTopbar();
 }
-
+function goBack() {
+  // Si on est dans un sous-dossier → retour au dossier parent
+  if (currentSubfolder) {
+    openFolder(currentFolder.id, currentFolder.name);
+  } else {
+    backToRoot();
+  }
+}
 async function loadSubfolders(folderId) {
   try {
     return await api('GET', '/folders/' + folderId + '/subfolders');
@@ -3409,7 +3425,11 @@ async function openFolder(id,name){
   $('topbar-title').textContent='';
   // Afficher le titre en grand dans la page
   const folderTitle = document.getElementById('folder-page-title');
-  if(folderTitle){ folderTitle.textContent=name; folderTitle.style.display='block'; }
+  const wrap = document.getElementById('folder-page-title-wrap');
+if(wrap){ wrap.style.display='flex'; }
+if(folderTitle){ folderTitle.textContent=name; }
+const backBtn = document.getElementById('btn-back-folder');
+if(backBtn) backBtn.style.display='none'; // pas de retour depuis un dossier racine
   // Masquer le banner étudiant et les stats
   if($('student-banner')) $('student-banner').style.display='none';
   if($('admin-stats')) $('admin-stats').style.display='none';
@@ -4038,7 +4058,11 @@ async function deleteUser(id){
 function updateBreadcrumb(){
   const bc=$('breadcrumb');
   if(!currentFolder){bc.innerHTML=`<span class="breadcrumb-item active"><svg style="width:13px;height:13px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>Tous les dossiers</span>`;return;}
-  bc.innerHTML=`<span class="breadcrumb-item" onclick="backToRoot()"><svg style="width:13px;height:13px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>Tous les dossiers</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-item active">${currentFolder.name}</span>`;
+  if (!currentSubfolder) {
+    bc.innerHTML=`<span class="breadcrumb-item" onclick="backToRoot()"><svg style="width:13px;height:13px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>Tous les dossiers</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-item active">${currentFolder.name}</span>`;
+  } else {
+    bc.innerHTML=`<span class="breadcrumb-item" onclick="backToRoot()"><svg style="width:13px;height:13px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>Tous les dossiers</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-item" onclick="openFolder(currentFolder.id,currentFolder.name)">${currentFolder.name}</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-item active">${currentSubfolder.name}</span>`;
+  }
 }
 function openModal(id){$(id).classList.add('open');}
 function closeModal(id){$(id).classList.remove('open');}
