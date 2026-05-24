@@ -5351,15 +5351,15 @@ async function loadThreadRepliesInline() {
       return;
     }
     container.innerHTML = data.replies.map(function(r) {
-      var isMine = r.userId === currentUser?.id;
+      var isMine = String(r.userId) === String(currentUser?.id);
       var isAdmin = r.userRole === 'admin' || r.userRole === 'subadmin';
       var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       var initials = (r.userName||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
       var avatarBg = isAdmin ? 'linear-gradient(135deg,#004D61,#003340)' : 'linear-gradient(135deg,var(--teal),var(--teal-dark))';
       var avatarHtml = r.userAvatar ? '<img src="' + r.userAvatar + '" style="width:100%;height:100%;object-fit:cover">' : initials;
-      var bubbleBg = isMine ? 'rgba(0,180,200,0.35)' : (isAdmin ? 'rgba(0,151,167,0.08)' : 'rgba(255,255,255,0.15)');
-      var bubbleColor = isMine ? 'var(--text)' : 'var(--text)';
-      var bubbleBorder = isMine ? '1px solid rgba(0,220,240,0.4)' : (isAdmin ? '1px solid var(--teal)' : '1px solid rgba(255,255,255,0.2)')
+      var bubbleBg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : (isAdmin ? 'rgba(0,151,167,0.08)' : 'rgba(255,255,255,0.15)');
+      var bubbleColor = isMine ? 'white' : 'var(--text)';
+      var bubbleBorder = isMine ? 'none' : (isAdmin ? '1px solid var(--teal)' : '1px solid var(--border)');
       // Audio
       var msgHtml;
       if (r.audio) {
