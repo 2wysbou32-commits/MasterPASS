@@ -2106,7 +2106,7 @@ input[type="file"]{display:none;}
                 <button onclick="toggleResolve2()" id="resolve-btn2" style="padding:9px 18px;border-radius:10px;border:2px solid #2E7D32;background:#2E7D32;color:white;cursor:pointer;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">✓ Marquer résolu</button>
               </div>
             </div>
-            <div id="thread-replies2" style="display:flex;flex-direction:column;gap:0;margin-bottom:24px;min-height:100px;align-items:flex-start;"></div>
+            <div id="thread-replies2" style="margin-bottom:24px;min-height:100px;"></div>
             <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden">
               <div id="voice-preview-side" style="display:none;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap">
                 <button onclick="playVoicePreview('side')" id="preview-play-btn-side" style="width:32px;height:32px;border-radius:50%;background:var(--teal-dark);color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>
@@ -5392,7 +5392,7 @@ console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, 
         });
         reactHtml += '</div>';
       }
-      var row = '<div style="display:flex;flex-direction:column;align-items:' + (isMine?'flex-end':'flex-start') + ';margin-bottom:12px;width:100%;' + (isMine?'padding-left:20%':'padding-right:20%') + '">';
+      var row = '<div style="display:flex;flex-direction:column;align-items:' + (isMine?'flex-end':'flex-start') + ';margin-bottom:12px;">';
       if (!isMine) row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:42px"><span style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + '">' + (r.userName||'') + (isAdmin?' 👨‍🏫':'') + '</span><span style="font-size:10px;color:var(--text3)">' + date + '</span></div>';
       row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%;' + (isMine?'flex-direction:row-reverse':'') + '">';
       if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">' + avatarHtml + '</div>';
