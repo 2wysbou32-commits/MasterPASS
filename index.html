@@ -5218,7 +5218,11 @@ async function goToThread(fileId, fileName, threadId) {
   _discussionFileName = fileName;
   _currentThreadId = threadId || null;
 
-  showPanel('discussions-center');
+  // Afficher le panel sans déclencher loadDiscussionsCenter
+  document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
+  const target = document.getElementById('panel-discussions-center');
+  target.classList.add('active');
+  target.style.display = 'block';
   // Show inline discussion view, hide disc center list
   document.getElementById('disc-center-list').style.display = 'none';
   document.getElementById('disc-inline-view').style.display = 'block';
