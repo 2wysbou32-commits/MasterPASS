@@ -5218,6 +5218,7 @@ async function goToThread(fileId, fileName, threadId) {
   _discussionFileName = fileName;
   _currentThreadId = threadId || null;
 
+  showPanel('discussions-center');
   // Show inline discussion view, hide disc center list
   document.getElementById('disc-center-list').style.display = 'none';
   document.getElementById('disc-inline-view').style.display = 'block';
