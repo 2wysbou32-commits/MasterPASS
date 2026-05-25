@@ -5235,6 +5235,8 @@ async function goToThread(fileId, fileName, threadId) {
     const aa = document.getElementById('thread-admin-actions2');
     if (aa) aa.style.display = currentUser?.role === 'admin' ? 'block' : 'none';
     await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => requestAnimationFrame(r));
+    await new Promise(r => setTimeout(r, 100));
     await loadThreadRepliesInline();
   } else {
     // Show threads list
