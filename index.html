@@ -5418,7 +5418,7 @@ console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, 
       });
     }, 300);
     data.replies.forEach(function(r) {
-      _commentDataMap[r.id] = { id: r.id, userId: r.userId, userName: r.userName, message: r.message||'', audio: r.audio||null, isOwn: String(r.userId) === String(currentUser?.id), canDelete: (currentUser?.role==='admin') || String(r.userId) === String(currentUser?.id)
+      _commentDataMap[r.id] = { id: r.id, userId: r.userId, userName: r.userName, message: r.message||'', audio: r.audio||null, isOwn: String(r.userId) === String(currentUser?.id), canDelete: (currentUser?.role==='admin') || String(r.userId) === String(currentUser?.id) };
     });
     initBubbleEvents('thread-replies2');
   } catch(e) {
