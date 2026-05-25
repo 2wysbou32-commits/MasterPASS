@@ -5234,8 +5234,8 @@ async function goToThread(fileId, fileName, threadId) {
     document.getElementById('thread-detail-view2').style.display = 'block';
     const aa = document.getElementById('thread-admin-actions2');
     if (aa) aa.style.display = currentUser?.role === 'admin' ? 'block' : 'none';
+    await new Promise(r => requestAnimationFrame(r));
     await loadThreadRepliesInline();
-    setTimeout(loadThreadRepliesInline, 50);
   } else {
     // Show threads list
     document.getElementById('threads-list-view2').style.display = 'block';
