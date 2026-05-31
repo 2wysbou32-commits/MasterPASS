@@ -1204,7 +1204,7 @@ input[type="file"]{display:none;}
 
 /* ── RESPONSIVE MOBILE ── */
 .hamburger-btn {
-  display: flex;
+  display: none;
   width: 36px; height: 36px;
   border-radius: 10px; border: 1px solid rgba(0,196,212,0.15);
   background: rgba(0,196,212,0.06); color: var(--text2);
@@ -1240,12 +1240,15 @@ input[type="file"]{display:none;}
 .sidebar.collapsed .sidebar-logo {
   justify-content: center !important;
   padding: 20px 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 .sidebar.collapsed .sidebar-logo-img {
   margin: 0 auto;
 }
 .sidebar.collapsed #sidebar-toggle-btn {
-  display: none !important;
+  margin: 0 auto;
 }
 .sidebar.collapsed .sidebar-user {
   display: flex;
