@@ -6226,24 +6226,7 @@ async function loadThreadReplies(silent) {
       row += '</div>';
       return row;
     }).join('');
-    // Init audio
-    data.replies.filter(function(r){return r.audio;}).forEach(function(r){
-      var audio=document.getElementById('audio-'+r.id);
-      var btn=document.getElementById('abtn-'+r.id);
-      var bar=document.getElementById('abar-'+r.id);
-      var timeEl=document.getElementById('atime-'+r.id);
-      if(!audio||!btn)return;
-      (function(audio, btn, bar, timeEl) {
-        btn.onclick = function() {
-          if (audio.paused) { audio.play().catch(function(){}); btn.innerHTML = '⏸'; }
-          else { audio.pause(); btn.innerHTML = '▶'; }
-        };
-        audio.ontimeupdate = function() {
-          if (audio.duration && bar) { bar.style.width = (audio.currentTime / audio.duration * 100).toFixed(1) + '%'; var s = Math.floor(audio.currentTime); timeEl.textContent = Math.floor(s/60) + ':' + (s%60<10?'0':'') + s%60; }
-        };
-        audio.onended = function() { btn.innerHTML = '▶'; if (bar) bar.style.width = '0%'; timeEl.textContent = '0:00'; };
-      })(audio, btn, bar, timeEl);
-    });
+    // Init audio — géré par toggleInlineAudio via onclick dans le HTML
     if (!silent || wasAtBottom) container.scrollTop = container.scrollHeight;
     setTimeout(function() {
       container.querySelectorAll('canvas[data-mine]').forEach(function(canvas) {
