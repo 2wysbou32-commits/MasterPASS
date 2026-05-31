@@ -809,6 +809,14 @@ input[type="file"]{display:none;}
 /* ── STUDENT BANNER ── */
 /* ── Tableau de bord ─────────────────────────────────────────────────────── */
 .dashboard-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; padding:24px; }
+.dashboard-ann-item:nth-child(n+4),
+.dashboard-disc-item:nth-child(n+4),
+.dashboard-file-item:nth-child(n+4) { display:none; }
+@media (min-width:769px) {
+  .dashboard-ann-item:nth-child(n+4),
+  .dashboard-disc-item:nth-child(n+4),
+  .dashboard-file-item:nth-child(n+4) { display:flex; }
+}
 .dashboard-card {
   background: rgba(255,255,255,0.35);
   border: 1px solid rgba(255,255,255,0.55);
@@ -1399,6 +1407,12 @@ input[type="file"]{display:none;}
   .topbar-actions { gap: 6px; }
   .topbar-actions .btn-action { font-size: 11px; padding: 6px 10px; }
   .topbar-actions .btn-action span { display: none; }
+
+  /* Dashboard mobile */
+  .dashboard-grid { grid-template-columns: 1fr !important; gap: 12px; padding: 12px; }
+  #dashboard-admin-stats { grid-template-columns: repeat(2,1fr) !important; padding: 12px !important; gap: 10px !important; }
+  .dashboard-card { padding: 14px; }
+  .dashboard-card-title { font-size:12px; margin-bottom:10px; }
 }
 
 @media (max-width: 400px) {
@@ -1751,16 +1765,19 @@ input[type="file"]{display:none;}
               <div class="dashboard-card">
                 <div class="dashboard-card-title">📁 Nouveaux fichiers</div>
                 <div id="db-new-files"><div class="dashboard-empty">Chargement...</div></div>
+                <div style="margin-top:10px;text-align:right"><a onclick="showPanel('files')" style="font-size:12px;color:var(--teal);cursor:pointer;font-weight:600">Voir tout →</a></div>
               </div>
               <!-- Dernières annonces -->
               <div class="dashboard-card">
                 <div class="dashboard-card-title">📢 Dernières annonces</div>
                 <div id="db-announcements"><div class="dashboard-empty">Chargement...</div></div>
+                <div style="margin-top:10px;text-align:right"><a onclick="showPanel('announcements')" style="font-size:12px;color:var(--teal);cursor:pointer;font-weight:600">Voir tout →</a></div>
               </div>
               <!-- Discussions -->
               <div class="dashboard-card">
                 <div class="dashboard-card-title">💬 Discussions récentes</div>
                 <div id="db-discussions"><div class="dashboard-empty">Chargement...</div></div>
+                <div style="margin-top:10px;text-align:right"><a onclick="showPanel('discussions-center')" style="font-size:12px;color:var(--teal);cursor:pointer;font-weight:600">Voir tout →</a></div>
               </div>
               <!-- Fichiers les plus vus (admin) -->
               <div class="dashboard-card" id="db-topfiles-card" style="display:none">
