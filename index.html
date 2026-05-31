@@ -3015,7 +3015,7 @@ async function loadDashboard() {
     const anns = await api('GET', '/announcements');
     const recent = (anns||[]).slice(0,3);
     $('db-announcements').innerHTML = recent.length ? recent.map(a => `
-      <div class="dashboard-ann-item">
+      <div class="dashboard-ann-item" style="cursor:pointer" onclick="showPanel('announcements');setTimeout(()=>{const el=document.getElementById('ann-${a.id}');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});}},500)">
         <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">${a.title||'Annonce'}</div>
         <div style="font-size:12px;color:var(--text2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${a.message||''}</div>
         <div style="font-size:10px;color:var(--text3);margin-top:4px">${new Date(a.createdAt).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}</div>
@@ -4538,7 +4538,7 @@ async function loadAnnouncements() {
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
     const colors = { info:'ℹ️', success:'✅', urgent:'🚨', tip:'💡' };
     list.innerHTML = anns.map(a => `
-      <div class="ann-card ${a.color}">
+      <div class="ann-card ${a.color}" id="ann-${a.id}">
         ${isAdmin ? `<button class="ann-delete-btn" onclick="deleteAnnouncement(${a.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>` : ''}
         <div class="ann-card-title">${colors[a.color] || 'ℹ️'} ${a.title}</div>
         <div class="ann-card-message">${a.message}</div>
