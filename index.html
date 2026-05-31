@@ -4372,9 +4372,14 @@ function closeLegal() {
   document.getElementById('legal-modal').style.display = 'none';
 }
 function showLoginForm() {
-  document.getElementById('forgot-form').style.display = 'none';
-  document.getElementById('reset-form').style.display = 'none';
-  document.querySelector('.auth-card-body').style.display = '';
+  document.querySelectorAll('.auth-card-body').forEach(function(el) { el.style.display = 'none'; });
+  var forgotForm = document.getElementById('forgot-form');
+  var resetForm = document.getElementById('reset-form');
+  if (forgotForm) forgotForm.style.display = 'none';
+  if (resetForm) resetForm.style.display = 'none';
+  var loginBody = document.querySelector('.auth-card-body:not(#register-form)');
+  if (loginBody) loginBody.style.display = 'block';
+  else { var bodies = document.querySelectorAll('.auth-card-body'); if (bodies[0]) bodies[0].style.display = 'block'; }
 }
 function showForgotForm() {
   document.querySelector('.auth-card-body').style.display = 'none';
