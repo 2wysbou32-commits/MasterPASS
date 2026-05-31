@@ -2114,7 +2114,6 @@ input[type="file"]{display:none;}
       <!-- DISCUSSIONS CENTER PANEL -->
       <div class="panel" id="panel-discussions-center" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-          <div class="section-title">Toutes les discussions</div>
           <div style="display:flex;gap:8px">
             <button onclick="loadDiscussionsCenter()" id="disc-refresh-btn" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif">↻ Actualiser</button>
             <button id="disc-delete-selected-btn" onclick="deleteSelectedDiscCenter()" style="display:none;padding:6px 14px;border-radius:8px;border:none;background:rgba(229,115,115,0.15);color:var(--danger);cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">🗑 Supprimer</button>
@@ -2354,10 +2353,6 @@ input[type="file"]{display:none;}
       <!-- ANNOUNCEMENTS PANEL -->
       <div class="panel" id="panel-announcements" style="display:none">
         <div class="section-header" style="margin-bottom:24px">
-          <div>
-            <div class="section-title">📢 Annonces</div>
-            <div class="section-sub">Messages de ton formateur</div>
-          </div>
           <div id="ann-admin-actions" style="display:none;gap:10px">
             <button class="btn-action primary-action" onclick="showNewAnnForm()">
               <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
@@ -2397,14 +2392,14 @@ input[type="file"]{display:none;}
       <!-- ANNOUNCEMENTS PANEL -->
       <div class="panel" id="panel-announcements-student" style="display:none">
         <div class="section-header" style="margin-bottom:24px" id="announcements-header-admin" style="display:none">
-          <div><div class="section-title">📢 Annonces</div><div class="section-sub">Publie des messages pour tous tes étudiants</div></div>
+          <div><div class="section-sub">Publie des messages pour tous tes étudiants</div></div>
           <button class="btn-action primary-action" onclick="showNewAnnouncementForm()">
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
             Nouvelle annonce
           </button>
         </div>
         <div class="section-header" style="margin-bottom:24px" id="announcements-header-student" style="display:none">
-          <div><div class="section-title">📢 Annonces</div><div class="section-sub">Messages de ton formateur</div></div>
+          <div><div class="section-sub">Messages de ton formateur</div></div>
         </div>
 
         <!-- Formulaire nouvelle annonce (admin) -->
