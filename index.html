@@ -2200,12 +2200,12 @@ input[type="file"]{display:none;}
           <!-- Détail fil -->
           <div id="thread-detail-view2" style="display:none;width:100%">
             <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1.5px solid var(--border)">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-                <button onclick="closeInlineDiscussion()" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;flex-shrink:0">
+              <div style="position:relative;display:flex;align-items:center;margin-bottom:12px;min-height:34px">
+                <button onclick="closeInlineDiscussion()" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;flex-shrink:0;position:absolute;left:0">
                   <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
                 </button>
-                <div style="flex:1;font-size:15px;font-weight:800;color:var(--text);text-align:center" id="thread-title-display2"></div>
-                <div id="thread-admin-actions2" style="display:none">
+                <div style="width:100%;font-size:15px;font-weight:800;color:var(--text);text-align:center;padding:0 50px" id="thread-title-display2"></div>
+                <div id="thread-admin-actions2" style="display:none;position:absolute;right:0">
                   <button onclick="toggleResolve2()" id="resolve-btn2" style="padding:6px 12px;border-radius:8px;border:1.5px solid #2E7D32;background:transparent;color:#2E7D32;cursor:pointer;font-size:11px;font-weight:700;font-family:'Inter',sans-serif;white-space:nowrap">✓ Résolu</button>
                 </div>
               </div>
@@ -5517,9 +5517,9 @@ console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, 
       var initials = (r.userName||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
       var avatarBg = isAdmin ? 'linear-gradient(135deg,#004D61,#003340)' : 'linear-gradient(135deg,var(--teal),var(--teal-dark))';
       var avatarHtml = r.userAvatar ? '<img src="' + r.userAvatar + '" style="width:100%;height:100%;object-fit:cover">' : initials;
-      var bubbleBg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : (isAdmin ? 'rgba(0,151,167,0.08)' : 'rgba(255,255,255,0.15)');
+      var bubbleBg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : 'rgba(255,255,255,0.15)';
       var bubbleColor = isMine ? 'white' : 'var(--text)';
-      var bubbleBorder = isMine ? 'none' : (isAdmin ? '1px solid var(--teal)' : '1px solid var(--border)');
+      var bubbleBorder = isMine ? 'none' : '1px solid var(--border)';
       // Audio
       var msgHtml;
       if (r.audio) {
@@ -5552,8 +5552,7 @@ console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, 
       row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:70%">';
       if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">' + avatarHtml + '</div>';
       row += '<div>';
-      if (isAdmin && !isMine) row += '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px"><span style="font-size:10px;font-weight:700;color:var(--teal-dark);background:rgba(0,151,167,0.1);border:1px solid var(--teal);border-radius:6px;padding:2px 7px">👨‍🏫 Réponse officielle</span></div>';
-      row += '<div data-cid="' + r.id + '" class="msg-bubble" style="background:' + bubbleBg + ';color:' + bubbleColor + ';border:' + bubbleBorder + ';border-left:' + (isAdmin && !isMine ? '3px solid var(--teal-dark)' : bubbleBorder) + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)">';
+      row += '<div data-cid="' + r.id + '" class="msg-bubble" style="background:' + bubbleBg + ';color:' + bubbleColor + ';border:' + bubbleBorder + ';border-left:' + (isAdmin && !isMine ? '3px solid var(--teal)' : bubbleBorder) + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)">';
       if (r.replyToName) row += '<div style="opacity:0.8;font-size:11px;border-left:2px solid rgba(255,255,255,0.5);padding:2px 6px;margin-bottom:4px">↩ ' + r.replyToName + ': ' + String(r.replyToPreview||'').substring(0,40) + '</div>';
       row += msgHtml + '</div></div></div>';
       if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">' + date + '</div>';
@@ -6325,9 +6324,9 @@ async function loadThreadReplies(silent) {
       var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       var initials = r.userName.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
       var avatarHtml = r.userAvatar ? '<img src="' + r.userAvatar + '" style="width:100%;height:100%;object-fit:cover">' : initials;
-      var bubbleBg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : (isAdmin ? 'rgba(0,151,167,0.06)' : 'var(--bg)');
+      var bubbleBg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : 'var(--bg)';
       var bubbleColor = isMine ? 'white' : 'var(--text)';
-      var bubbleBorder = isMine ? 'none' : (isAdmin ? '1px solid var(--teal)' : '1px solid var(--border)');
+      var bubbleBorder = isMine ? 'none' : '1px solid var(--border)';
       var avatarBg = isAdmin ? 'linear-gradient(135deg,#004D61,#003340)' : 'linear-gradient(135deg,var(--teal),var(--teal-dark))';
       // Audio
       var msgHtml = r.audio
@@ -6365,8 +6364,7 @@ async function loadThreadReplies(silent) {
       row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%">';
       if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:'+avatarBg+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">'+avatarHtml+'</div>';
       row += '<div>';
-      if (isAdmin && !isMine) row += '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;padding-left:4px"><span style="font-size:10px;font-weight:700;color:var(--teal-dark);background:rgba(0,151,167,0.1);border:1px solid var(--teal);border-radius:6px;padding:2px 7px">👨‍🏫 Réponse officielle</span></div>';
-      row += '<div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+';border-left:'+(isAdmin&&!isMine?'3px solid var(--teal-dark)':bubbleBorder)+'">';
+      row += '<div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+';border-left:'+(isAdmin&&!isMine?'3px solid var(--teal)':bubbleBorder)+'">';
       row += msgHtml + '</div></div></div>';
       if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">'+date+'</div>';
       row += reactHtml;
