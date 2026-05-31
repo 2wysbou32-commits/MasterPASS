@@ -6194,6 +6194,17 @@ async function loadThreadReplies(silent) {
           })()
         : r.message.split('\n').join('<br>');
       var canDelete = currentUser?.role === 'admin' || isOwn;
+      var reactHtml = '';
+      if (r.reactions && Object.keys(r.reactions).length) {
+        reactHtml += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+        Object.entries(r.reactions).forEach(function(e) {
+          var em=e[0], users=e[1];
+          if (!users.length) return;
+          var iReacted = users.indexOf(currentUser?currentUser.id:-1) !== -1;
+          reactHtml += '<button onclick="reactMsg('+JSON.stringify(em)+','+r.id+')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid '+(iReacted?'var(--teal)':'var(--border)')+';background:'+(iReacted?'rgba(0,151,167,0.1)':'var(--surface,white)')+';cursor:pointer;font-size:12px">'+em+' '+users.length+'</button>';
+        });
+        reactHtml += '</div>';
+      }
       var row = '<div style="display:flex;flex-direction:column;align-items:'+(isMine?'flex-end':'flex-start')+';margin-bottom:10px">';
       if (!isMine) {
         row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:40px">' +
@@ -6201,26 +6212,16 @@ async function loadThreadReplies(silent) {
           '<span style="font-size:10px;color:var(--text3)">'+date+'</span>' +
         '</div>';
       }
-      row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%;'+(isMine?'flex-direction:row-reverse':'')+'">'+
-        (isMine?'':'<div style="width:32px;height:32px;border-radius:50%;background:'+avatarBg+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">'+avatarHtml+'</div>')+
-        '<div>'+(isAdmin&&!isMine?'<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;padding-left:4px"><span style="font-size:10px;font-weight:700;color:var(--teal-dark);background:rgba(0,151,167,0.1);border:1px solid var(--teal);border-radius:6px;padding:2px 7px">👨‍🏫 Réponse officielle</span></div>':'')+
-        '<div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+';border-left:'+(isAdmin&&!isMine?'3px solid var(--teal-dark)':bubbleBorder)+'">'+
-        msgHtml+
-        (isMine?'<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">'+date+'</div>':'')+
-        // Reactions
-        (function(){
-          if (!r.reactions || !Object.keys(r.reactions).length) return '';
-          var rhtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
-          Object.entries(r.reactions).forEach(function(e) {
-            var em=e[0], users=e[1];
-            if (!users.length) return;
-            var iReacted = users.indexOf(currentUser?currentUser.id:-1) !== -1;
-            rhtml += '<button onclick="reactMsg('+JSON.stringify(em)+','+r.id+')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid '+(iReacted?'var(--teal)':'var(--border)')+';background:'+(iReacted?'rgba(0,151,167,0.1)':'var(--surface,white)')+';cursor:pointer;font-size:12px">'+em+' '+users.length+'</button>';
-          });
-          return rhtml + '</div>';
-        })()+
-        (canDelete?'<div style="margin-top:4px;'+(isMine?'text-align:right':'')+'"><button onclick="deleteReply('+r.id+')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑 Supprimer</button></div>':'')+
-        '</div></div></div>';
+      row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%">';
+      if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:'+avatarBg+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">'+avatarHtml+'</div>';
+      row += '<div>';
+      if (isAdmin && !isMine) row += '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;padding-left:4px"><span style="font-size:10px;font-weight:700;color:var(--teal-dark);background:rgba(0,151,167,0.1);border:1px solid var(--teal);border-radius:6px;padding:2px 7px">👨‍🏫 Réponse officielle</span></div>';
+      row += '<div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+';border-left:'+(isAdmin&&!isMine?'3px solid var(--teal-dark)':bubbleBorder)+'">';
+      row += msgHtml + '</div></div></div>';
+      if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">'+date+'</div>';
+      row += reactHtml;
+      if (canDelete) row += '<div style="margin-top:4px;'+(isMine?'text-align:right':'')+'"><button onclick="deleteReply('+r.id+')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px">🗑 Supprimer</button></div>';
+      row += '</div>';
       return row;
     }).join('');
     // Init audio
