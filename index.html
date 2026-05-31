@@ -2133,7 +2133,7 @@ input[type="file"]{display:none;}
 
       <!-- DISCUSSIONS CENTER PANEL -->
       <div class="panel" id="panel-discussions-center" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;margin-top:20px">
+        <div id="disc-controls-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;margin-top:20px">
           <div style="display:flex;gap:8px">
             <button onclick="loadDiscussionsCenter()" id="disc-refresh-btn" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:'Inter',sans-serif">↻ Actualiser</button>
             <button id="disc-delete-selected-btn" onclick="deleteSelectedDiscCenter()" style="display:none;padding:6px 14px;border-radius:8px;border:none;background:rgba(229,115,115,0.15);color:var(--danger);cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">🗑 Supprimer</button>
@@ -2146,7 +2146,7 @@ input[type="file"]{display:none;}
           </div>
         </div>
         <!-- Filtres -->
-        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <div id="disc-filters-bar" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
           <button onclick="filterDiscCenter('all')" id="disc-filter-all" class="sort-btn" style="background:var(--teal-dark);color:white">Tous</button>
           <button onclick="filterDiscCenter('open')" id="disc-filter-open" class="sort-btn">💬 Ouverts</button>
           <button onclick="filterDiscCenter('resolved')" id="disc-filter-resolved" class="sort-btn">✓ Résolus</button>
@@ -5362,6 +5362,10 @@ async function goToThread(fileId, fileName, threadId) {
   // Show inline discussion view, hide disc center list
   document.getElementById('disc-center-list').style.display = 'none';
   document.getElementById('disc-inline-view').style.display = 'block';
+  var discControls = document.getElementById('disc-controls-bar');
+  if (discControls) discControls.style.display = 'none';
+  var discFilters = document.getElementById('disc-filters-bar');
+  if (discFilters) discFilters.style.display = 'none';
   document.getElementById('inline-disc-filename').textContent = '💬 ' + fileName;
 
   if (threadId) {
@@ -5389,6 +5393,10 @@ function closeInlineDiscussion() {
   document.getElementById('thread-detail-view2').style.display = 'none';
   document.getElementById('threads-list-view2').style.display = 'block';
   document.getElementById('disc-center-list').style.display = 'block';
+  var discControls = document.getElementById('disc-controls-bar');
+  if (discControls) discControls.style.display = 'flex';
+  var discFilters = document.getElementById('disc-filters-bar');
+  if (discFilters) discFilters.style.display = 'flex';
   _discussionFileId = null;
   _currentThreadId = null;
   // Reload all threads from server to get fresh data, then update UI
