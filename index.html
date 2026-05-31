@@ -1217,6 +1217,7 @@ input[type="file"]{display:none;}
 /* Sidebar rétractable desktop */
 .sidebar {
   transition: width 0.28s cubic-bezier(0.4,0,0.2,1);
+  overflow: hidden;
 }
 .sidebar.collapsed {
   width: 64px !important;
@@ -1237,8 +1238,14 @@ input[type="file"]{display:none;}
   padding: 10px 0;
 }
 .sidebar.collapsed .sidebar-logo {
-  justify-content: center;
-  padding: 24px 0;
+  justify-content: center !important;
+  padding: 20px 0;
+}
+.sidebar.collapsed .sidebar-logo-img {
+  margin: 0 auto;
+}
+.sidebar.collapsed #sidebar-toggle-btn {
+  display: none !important;
 }
 .sidebar.collapsed .sidebar-user {
   display: flex;
