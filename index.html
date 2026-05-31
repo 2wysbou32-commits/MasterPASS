@@ -1204,7 +1204,7 @@ input[type="file"]{display:none;}
 
 /* ── RESPONSIVE MOBILE ── */
 .hamburger-btn {
-  display: none;
+  display: flex;
   width: 36px; height: 36px;
   border-radius: 10px; border: 1px solid rgba(0,196,212,0.15);
   background: rgba(0,196,212,0.06); color: var(--text2);
@@ -1213,6 +1213,51 @@ input[type="file"]{display:none;}
 }
 .hamburger-btn svg { width: 18px; height: 18px; }
 .hamburger-btn:hover { background: rgba(0,196,212,0.1); color: var(--teal); }
+
+/* Sidebar rétractable desktop */
+.sidebar {
+  transition: width 0.28s cubic-bezier(0.4,0,0.2,1);
+}
+.sidebar.collapsed {
+  width: 64px !important;
+}
+.sidebar.collapsed .sidebar-logo-text,
+.sidebar.collapsed .sidebar-username,
+.sidebar.collapsed .sidebar-role,
+.sidebar.collapsed .user-badge-label,
+.sidebar.collapsed .nav-section-title,
+.sidebar.collapsed .nav-item span,
+.sidebar.collapsed .storage-indicator,
+.sidebar.collapsed .btn-help,
+.sidebar.collapsed #dark-mode-label,
+.sidebar.collapsed .btn-logout span,
+.sidebar.collapsed .sidebar-bottom a { display: none !important; }
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 10px 0;
+}
+.sidebar.collapsed .sidebar-logo {
+  justify-content: center;
+  padding: 24px 0;
+}
+.sidebar.collapsed .sidebar-user {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+}
+.sidebar.collapsed .user-badge { margin: 0; }
+.sidebar.collapsed .sidebar-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 0;
+  gap: 6px;
+}
+.sidebar.collapsed .btn-logout { justify-content: center; padding: 10px 0; width: 100%; }
+.sidebar.collapsed #dark-mode-btn { justify-content: center; padding: 10px 0; }
+.sidebar.collapsed .sidebar-bottom a { display: none !important; }
+.main-content { transition: margin-left 0.28s cubic-bezier(0.4,0,0.2,1); }
+.sidebar.collapsed ~ .main-content { margin-left: 64px; }
 
 .sidebar-overlay {
   display: none; position: fixed; inset: 0; z-index: 99;
@@ -2762,7 +2807,12 @@ if (loginBtn) loginBtn.onclick = function() { doLogin(); };
   try{const u=await api('GET','/me');currentUser=u;$('auth-page').style.display='none';$('app').style.display='block';setupApp();}catch(_){}
 })();
 
-function setupApp(){
+function setupApp() {
+  // Restore sidebar state
+  var sidebar = document.getElementById('sidebar');
+  if (sidebar && window.innerWidth > 768 && localStorage.getItem('sidebar_collapsed') === '1') {
+    sidebar.classList.add('collapsed');
+  }
   const isAdmin    = currentUser.role === 'admin';
   const isSubAdmin = currentUser.role === 'subadmin';
   const isAnyAdmin = isAdmin || isSubAdmin;
@@ -6368,10 +6418,18 @@ function closeSidebar() {
 }
 function toggleSidebar() {
   var sidebar = document.getElementById('sidebar');
-  if (sidebar && sidebar.classList.contains('open')) {
-    closeSidebar();
+  if (!sidebar) return;
+  if (window.innerWidth <= 768) {
+    // Mobile : slide in/out
+    if (sidebar.classList.contains('open')) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
   } else {
-    openSidebar();
+    // Desktop : collapse/expand
+    sidebar.classList.toggle('collapsed');
+    localStorage.setItem('sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
   }
 }
 
