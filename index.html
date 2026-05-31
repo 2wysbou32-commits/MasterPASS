@@ -437,6 +437,11 @@ body::before {
   background:rgba(0,196,212,0.04);transition:all 0.2s;outline:none;
 }
 .field-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,196,212,0.12);background:rgba(0,196,212,0.06);}
+.auth-card .field-input{background:rgba(255,255,255,0.92) !important;color:#0D2B2E !important;}
+.auth-card .field-input:focus{background:rgba(255,255,255,1) !important;color:#0D2B2E !important;}
+.auth-card .field-input:-webkit-autofill,
+.auth-card .field-input:-webkit-autofill:hover,
+.auth-card .field-input:-webkit-autofill:focus{-webkit-text-fill-color:#0D2B2E !important;-webkit-box-shadow:0 0 0px 1000px rgba(255,255,255,0.95) inset !important;}
 select.field-input{cursor:pointer;}
 
 .btn-primary{
