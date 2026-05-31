@@ -5382,7 +5382,8 @@ console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, 
           '<div style="display:flex;align-items:center;gap:10px;padding:4px 0;min-width:160px">' +
           '<button id="' + bId + '" onclick="toggleInlineAudio(\'' + aId + '\',\'' + bId + '\',\'' + barId + '\',\'' + tId + '\',event)" style="width:32px;height:32px;border-radius:50%;background:' + (isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)') + ';color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>' +
           '<canvas id="' + barId + '" data-mine="' + isMine + '" height="28" style="width:120px;height:28px;border-radius:3px;display:block"></canvas>' +
-          '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>';
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
+          '</div>';
       } else {
         msgHtml = (r.message||'').split('\n').join('<br>');
       }
@@ -6187,10 +6188,10 @@ async function loadThreadReplies(silent) {
             var dur=r.audioDuration||0;
             var durStr=Math.floor(dur/60)+':'+(dur%60<10?'0':'')+dur%60;
             return '<audio id="'+aId+'" src="'+r.audio+'" style="display:none"></audio>'+
-              '<div style="display:flex;align-items:center;gap:10px;padding:4px 0;min-width:180px">'+
-                '<button id="'+bId+'" style="width:30px;height:30px;border-radius:50%;background:'+(isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)')+';color:white;border:none;cursor:pointer;font-size:12px">▶</button>'+
-                '<div style="flex:1"><div style="height:3px;background:'+(isMine?'rgba(255,255,255,0.3)':'rgba(0,151,167,0.2)')+';border-radius:99px;overflow:hidden;margin-bottom:3px"><div id="'+barId+'" style="height:100%;width:0%;background:'+(isMine?'white':'var(--teal-dark)')+';border-radius:99px"></div></div>'+
-                '<div style="display:flex;justify-content:space-between;font-size:10px;color:'+(isMine?'rgba(255,255,255,0.7)':'var(--text3)')+'"><span id="'+tId+'">0:00</span><span>🎤 '+durStr+'</span></div></div>'+
+              '<div style="display:flex;align-items:center;gap:10px;padding:4px 0;min-width:160px">'+
+                '<button id="'+bId+'" onclick="toggleInlineAudio(\''+aId+'\',\''+bId+'\',\''+barId+'\',\''+tId+'\',event)" style="width:32px;height:32px;border-radius:50%;background:'+(isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)')+';color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>'+
+                '<canvas id="'+barId+'" data-mine="'+isMine+'" height="28" style="width:120px;height:28px;border-radius:3px;display:block"></canvas>'+
+                '<div style="display:flex;justify-content:space-between;font-size:10px;color:'+(isMine?'rgba(255,255,255,0.7)':'var(--text3)')+'"><span id="'+tId+'">0:00</span><span>🎤 '+durStr+'</span></div>'+
               '</div>';
           })()
         : r.message.split('\n').join('<br>');
@@ -6244,6 +6245,13 @@ async function loadThreadReplies(silent) {
       })(audio, btn, bar, timeEl);
     });
     if (!silent || wasAtBottom) container.scrollTop = container.scrollHeight;
+    setTimeout(function() {
+      container.querySelectorAll('canvas[data-mine]').forEach(function(canvas) {
+        canvas.width = canvas.offsetWidth || 120;
+        canvas.height = 28;
+        redrawWaveformProgress(canvas, 0);
+      });
+    }, 300);
     // Init long press context menu for replies
     // Update comment map (keep inline entries)
     data.replies.forEach(function(r) {
