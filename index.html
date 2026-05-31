@@ -5280,17 +5280,18 @@ function attachDiscCenterListeners() {
     var fid = card.getAttribute('data-fid');
     var fname = card.getAttribute('data-fname');
     var tid = parseInt(card.getAttribute('data-tid'));
-    var timer = null; var startX = 0; var startY = 0; var longPressed = false;
+    var timer = null; var startX = 0; var startY = 0; var longPressed = false; var didScroll = false;
     card.addEventListener('touchstart', function(e) {
-      startX = e.touches[0].clientX; startY = e.touches[0].clientY; longPressed = false;
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY; longPressed = false; didScroll = false;
       timer = setTimeout(function() { longPressed = true; if (navigator.vibrate) navigator.vibrate(50); enterDiscCenterSelection(tid); }, 500);
     }, { passive: true });
     card.addEventListener('touchmove', function(e) {
-      if (Math.abs(e.touches[0].clientX-startX) > 10 || Math.abs(e.touches[0].clientY-startY) > 10) clearTimeout(timer);
+      if (Math.abs(e.touches[0].clientX-startX) > 8 || Math.abs(e.touches[0].clientY-startY) > 8) { clearTimeout(timer); didScroll = true; }
     }, { passive: true });
     card.addEventListener('touchend', function(e) {
       clearTimeout(timer);
       if (longPressed) { longPressed = false; e.preventDefault(); e.stopPropagation(); return; }
+      if (didScroll) return;
       if (_discCenterSelectionMode) { var cb = card.querySelector('.disc-center-cb'); if (cb) { cb.checked = !cb.checked; onDiscCenterCheckboxChange(); } }
       else goToThread(fid, decodeURIComponent(fname), tid);
     });
