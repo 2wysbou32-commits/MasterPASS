@@ -4689,8 +4689,9 @@ function showMsgContextMenu(e, commentId) {
   document.getElementById('ctx-delete').style.display = canDelete ? 'flex' : 'none';
   var clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : window.innerWidth/2);
   var clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : window.innerHeight/2);
-  var x = Math.min(clientX, window.innerWidth - 230);
+  var x = clientX - 210;
   var y = Math.min(clientY, window.innerHeight - 220);
+  if (x < 8) x = 8;
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
   menu.style.display = 'block';
