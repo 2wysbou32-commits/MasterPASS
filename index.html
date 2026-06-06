@@ -3099,7 +3099,7 @@ function showPanel(name){
   target.style.display='block';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-'+name)?.classList.add('active');
-  if(name==='files'){$('topbar-title').textContent='Espace documentaire';backToRoot();clearSearch();}
+  if(name==='files'){$('topbar-title').textContent='Espace documentaire';var _dv=document.getElementById('dashboard-view');if(_dv)_dv.style.display='none';backToRoot();clearSearch();}
   if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='favorites'){$('topbar-title').textContent='Mes favoris';loadFavorites();}
   if(name==='discussions-center'){$('topbar-title').textContent='Discussions';loadDiscussionsCenter();}
