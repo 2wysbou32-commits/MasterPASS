@@ -3322,7 +3322,7 @@ function doSearchContextual(query) {
   if (input) input.setAttribute('placeholder', 'Rechercher un fichier...');
   doSearch(query);
 }
-}
+  
 async function doSearch(query) {
   var panel = document.getElementById('panel-search');
   if (!query || query.length < 2) {
