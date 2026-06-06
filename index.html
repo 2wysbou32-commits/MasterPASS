@@ -3281,6 +3281,12 @@ function clearSearch() {
   if (clearBtn) clearBtn.style.display = 'none';
   var panel = document.getElementById('panel-search');
   if (panel) panel.style.display = 'none';
+  // Remettre le dashboard si on était sur l'accueil
+  var dashboardView = document.getElementById('dashboard-view');
+  var panelFiles = document.getElementById('panel-files');
+  if (dashboardView && panelFiles && panelFiles.style.display !== 'none') {
+    dashboardView.style.display = 'block';
+  }
 }
 
 function doSearchContextual(query) {
@@ -3317,6 +3323,21 @@ function doSearchContextual(query) {
       var text = row.textContent.toLowerCase();
       row.style.display = (!q || text.includes(q)) ? '' : 'none';
     });
+    return;
+  }
+
+  // Accueil (dashboard)
+  var dashboardView = document.getElementById('dashboard-view');
+  if (dashboardView && dashboardView.style.display !== 'none') {
+    if (input) input.setAttribute('placeholder', 'Rechercher dans l\'appli...');
+    if (!query || query.length < 2) {
+      dashboardView.style.display = 'block';
+      var ps = document.getElementById('panel-search');
+      if (ps) ps.style.display = 'none';
+      return;
+    }
+    dashboardView.style.display = 'none';
+    doSearch(query);
     return;
   }
 
