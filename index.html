@@ -3856,6 +3856,8 @@ function renderFolders(folders){
 
 function backToRoot(){
   currentFolder=null;
+  var dv = document.getElementById('dashboard-view');
+  if (dv) dv.style.display = 'none';
   $('view-folders').style.display='block';
   $('view-files').style.display='none';
   const dp2 = document.getElementById('discussion-panel'); if(dp2) dp2.style.display='none';
