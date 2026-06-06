@@ -2362,11 +2362,13 @@ input[type="file"]{display:none;}
 
       <!-- SEARCH RESULTS PANEL -->
       <div class="panel" id="panel-search" style="display:none">
-        <div style="margin-bottom:20px">
+        <div style="margin-bottom:20px;margin-top:20px">
           <div class="section-title" id="search-results-title">Résultats de recherche</div>
           <div class="section-sub" id="search-results-sub"></div>
         </div>
-        <div id="search-results-list" class="files-list-wrap"></div>
+        <div id="search-results-files" class="files-list-wrap" style="margin-bottom:24px"></div>
+        <div id="search-results-discussions" style="margin-bottom:24px"></div>
+        <div id="search-results-announcements" style="margin-bottom:24px"></div>
       </div>
 
       <!-- ANNOUNCEMENTS PANEL -->
@@ -3325,59 +3327,115 @@ function doSearchContextual(query) {
   
 async function doSearch(query) {
   var panel = document.getElementById('panel-search');
+  var rt = document.getElementById('search-results-title');
+  var rs = document.getElementById('search-results-sub');
+  var filesDiv = document.getElementById('search-results-files');
+  var discDiv = document.getElementById('search-results-discussions');
+  var annDiv = document.getElementById('search-results-announcements');
+
   if (!query || query.length < 2) {
-    var rt = document.getElementById('search-results-title');
-    var rs = document.getElementById('search-results-sub');
-    var rl = document.getElementById('search-results-list');
     if (rt) rt.style.display = 'none';
     if (rs) rs.style.display = 'none';
-    if (rl) rl.innerHTML = '';
+    if (filesDiv) filesDiv.innerHTML = '';
+    if (discDiv) discDiv.innerHTML = '';
+    if (annDiv) annDiv.innerHTML = '';
     if (panel) panel.style.display = 'none';
     return;
   }
-  // Afficher le panel de recherche
+
   if (panel) panel.style.display = 'block';
   var clearBtn = document.getElementById('search-clear');
   if (clearBtn) clearBtn.style.display = 'block';
-  var rt = document.getElementById('search-results-title');
-  var rs = document.getElementById('search-results-sub');
-  if (rt) rt.style.display = 'block';
+  if (rt) { rt.style.display = 'block'; }
   if (rs) { rs.style.display = 'block'; rs.textContent = 'Recherche en cours...'; }
+
+  var q = query.toLowerCase().trim();
+  var isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
+  var totalResults = 0;
+
+  // ── FICHIERS ──
   try {
     var folders = await api('GET', '/folders');
-    var results = [];
+    var fileResults = [];
     (folders||[]).forEach(function(folder) {
       (folder.files||[]).forEach(function(f) {
-        if (f.name.toLowerCase().includes(query.toLowerCase())) {
-          results.push({ file: f, folderName: folder.name, folderId: folder.id });
-        }
+        if (f.name.toLowerCase().includes(q))
+          fileResults.push({ file: f, folderName: folder.name, folderId: folder.id });
       });
       (folder.subfolders||[]).forEach(function(sub) {
         (sub.files||[]).forEach(function(f) {
-          if (f.name.toLowerCase().includes(query.toLowerCase())) {
-            results.push({ file: f, folderName: folder.name + ' / ' + sub.name, folderId: folder.id, subId: sub.id });
-          }
+          if (f.name.toLowerCase().includes(q))
+            fileResults.push({ file: f, folderName: folder.name + ' / ' + sub.name, folderId: folder.id, subId: sub.id });
         });
       });
     });
-    var list = document.getElementById('search-results-list');
-    if (!list) return;
-    if (!results.length) {
-      list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Aucun résultat pour "' + query + '"</div>';
-      return;
+    if (filesDiv) {
+      if (fileResults.length) {
+        filesDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">📁 Fichiers (' + fileResults.length + ')</div>' +
+          fileResults.map(function(r) {
+            return buildFileRow(r.file, isAdmin,
+              'openPreviewById(this)" data-fileid="' + r.file.id + '" data-type="' + r.file.type + '" data-basepath="/api/folders/' + r.folderId + '/files/' + r.file.id,
+              '/api/folders/' + r.folderId + '/files/' + r.file.id,
+              null, null, r.folderId, r.subId
+            );
+          }).join('');
+        totalResults += fileResults.length;
+      } else {
+        filesDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">📁 Fichiers</div><div style="padding:10px;color:var(--text3);font-size:13px">Aucun fichier trouvé</div>';
+      }
     }
-    var isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
-    if (rs) rs.textContent = results.length + ' résultat(s) pour "' + query + '"';
-    list.innerHTML = results.map(function(r) {
-      return buildFileRow(r.file, isAdmin,
-        'openPreviewById(this)" data-fileid="' + r.file.id + '" data-type="' + r.file.type + '" data-basepath="/api/folders/' + r.folderId + '/files/' + r.file.id,
-        '/api/folders/' + r.folderId + '/files/' + r.file.id,
-        null, null, r.folderId, r.subId
-      );
-    }).join('');
-  } catch(e) {
-    console.error('Search error:', e);
-  }
+  } catch(e) { console.error('Search files error:', e); }
+
+  // ── DISCUSSIONS ──
+  try {
+    var threads = await api('GET', '/threads');
+    var discResults = (threads||[]).filter(function(t) {
+      return (t.title||'').toLowerCase().includes(q) ||
+             (t.fileName||'').toLowerCase().includes(q) ||
+             (t.folderName||'').toLowerCase().includes(q);
+    });
+    if (discDiv) {
+      if (discResults.length) {
+        discDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">💬 Discussions (' + discResults.length + ')</div>' +
+          '<div style="background:var(--surface,white);border-radius:14px;border:1.5px solid var(--border);overflow:hidden">' +
+          discResults.map(function(t) {
+            return '<div onclick="showPanel(\'discussions-center\');setTimeout(function(){goToThread(' + t.fileId + ',\'' + encodeURIComponent(t.fileName||'') + '\',' + t.threadId + ')},400)" style="padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px" onmouseover="this.style.background=\'rgba(0,151,167,0.05)\'" onmouseout="this.style.background=\'\'">' +
+              '<span style="font-size:13px;font-weight:700;color:var(--text)">' + (t.title||'Sans titre') + '</span>' +
+              '<span style="font-size:11px;color:var(--text3);margin-left:auto">📄 ' + (t.fileName||'') + ' · ' + (t.replyCount||0) + ' rép.</span>' +
+              '</div>';
+          }).join('') + '</div>';
+        totalResults += discResults.length;
+      } else {
+        discDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">💬 Discussions</div><div style="padding:10px;color:var(--text3);font-size:13px">Aucune discussion trouvée</div>';
+      }
+    }
+  } catch(e) { console.error('Search disc error:', e); }
+
+  // ── ANNONCES ──
+  try {
+    var anns = await api('GET', '/announcements');
+    var annResults = (anns||[]).filter(function(a) {
+      return (a.title||'').toLowerCase().includes(q) ||
+             (a.message||'').toLowerCase().includes(q);
+    });
+    if (annDiv) {
+      if (annResults.length) {
+        annDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">📢 Annonces (' + annResults.length + ')</div>' +
+          '<div style="background:var(--surface,white);border-radius:14px;border:1.5px solid var(--border);overflow:hidden">' +
+          annResults.map(function(a) {
+            return '<div onclick="showPanel(\'announcements\');setTimeout(function(){var el=document.getElementById(\'ann-\'+' + a.id + ');if(el)el.scrollIntoView({behavior:\'smooth\',block:\'center\'})},500)" style="padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer" onmouseover="this.style.background=\'rgba(0,151,167,0.05)\'" onmouseout="this.style.background=\'\'">' +
+              '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">' + (a.title||'Annonce') + '</div>' +
+              '<div style="font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (a.message||'') + '</div>' +
+              '</div>';
+          }).join('') + '</div>';
+        totalResults += annResults.length;
+      } else {
+        annDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">📢 Annonces</div><div style="padding:10px;color:var(--text3);font-size:13px">Aucune annonce trouvée</div>';
+      }
+    }
+  } catch(e) { console.error('Search ann error:', e); }
+
+  if (rs) rs.textContent = totalResults + ' résultat(s) pour "' + query + '"';
 }
 
 // ── SOUS-FICHIERS ─────────────────────────────────────────────────────────────
