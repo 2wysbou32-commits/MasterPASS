@@ -3307,6 +3307,17 @@ function doSearchContextual(query) {
     return;
   }
 
+  if (panel === 'panel-users') {
+    if (input) input.setAttribute('placeholder', 'Rechercher un compte...');
+    var q = (query||'').toLowerCase().trim();
+    document.querySelectorAll('#users-grid tr').forEach(function(row) {
+      if (row.closest('thead')) return;
+      var text = row.textContent.toLowerCase();
+      row.style.display = (!q || text.includes(q)) ? '' : 'none';
+    });
+    return;
+  }
+
   // Par défaut : recherche fichiers
   if (input) input.setAttribute('placeholder', 'Rechercher un fichier...');
   doSearch(query);
