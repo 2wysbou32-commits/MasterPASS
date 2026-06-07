@@ -595,7 +595,7 @@ select.field-input{cursor:pointer;}
 .topbar-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:21px;font-weight:800;color:var(--text);flex:1;letter-spacing:-0.3px;}
 .topbar-actions{display:flex;gap:10px;align-items:center;}
 .content-area{}
-.panel{display:none;opacity:0;}.panel.active{display:block;animation:panelFadeIn 0.18s ease forwards;}
+.panel{display:none;}.panel.active{display:block;animation:panelFadeIn 0.18s ease forwards;}
 @keyframes panelFadeIn {
   from { opacity:0; transform:translateY(8px); }
   to   { opacity:1; transform:translateY(0); }
@@ -2963,6 +2963,7 @@ function showDashboard() {
   document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
   // panel-files doit rester visible car dashboard-view est à l'intérieur
   $('panel-files').style.display = 'block';
+$('dashboard-view').style.animation = 'panelFadeIn 0.18s ease forwards';
   $('view-folders').style.display = 'none';
   $('view-files').style.display = 'none';
   const bc = document.getElementById('breadcrumb');
