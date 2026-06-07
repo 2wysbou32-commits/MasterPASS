@@ -489,7 +489,18 @@ select.field-input{cursor:pointer;}
   cursor:pointer;transition:all 0.2s;
   box-shadow:0 4px 20px rgba(0,196,212,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
   margin-top:8px;
+  position:relative;overflow:hidden;
 }
+.btn-primary::after {
+  content:'';
+  position:absolute;
+  top:0;left:-100%;
+  width:60%;height:100%;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  transform:skewX(-20deg);
+  transition:left 0.5s ease;
+}
+.btn-primary:hover::after { left:150%; }
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(0,196,212,0.45), inset 0 1px 0 rgba(255,255,255,0.15);}
 .btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
 .error-msg{background:rgba(240,108,108,0.1);border:1px solid rgba(240,108,108,0.25);border-radius:10px;padding:12px 14px;font-size:13px;color:#FF8080;margin-top:12px;display:none;}
@@ -792,7 +803,18 @@ select.field-input{cursor:pointer;}
   background:linear-gradient(135deg,#00C4D4,#009AAA);
   border-color:transparent;color:white;
   box-shadow:0 3px 16px rgba(0,196,212,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+  position:relative;overflow:hidden;
 }
+.btn-action.primary-action::after {
+  content:'';
+  position:absolute;
+  top:0;left:-100%;
+  width:60%;height:100%;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  transform:skewX(-20deg);
+  transition:left 0.5s ease;
+}
+.btn-action.primary-action:hover::after { left:150%; }
 .btn-action.primary-action:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,196,212,0.4), inset 0 1px 0 rgba(255,255,255,0.15);}
 .btn-download{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border-radius:8px;border:1px solid rgba(0,196,212,0.15);background:rgba(0,196,212,0.06);color:var(--teal);font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;font-family:'Inter',sans-serif;text-decoration:none;}
 .btn-download:hover{border-color:rgba(0,196,212,0.35);background:rgba(0,196,212,0.1);}
