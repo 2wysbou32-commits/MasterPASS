@@ -4886,6 +4886,7 @@ let _longPressTimer = null;
 
 // Map to store comment data by id
 var _commentDataMap = {};
+var _repliesCache = []; // cache des replies pour le swipe
 var _menuJustOpened = false;
 
 function showMsgContextMenu(e, commentId) {
@@ -4998,11 +4999,14 @@ function initBubbleEvents(containerId) {
     var cid = parseInt(_swipeBubble.getAttribute('data-cid'));
     if (dx > 60) {
       // Swipe droite → répondre
-      var comment = _currentReplies ? _currentReplies.find(function(r){return r.id===cid;}) : null;
+      var comment = _repliesCache.find(function(r){ return r.id === cid; });
       if (comment) setReply(comment.id, comment.userName, comment.message || 'Vocal');
     } else if (dx < -60) {
-      // Swipe gauche → supprimer (si autorisé)
-      if (currentUser && (currentUser.role==='admin' || currentUser.role==='subadmin')) {
+      // Swipe gauche → supprimer uniquement son propre message
+      var comment = _repliesCache.find(function(r){ return r.id === cid; });
+      if (comment && String(comment.userId) === String(currentUser?.id)) {
+        if (confirm('Supprimer ce message ?')) deleteReply(cid);
+      } else if (comment && (currentUser?.role === 'admin' || currentUser?.role === 'subadmin')) {
         if (confirm('Supprimer ce message ?')) deleteReply(cid);
       }
     }
@@ -5623,6 +5627,7 @@ async function loadThreadRepliesInline() {
       container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text3)">Aucune réponse — sois le premier !</div>';
       return;
     }
+    _repliesCache = data.replies;
     container.innerHTML = data.replies.map(function(r) {
       var isMine = String(r.userId) === String(currentUser?.id);
 console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, typeof currentUser?.id, '->', isMine);
@@ -6431,6 +6436,7 @@ async function loadThreadReplies(silent) {
     // Ne pas reconstruire le HTML si un audio est en cours de lecture
     var audioPlaying = Array.from(container.querySelectorAll('audio')).some(function(a) { return !a.paused; });
     if (audioPlaying) return;
+    _repliesCache = data.replies;
     container.innerHTML = data.replies.map(function(r) {
       var isAdmin = r.userRole === 'admin';
       var isOwn = String(r.userId) === String(currentUser?.id);
