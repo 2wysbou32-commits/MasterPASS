@@ -4948,22 +4948,65 @@ function initBubbleEvents(containerId) {
   };
   list.onmouseup = function() { msgLongPressEnd(); };
   list.onmouseleave = function() { msgLongPressEnd(); };
-  var _touchStartX = 0, _touchStartY = 0;
+  var _touchStartX = 0, _touchStartY = 0, _swipeBubble = null, _swipeRow = null, _swiping = false;
   list.ontouchstart = function(e) {
     var bubble = e.target.closest('.msg-bubble');
     if (!bubble) return;
     _touchStartX = e.touches[0].clientX;
     _touchStartY = e.touches[0].clientY;
+    _swipeBubble = bubble;
+    _swipeRow = bubble.closest('[style*="flex-direction:column"]') || bubble.parentElement;
+    _swiping = false;
     var cid = parseInt(bubble.getAttribute('data-cid'));
     msgLongPressStart(e, cid);
   };
+  list.ontouchmove = function(e) {
+    if (!_swipeBubble) return;
+    var dx = e.touches[0].clientX - _touchStartX;
+    var dy = Math.abs(e.touches[0].clientY - _touchStartY);
+    if (dy > 20) { msgLongPressEnd(); return; }
+    if (Math.abs(dx) > 10) {
+      msgLongPressEnd();
+      _swiping = true;
+      // Limiter le déplacement à 80px
+      var clamped = Math.max(-80, Math.min(80, dx));
+      _swipeBubble.style.transform = 'translateX(' + clamped + 'px)';
+      _swipeBubble.style.transition = 'none';
+      // Icône répondre (droite) ou supprimer (gauche)
+      var hint = _swipeRow.querySelector('.swipe-hint');
+      if (!hint) {
+        hint = document.createElement('div');
+        hint.className = 'swipe-hint';
+        hint.style.cssText = 'position:absolute;top:50%;transform:translateY(-50%);font-size:20px;pointer-events:none;opacity:0;transition:opacity 0.15s';
+        _swipeRow.style.position = 'relative';
+        _swipeRow.appendChild(hint);
+      }
+      if (dx > 30) { hint.textContent = '↩️'; hint.style.left = '4px'; hint.style.right = ''; hint.style.opacity = '1'; }
+      else if (dx < -30) { hint.textContent = '🗑️'; hint.style.right = '4px'; hint.style.left = ''; hint.style.opacity = '1'; }
+      else { hint.style.opacity = '0'; }
+      e.preventDefault();
+    }
+  };
   list.ontouchend = function(e) {
     msgLongPressEnd();
-  };
-  list.ontouchmove = function(e) {
-    var dx = Math.abs(e.touches[0].clientX - _touchStartX);
-    var dy = Math.abs(e.touches[0].clientY - _touchStartY);
-    if (dx > 10 || dy > 10) msgLongPressEnd();
+    if (!_swipeBubble || !_swiping) { _swipeBubble = null; _swipeRow = null; _swiping = false; return; }
+    var dx = e.changedTouches[0].clientX - _touchStartX;
+    _swipeBubble.style.transition = 'transform 0.25s ease';
+    _swipeBubble.style.transform = 'translateX(0)';
+    var hint = _swipeRow ? _swipeRow.querySelector('.swipe-hint') : null;
+    if (hint) hint.style.opacity = '0';
+    var cid = parseInt(_swipeBubble.getAttribute('data-cid'));
+    if (dx > 60) {
+      // Swipe droite → répondre
+      var comment = _currentReplies ? _currentReplies.find(function(r){return r.id===cid;}) : null;
+      if (comment) setReply(comment.id, comment.userName, comment.message || 'Vocal');
+    } else if (dx < -60) {
+      // Swipe gauche → supprimer (si autorisé)
+      if (currentUser && (currentUser.role==='admin' || currentUser.role==='subadmin')) {
+        if (confirm('Supprimer ce message ?')) deleteReply(cid);
+      }
+    }
+    _swipeBubble = null; _swipeRow = null; _swiping = false;
   };
 }
 
