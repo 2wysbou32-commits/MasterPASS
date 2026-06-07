@@ -5002,12 +5002,12 @@ function initBubbleEvents(containerId) {
       var comment = _repliesCache.find(function(r){ return r.id === cid; });
       if (comment) setReply(comment.id, comment.userName, comment.message || 'Vocal');
     } else if (dx < -60) {
-      // Swipe gauche → supprimer uniquement son propre message
       var comment = _repliesCache.find(function(r){ return r.id === cid; });
-      if (comment && String(comment.userId) === String(currentUser?.id)) {
-        if (confirm('Supprimer ce message ?')) deleteReply(cid);
-      } else if (comment && (currentUser?.role === 'admin' || currentUser?.role === 'subadmin')) {
-        if (confirm('Supprimer ce message ?')) deleteReply(cid);
+      var canDel = comment && (String(comment.userId) === String(currentUser?.id) || currentUser?.role === 'admin' || currentUser?.role === 'subadmin');
+      if (canDel && confirm('Supprimer ce message ?')) {
+        // Appel direct API sans double confirm
+        var isInline = !!document.getElementById('thread-replies2');
+        if (isInline) deleteReplyInline(cid); else deleteReply(cid);
       }
     }
     _swipeBubble = null; _swipeRow = null; _swiping = false;
@@ -5989,8 +5989,8 @@ function redrawWaveformProgress(canvas, pct) {
   }
 }
 
-async function deleteReplyInline(replyId) {
-  if (!confirm('Supprimer cette réponse ?')) return;
+async function deleteReplyInline(replyId, skipConfirm) {
+  if (!skipConfirm && !confirm('Supprimer cette réponse ?')) return;
   try {
     await api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + replyId);
     await loadThreadRepliesInline();
@@ -6536,8 +6536,8 @@ async function postReply() {
   finally { _sendingReply = false; if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
 }
 
-async function deleteReply(replyId) {
-  if (!confirm('Supprimer cette réponse ?')) return;
+async function deleteReply(replyId, skipConfirm) {
+  if (!skipConfirm && !confirm('Supprimer cette réponse ?')) return;
   try {
     await api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + replyId);
     await loadThreadReplies(true);
