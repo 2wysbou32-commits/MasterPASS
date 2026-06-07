@@ -5006,7 +5006,8 @@ function initBubbleEvents(containerId) {
       var canDel = comment && (String(comment.userId) === String(currentUser?.id) || currentUser?.role === 'admin' || currentUser?.role === 'subadmin');
       if (canDel && confirm('Supprimer ce message ?')) {
         // Appel direct API sans double confirm
-        var isInline = !!document.getElementById('thread-replies2');
+        var container2 = document.getElementById('thread-replies2');
+        var isInline = container2 && container2.innerHTML.trim() !== '' && document.getElementById('disc-inline-view') && document.getElementById('disc-inline-view').style.display !== 'none';
         if (isInline) deleteReplyInline(cid, true); else deleteReply(cid, true);
       }
     }
