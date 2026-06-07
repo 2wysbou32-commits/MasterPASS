@@ -5007,7 +5007,7 @@ function initBubbleEvents(containerId) {
       if (canDel && confirm('Supprimer ce message ?')) {
         // Appel direct API sans double confirm
         var isInline = !!document.getElementById('thread-replies2');
-        if (isInline) deleteReplyInline(cid); else deleteReply(cid);
+        if (isInline) deleteReplyInline(cid, true); else deleteReply(cid, true);
       }
     }
     _swipeBubble = null; _swipeRow = null; _swiping = false;
