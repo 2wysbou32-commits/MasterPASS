@@ -3477,6 +3477,7 @@ function scrollToComment(commentId) {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+  var _revisionSeances = [];
 // ── RÉVISION ───────────────────────────────────────────────────────────────────
 async function loadRevision() {
   var list = document.getElementById('revision-list');
@@ -3484,6 +3485,7 @@ async function loadRevision() {
   list.innerHTML = '<div class="dashboard-empty">Chargement...</div>';
   try {
     const seances = await api('GET', '/revision/seances');
+    _revisionSeances = seances;
     var html = '';
     if (currentUser && currentUser.role === 'admin') {
       html += '<button class="btn-action" onclick="creerSeance()" style="margin-bottom:16px">+ Nouvelle séance</button>';
@@ -3492,12 +3494,39 @@ async function loadRevision() {
       html += '<div class="dashboard-empty">Aucune séance de révision pour le moment</div>';
     } else {
       html += seances.map(function(s) {
-        return '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px">' +
+        return '<div class="seance-card" data-id="' + s.id + '" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer">' +
           '<div style="flex:1">' +
             '<div style="font-size:14px;font-weight:600;color:var(--text)">' + s.titre + '</div>' +
             '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + s.schemaCount + ' schéma(s)</div>' +
           '</div>' +
         '</div>';
+      }).join('');
+    }
+    list.innerHTML = html;
+    list.querySelectorAll('.seance-card').forEach(function(card) {
+      card.addEventListener('click', function() { ouvrirSeance(parseInt(card.dataset.id)); });
+    });
+  } catch(e) {
+    list.innerHTML = '<div class="dashboard-empty">Erreur de chargement</div>';
+  }
+}
+async function ouvrirSeance(id) {
+  var list = document.getElementById('revision-list');
+  var seance = _revisionSeances.find(function(s) { return s.id === id; });
+  if (!seance || !list) return;
+  list.innerHTML = '<div class="dashboard-empty">Chargement...</div>';
+  try {
+    const schemas = await api('GET', '/revision/seances/' + id + '/schemas');
+    var html = '<button class="btn-action" onclick="loadRevision()" style="margin-bottom:16px">← Retour</button>';
+    html += '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:14px">' + seance.titre + '</div>';
+    if (currentUser && currentUser.role === 'admin') {
+      html += '<button class="btn-action" style="margin-bottom:16px">+ Ajouter un schéma (bientôt)</button>';
+    }
+    if (!schemas.length) {
+      html += '<div class="dashboard-empty">Aucun schéma pour le moment</div>';
+    } else {
+      html += schemas.map(function(sc) {
+        return '<div style="padding:14px 16px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px">' + sc.titre + '</div>';
       }).join('');
     }
     list.innerHTML = html;
