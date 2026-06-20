@@ -3483,7 +3483,7 @@ async function loadRevision() {
   if (!list) return;
   list.innerHTML = '<div class="dashboard-empty">Chargement...</div>';
   try {
-    const seances = await api('GET', '/api/revision/seances');
+    const seances = await api('GET', '/revision/seances');
     var html = '';
     if (currentUser && currentUser.role === 'admin') {
       html += '<button class="btn-action" onclick="creerSeance()" style="margin-bottom:16px">+ Nouvelle séance</button>';
