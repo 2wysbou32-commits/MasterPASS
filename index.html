@@ -3509,7 +3509,7 @@ async function creerSeance() {
   var titre = prompt('Nom de la séance (ex: CM4 — Anatomie abdominale)');
   if (!titre || !titre.trim()) return;
   try {
-    await api('POST', '/api/revision/seances', { titre: titre.trim() });
+    await api('POST', '/revision/seances', { titre: titre.trim() });
     loadRevision();
   } catch(e) {
     toast('Erreur lors de la création', 'error');
