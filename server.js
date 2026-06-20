@@ -637,6 +637,13 @@ app.delete('/api/revision/seances/:id', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/revision/seances/:id/schemas', requireAuth, (req, res) => {
+  const db = loadDB();
+  const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
+  if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
+  res.json((seance.schemas||[]).map(sc => ({ id: sc.id, titre: sc.titre })));
+});
+
 // ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
 app.post('/api/folders/:id/subfolders', requireAdmin, (req, res) => {
   const parentId = parseInt(req.params.id);
