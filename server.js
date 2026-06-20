@@ -611,6 +611,31 @@ app.delete('/api/folders/:id', requireAdmin, async (req, res) => {
   db.folders = db.folders.filter(f => f.id !== parseInt(req.params.id)); saveDB(db);
   res.json({ ok: true });
 });
+// ── RÉVISION : SÉANCES ───────────────────────────────────────────────────────
+app.get('/api/revision/seances', requireAuth, (req, res) => {
+  const db = loadDB();
+  const seances = db.seances || [];
+  res.json(seances.map(s => ({
+    id: s.id, titre: s.titre, createdAt: s.createdAt,
+    schemaCount: (s.schemas||[]).length
+  })));
+});
+app.post('/api/revision/seances', requireSuperAdmin, (req, res) => {
+  const { titre } = req.body;
+  if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const db = loadDB();
+  if (!db.seances) db.seances = [];
+  const seance = { id: db.nextId++, titre: titre.trim(), createdAt: new Date().toISOString().split('T')[0], schemas: [] };
+  db.seances.push(seance); saveDB(db);
+  res.json({ id: seance.id, titre: seance.titre, createdAt: seance.createdAt, schemaCount: 0 });
+});
+app.delete('/api/revision/seances/:id', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.seances) db.seances = [];
+  db.seances = db.seances.filter(s => s.id !== parseInt(req.params.id));
+  saveDB(db);
+  res.json({ ok: true });
+});
 
 // ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
 app.post('/api/folders/:id/subfolders', requireAdmin, (req, res) => {
