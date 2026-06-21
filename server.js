@@ -693,7 +693,12 @@ app.get('/api/revision/seances/:id/schemas', requireAuth, (req, res) => {
   const db = loadDB();
   const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
   if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
-  res.json((seance.schemas||[]).map(sc => ({ id: sc.id, titre: sc.titre })));
+  const user = db.users.find(u => u.id === req.session.userId);
+  const progress = (user && user.revisionProgress) || {};
+  res.json((seance.schemas||[]).map(sc => ({
+    id: sc.id, titre: sc.titre,
+    derniereRevision: progress[sc.id] || null
+  })));
 });
 
 app.post('/api/revision/seances/:id/schemas', requireSuperAdmin, upload.single('image'), async (req, res) => {
@@ -727,6 +732,36 @@ app.post('/api/revision/seances/:id/schemas', requireSuperAdmin, upload.single('
   seance.schemas.push(schema);
   saveDB(db);
   res.json({ id: schema.id, titre: schema.titre });
+});
+
+app.patch('/api/revision/seances/:id/schemas/:schemaId', requireSuperAdmin, (req, res) => {
+  const { titre } = req.body;
+  if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const db = loadDB();
+  const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
+  if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
+  const schema = (seance.schemas||[]).find(sc => sc.id === parseInt(req.params.schemaId));
+  if (!schema) return res.status(404).json({ error: 'Schéma introuvable' });
+  schema.titre = titre.trim();
+  saveDB(db);
+  res.json({ id: schema.id, titre: schema.titre });
+});
+app.delete('/api/revision/seances/:id/schemas/:schemaId', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
+  if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
+  seance.schemas = (seance.schemas||[]).filter(sc => sc.id !== parseInt(req.params.schemaId));
+  saveDB(db);
+  res.json({ ok: true });
+});
+app.post('/api/revision/seances/:id/schemas/:schemaId/vu', requireAuth, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (!user.revisionProgress) user.revisionProgress = {};
+  user.revisionProgress[req.params.schemaId] = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true });
 });
 
 app.get('/api/revision/seances/:id/schemas/:schemaId/image', requireAuth, async (req, res) => {
