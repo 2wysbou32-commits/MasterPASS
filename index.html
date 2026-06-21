@@ -2960,7 +2960,7 @@ function setupApp() {
   $('nav-role-text').textContent=isAdmin?'Accès complet':isSubAdmin?'Dépôt de fichiers':'Lecture seule';
   $('nav-users').style.display=isAdmin?'flex':'none';
   $('nav-codes').style.display=isAdmin?'flex':'none';
-  $('nav-settings').style.display=isAnyAdmin?'none':'flex';
+  $('nav-settings').style.display='flex';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-dashboard').classList.add('active');
   $('admin-stats').style.display='none';
@@ -2968,8 +2968,7 @@ function setupApp() {
   $('upload-zone-container').style.display=isAnyAdmin?'block':'none';
   $('storage-indicator').style.display=isAdmin?'block':'none';
   if(!isAnyAdmin)$('student-banner-title').textContent=`Bienvenue, ${currentUser.name.split(' ')[0]} !`;
-  // Show settings panel for students only
-  $('panel-settings').style.display = isAnyAdmin ? 'none' : '';
+  $('panel-settings').style.display = 'none';
   $('topbar-title').textContent='Accueil';
   loadDashboard();
   const topbarEl = document.querySelector('.topbar');
