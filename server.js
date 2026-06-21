@@ -24,12 +24,15 @@ try {
   console.log('⚠️ Web Push non disponible (npm install web-push)');
 }
 
-async function sendPushToAll(title, body, url = '/') {
+async function sendPushToAll(title, body, url = '/', category = null, threadId = null) {
   if (!webpush) return;
   const db = loadDB();
   const subs = db.pushSubscriptions || [];
   const payload = JSON.stringify({ title, body, url });
   await Promise.allSettled(subs.map(async (sub) => {
+    const user = db.users.find(u => u.id === sub.userId);
+    if (category && user && user.notifPrefs && user.notifPrefs[category] === false) return;
+    if (threadId && user && (user.mutedThreads || []).includes(threadId)) return;
     try {
       await webpush.sendNotification(sub.subscription, payload);
     } catch(e) {
@@ -540,7 +543,35 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', requireAuth, (req, res) => {
   const user = loadDB().users.find(u => u.id === req.session.userId);
   if (!user) return res.status(401).json({ error: 'Session invalide' });
-  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null });
+  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null, notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true }, mutedThreads: user.mutedThreads || [] });
+});
+
+app.patch('/api/me/notif-prefs', requireAuth, (req, res) => {
+  const { announcements, discussions, files } = req.body;
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  user.notifPrefs = {
+    announcements: announcements !== false,
+    discussions: discussions !== false,
+    files: files !== false
+  };
+  saveDB(db);
+  res.json({ notifPrefs: user.notifPrefs });
+});
+
+app.post('/api/threads/:fileId/:threadId/mute', requireAuth, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (!user.mutedThreads) user.mutedThreads = [];
+  const tid = parseInt(req.params.threadId);
+  const idx = user.mutedThreads.indexOf(tid);
+  let muted;
+  if (idx >= 0) { user.mutedThreads.splice(idx, 1); muted = false; }
+  else { user.mutedThreads.push(tid); muted = true; }
+  saveDB(db);
+  res.json({ muted });
 });
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
@@ -1146,7 +1177,7 @@ app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (r
     sendPushToAll(
       `📁 Nouveau fichier dans ${folderName}`,
       added.length === 1 ? added[0].name : `${added.length} nouveaux fichiers`,
-      '/'
+      '/', 'files'
     ).catch(()=>{});
   }
   res.json(added);
@@ -1776,7 +1807,7 @@ app.post('/api/threads/:fileId', requireAuth, (req, res) => {
   if (user.role !== 'admin') {
     if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
     db.adminUnreadDiscussions++;
-    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + ': ' + title.trim().substring(0, 80), '/').catch(()=>{});
+    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + ': ' + title.trim().substring(0, 80), '/', 'discussions', thread.id).catch(()=>{});
   }
   saveDB(db);
   res.json(thread);
@@ -1845,7 +1876,7 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   if (user.role !== 'admin') {
     if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
     db.adminUnreadDiscussions++;
-    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/').catch(()=>{});
+    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/', 'discussions', thread.id).catch(()=>{});
   }
   saveDB(db);
   res.json(reply);
@@ -1990,7 +2021,7 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
   if (user.role !== 'admin') {
     if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
     db.adminUnreadDiscussions++;
-    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + (message?.trim() ? ': ' + message.trim().substring(0, 60) : ' a envoyé un vocal'), '/').catch(()=>{});
+    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + (message?.trim() ? ': ' + message.trim().substring(0, 60) : ' a envoyé un vocal'), '/', 'discussions').catch(()=>{});
     if (!db.adminNotifications) db.adminNotifications = [];
     db.adminNotifications.unshift({
       id: db.nextId++,
@@ -2119,9 +2150,9 @@ app.post('/api/announcements', requireAdmin, (req, res) => {
   };
   db.announcements.unshift(ann); // Plus récent en premier
   saveDB(db);
+  sendPushToAll('📢 ' + ann.title, ann.message.substring(0, 80), '/', 'announcements').catch(()=>{});
   res.json(ann);
 });
-
 // Lister toutes les annonces
 app.post('/api/announcements/:id/react', requireAuth, (req, res) => {
   const db = loadDB();
