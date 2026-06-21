@@ -3873,6 +3873,8 @@ function revM3Render() {
   var p = revM3Queue[revM3Idx];
   qEl.innerHTML = 'Où se trouve : <b>' + p.label + '</b> ?';
   pEl.textContent = 'Repère ' + (revM3Idx + 1) + ' / ' + revM3Queue.length;
+  pEl.style.cssText = 'font-size:12px;color:var(--text2);font-weight:700';
+  pEl.onclick = null;
   stage.querySelectorAll('[data-rev-mark]').forEach(function(m) { m.remove(); });
   var oldBtn = document.getElementById('rev-m3-next-btn');
   if (oldBtn) oldBtn.remove();
@@ -3883,6 +3885,7 @@ function revM3Click(e) {
   if (revM3Locked || revM3Idx >= revM3Queue.length) return;
   var stage = document.getElementById('rev-m3-stage');
   var pEl = document.getElementById('rev-m3-progress');
+  var qEl = document.getElementById('rev-m3-question');
   var r = stage.getBoundingClientRect();
   var px = ((e.clientX - r.left) / r.width) * 100;
   var py = ((e.clientY - r.top) / r.height) * 100;
@@ -3900,7 +3903,8 @@ function revM3Click(e) {
     stage.appendChild(mark);
     revM3Score++;
     revM3Locked = true;
-    setTimeout(function() { revM3Idx++; revM3Render(); }, 600);
+    qEl.innerHTML = '<span style="color:var(--success,#2E7D32);font-weight:700">Correct ✓</span>';
+    setTimeout(function() { revM3Idx++; revM3Render(); }, 700);
   } else {
     revM3Attempts++;
     mark.style.background = 'var(--danger,#E57373)';
@@ -3921,13 +3925,10 @@ function revM3Click(e) {
   }
 }
 function revM3ShowNextBtn() {
-  var stage = document.getElementById('rev-m3-stage');
-  var next = document.createElement('button');
-  next.id = 'rev-m3-next-btn';
-  next.textContent = 'Suivant →';
-  next.style.cssText = 'position:absolute;right:10px;bottom:10px;background:#1565C0;color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.3);z-index:20;';
-  next.onclick = function(ev) { ev.stopPropagation(); next.remove(); revM3Idx++; revM3Render(); };
-  stage.appendChild(next);
+  var pEl = document.getElementById('rev-m3-progress');
+  pEl.textContent = 'Suivant →';
+  pEl.style.cssText = 'cursor:pointer;background:#1565C0;color:#fff;font-weight:700;font-size:13px;padding:8px 16px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,0.2)';
+  pEl.onclick = function() { revM3Idx++; revM3Render(); };
 }
 function revM3End() {
   var stage = document.getElementById('rev-m3-stage');
