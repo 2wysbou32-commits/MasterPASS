@@ -638,6 +638,17 @@ app.delete('/api/revision/dossiers/:id', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+app.patch('/api/revision/dossiers/:id', requireSuperAdmin, (req, res) => {
+  const { titre } = req.body;
+  if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const db = loadDB();
+  const dossier = (db.dossiers||[]).find(d => d.id === parseInt(req.params.id));
+  if (!dossier) return res.status(404).json({ error: 'Dossier introuvable' });
+  dossier.titre = titre.trim();
+  saveDB(db);
+  res.json({ id: dossier.id, titre: dossier.titre });
+});
+
 // ── RÉVISION : SÉANCES ───────────────────────────────────────────────────────
 app.get('/api/revision/seances', requireAuth, (req, res) => {
   const db = loadDB();
@@ -665,6 +676,17 @@ app.delete('/api/revision/seances/:id', requireSuperAdmin, (req, res) => {
   db.seances = db.seances.filter(s => s.id !== parseInt(req.params.id));
   saveDB(db);
   res.json({ ok: true });
+});
+
+app.patch('/api/revision/seances/:id', requireSuperAdmin, (req, res) => {
+  const { titre } = req.body;
+  if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const db = loadDB();
+  const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
+  if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
+  seance.titre = titre.trim();
+  saveDB(db);
+  res.json({ id: seance.id, titre: seance.titre });
 });
 
 app.get('/api/revision/seances/:id/schemas', requireAuth, (req, res) => {
