@@ -2901,7 +2901,7 @@ async function checkSession() {
 }
 setInterval(checkSession, 30000);
 
-async function doLogout(){await api('POST','/logout').catch(()=>{});currentUser=null;currentFolder=null;$('app').style.display='none';$('auth-page').style.display='flex';$('login-input').value='';$('password-input').value='';}
+async function doLogout(){await unsubscribePush();await api('POST','/logout').catch(()=>{});currentUser=null;currentFolder=null;$('app').style.display='none';$('auth-page').style.display='flex';$('login-input').value='';$('password-input').value='';}
 document.addEventListener('DOMContentLoaded', function() {
   var pwInput = $('password-input');
   var loginInput = $('login-input');
@@ -5586,9 +5586,25 @@ async function initPushNotifications() {
 
     // Envoyer la subscription au serveur
     await api('POST', '/push/subscribe', { subscription: sub.toJSON() });
-    console.log('[PUSH] Abonné aux notifications');
+   console.log('[PUSH] Abonné aux notifications');
   } catch(e) {
     console.log('[PUSH] Non disponible:', e.message);
+  }
+}
+
+async function unsubscribePush() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await api('POST', '/push/unsubscribe', { endpoint: sub.endpoint }).catch(()=>{});
+      await sub.unsubscribe();
+      console.log('[PUSH] Désabonné');
+    }
+  } catch(e) {
+    console.log('[PUSH] Erreur désabonnement:', e.message);
   }
 }
 
