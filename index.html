@@ -3742,7 +3742,7 @@ function revInitM2() {
   revPoints.forEach(function(p) {
     var h = document.createElement('div');
     h.setAttribute('data-rev-hotspot', p.id);
-    h.style.cssText = 'position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:2.5px dashed var(--teal,#0097A7);background:rgba(255,255,255,0.5)';
+    h.style.cssText = 'position:absolute;min-width:30px;height:30px;transform:translate(-50%,-50%);border-radius:50%;border:2.5px dashed var(--teal,#0097A7);background:rgba(255,255,255,0.5);white-space:nowrap;padding:0';
     h.style.left = p.x + '%';
     h.style.top = p.y + '%';
     stage.appendChild(h);
@@ -3822,7 +3822,11 @@ function revM2DragEnd(e) {
     nearest.style.alignItems = 'center';
     nearest.style.justifyContent = 'center';
     nearest.style.fontWeight = '800';
-    nearest.textContent = '✓';
+    nearest.style.borderRadius = '999px';
+    nearest.style.height = 'auto';
+    nearest.style.padding = '4px 12px';
+    nearest.style.fontSize = '12px';
+    nearest.textContent = chip.textContent;
     nearest.dataset.filled = 'true';
     placed = true;
     var scoreEl = document.getElementById('rev-m2-score');
