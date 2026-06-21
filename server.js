@@ -644,6 +644,49 @@ app.get('/api/revision/seances/:id/schemas', requireAuth, (req, res) => {
   res.json((seance.schemas||[]).map(sc => ({ id: sc.id, titre: sc.titre })));
 });
 
+app.post('/api/revision/seances/:id/schemas', requireSuperAdmin, upload.single('image'), async (req, res) => {
+  const db = loadDB();
+  const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
+  if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
+  if (!req.file) return res.status(400).json({ error: 'Image requise' });
+  const { titre, reperes } = req.body;
+  if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  let parsedReperes;
+  try { parsedReperes = JSON.parse(reperes); } catch { return res.status(400).json({ error: 'JSON des repères invalide' }); }
+  if (!Array.isArray(parsedReperes) || !parsedReperes.length) return res.status(400).json({ error: 'Aucun repère trouvé dans le JSON' });
+  for (const r of parsedReperes) {
+    if (!r.id || !r.label || typeof r.x !== 'number' || typeof r.y !== 'number' || r.x < 0 || r.x > 100 || r.y < 0 || r.y > 100) {
+      return res.status(400).json({ error: 'Repère invalide : ' + JSON.stringify(r) });
+    }
+  }
+  if (!seance.schemas) seance.schemas = [];
+  const schemaId = db.nextId++;
+  let imageRecord;
+  if (r2Enabled) {
+    const r2Key = `revision/${seance.id}/${schemaId}-${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    await uploadToR2(r2Key, req.file.buffer, req.file.mimetype);
+    imageRecord = { r2Key };
+  } else {
+    const filename = `revision-${schemaId}-${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    fs.writeFileSync(path.join(UPLOADS_DIR, filename), req.file.buffer);
+    imageRecord = { filename };
+  }
+  const schema = { id: schemaId, titre: titre.trim(), reperes: parsedReperes, addedAt: new Date().toISOString().split('T')[0], ...imageRecord };
+  seance.schemas.push(schema);
+  saveDB(db);
+  res.json({ id: schema.id, titre: schema.titre });
+});
+
+app.get('/api/revision/seances/:id/schemas/:schemaId/image', requireAuth, async (req, res) => {
+  const db = loadDB();
+  const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
+  if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
+  const schema = (seance.schemas||[]).find(sc => sc.id === parseInt(req.params.schemaId));
+  if (!schema) return res.status(404).json({ error: 'Schéma introuvable' });
+  if (r2Enabled && schema.r2Key) { await proxyFileFromR2(schema.r2Key, res, true, req); return; }
+  if (schema.filename) { res.sendFile(path.join(UPLOADS_DIR, schema.filename)); return; }
+  res.status(404).json({ error: 'Image introuvable' });
+});
 // ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
 app.post('/api/folders/:id/subfolders', requireAdmin, (req, res) => {
   const parentId = parseInt(req.params.id);
