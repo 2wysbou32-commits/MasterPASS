@@ -687,6 +687,14 @@ app.get('/api/revision/seances/:id/schemas/:schemaId/image', requireAuth, async 
   if (schema.filename) { res.sendFile(path.join(UPLOADS_DIR, schema.filename)); return; }
   res.status(404).json({ error: 'Image introuvable' });
 });
+app.get('/api/revision/seances/:id/schemas/:schemaId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
+  if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
+  const schema = (seance.schemas||[]).find(sc => sc.id === parseInt(req.params.schemaId));
+  if (!schema) return res.status(404).json({ error: 'Schéma introuvable' });
+  res.json({ id: schema.id, titre: schema.titre, reperes: schema.reperes });
+});
 // ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
 app.post('/api/folders/:id/subfolders', requireAdmin, (req, res) => {
   const parentId = parseInt(req.params.id);
