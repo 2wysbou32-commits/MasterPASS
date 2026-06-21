@@ -3708,8 +3708,14 @@ async function ouvrirSchema(seanceId, schemaId) {
   try {
     const schema = await api('GET', '/revision/seances/' + seanceId + '/schemas/' + schemaId);
     revPoints = schema.reperes;
+    api('POST', '/revision/seances/' + seanceId + '/schemas/' + schemaId + '/vu').catch(function() {});
     var imgUrl = '/api/revision/seances/' + seanceId + '/schemas/' + schemaId + '/image';
+    var qIdx = _revisionSchemaQueue.findIndex(function(s) { return s.id === schemaId; });
+    var nextSchema = (qIdx >= 0 && qIdx < _revisionSchemaQueue.length - 1) ? _revisionSchemaQueue[qIdx + 1] : null;
     var html = '<button class="btn-action" onclick="ouvrirSeance(' + seanceId + ')" style="margin-bottom:16px">← Retour</button>';
+    if (nextSchema) {
+      html += '<button class="btn-action" onclick="ouvrirSchema(' + seanceId + ',' + nextSchema.id + ')" style="margin-bottom:16px;margin-left:8px">Schéma suivant →</button>';
+    }
     html += '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:14px">' + schema.titre + '</div>';
     html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">' +
       '<div id="rev-tab-1" onclick="revShowTab(1)" style="position:relative;cursor:pointer;text-align:center;padding:14px 8px;border-radius:14px;border:2px solid var(--teal,#0097A7);background:rgba(0,151,167,0.10)">' +
