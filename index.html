@@ -3520,13 +3520,17 @@ async function ouvrirSeance(id) {
     var html = '<button class="btn-action" onclick="loadRevision()" style="margin-bottom:16px">← Retour</button>';
     html += '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:14px">' + seance.titre + '</div>';
     if (currentUser && currentUser.role === 'admin') {
-      html += '<button class="btn-action" style="margin-bottom:16px">+ Ajouter un schéma (bientôt)</button>';
+      html += '<button class="btn-action" onclick="afficherFormulaireSchema(' + id + ')" style="margin-bottom:16px">+ Ajouter un schéma</button>';
+      html += '<div id="schema-form-zone"></div>';
     }
     if (!schemas.length) {
       html += '<div class="dashboard-empty">Aucun schéma pour le moment</div>';
     } else {
       html += schemas.map(function(sc) {
-        return '<div style="padding:14px 16px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px">' + sc.titre + '</div>';
+        return '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px">' +
+          '<img src="/api/revision/seances/' + id + '/schemas/' + sc.id + '/image" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">' +
+          '<div>' + sc.titre + '</div>' +
+        '</div>';
       }).join('');
     }
     list.innerHTML = html;
@@ -3534,6 +3538,72 @@ async function ouvrirSeance(id) {
     list.innerHTML = '<div class="dashboard-empty">Erreur de chargement</div>';
   }
 }
+
+function afficherFormulaireSchema(seanceId) {
+  var zone = document.getElementById('schema-form-zone');
+  if (!zone) return;
+  if (zone.innerHTML) { zone.innerHTML = ''; return; }
+  zone.innerHTML =
+    '<div style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">' +
+      '<div style="font-size:12px;color:var(--text2);margin-bottom:10px">Sélectionne tous les PNG d\'un coup, puis tous les JSON d\'un coup. Les paires sont reconnues par leur nom de fichier (ex: abdomen.png + abdomen.json).</div>' +
+      '<label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Images (PNG, plusieurs possibles)</label>' +
+      '<input type="file" id="schema-images-input" accept="image/png,image/jpeg" multiple style="margin-bottom:10px;display:block">' +
+      '<label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Fichiers JSON des repères (plusieurs possibles)</label>' +
+      '<input type="file" id="schema-jsons-input" accept=".json,application/json" multiple style="margin-bottom:14px;display:block">' +
+      '<button class="btn-action" onclick="soumettreSchemas(' + seanceId + ')">Ajouter les schémas</button>' +
+      '<div id="schema-form-status" style="font-size:12px;color:var(--text2);margin-top:10px"></div>' +
+    '</div>';
+}
+function baseNameSansExtension(filename) {
+  return filename.replace(/\.[^/.]+$/, '');
+}
+async function soumettreSchemas(seanceId) {
+  var imageFiles = Array.from(document.getElementById('schema-images-input').files);
+  var jsonFiles = Array.from(document.getElementById('schema-jsons-input').files);
+  var statusEl = document.getElementById('schema-form-status');
+  if (!imageFiles.length || !jsonFiles.length) { toast('Sélectionne au moins une image et un JSON', 'error'); return; }
+  var jsonByName = {};
+  jsonFiles.forEach(function(f) { jsonByName[baseNameSansExtension(f.name)] = f; });
+  var paires = [];
+  var sansJson = [];
+  imageFiles.forEach(function(img) {
+    var base = baseNameSansExtension(img.name);
+    if (jsonByName[base]) { paires.push({ base: base, image: img, json: jsonByName[base] }); }
+    else { sansJson.push(img.name); }
+  });
+  if (!paires.length) { toast('Aucune paire image+JSON trouvée (vérifie que les noms correspondent)', 'error'); return; }
+  var reussis = 0, echoues = [];
+  for (var i = 0; i < paires.length; i++) {
+    var p = paires[i];
+    statusEl.textContent = 'Envoi ' + (i+1) + '/' + paires.length + ' : ' + p.base + '...';
+    try {
+      var jsonText = await p.json.text();
+      var parsed = JSON.parse(jsonText);
+      var reperes;
+      if (Array.isArray(parsed)) reperes = parsed;
+      else if (Array.isArray(parsed.reperes)) reperes = parsed.reperes;
+      else if (Array.isArray(parsed.labels)) {
+        reperes = parsed.labels.map(function(l) { return { id: l.id, label: l.text, x: l.tx, y: l.ty }; });
+      } else throw new Error('Format JSON non reconnu');
+      var titre = p.base.replace(/[-_]+/g, ' ').trim();
+      var fd = new FormData();
+      fd.append('image', p.image);
+      fd.append('titre', titre);
+      fd.append('reperes', JSON.stringify(reperes));
+      await api('POST', '/revision/seances/' + seanceId + '/schemas', fd);
+      reussis++;
+    } catch(e) {
+      echoues.push(p.base);
+    }
+  }
+  var msg = reussis + ' schéma(s) ajouté(s)';
+  if (sansJson.length) msg += ' — ' + sansJson.length + ' image(s) sans JSON correspondant ignorée(s)';
+  if (echoues.length) msg += ' — échecs : ' + echoues.join(', ');
+  statusEl.textContent = msg;
+  toast(reussis + ' schéma(s) ajouté(s)');
+  ouvrirSeance(seanceId);
+}
+  
 async function creerSeance() {
   var titre = prompt('Nom de la séance (ex: CM4 — Anatomie abdominale)');
   if (!titre || !titre.trim()) return;
