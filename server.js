@@ -611,21 +611,51 @@ app.delete('/api/folders/:id', requireAdmin, async (req, res) => {
   db.folders = db.folders.filter(f => f.id !== parseInt(req.params.id)); saveDB(db);
   res.json({ ok: true });
 });
+// ── RÉVISION : DOSSIERS ──────────────────────────────────────────────────────
+app.get('/api/revision/dossiers', requireAuth, (req, res) => {
+  const db = loadDB();
+  const dossiers = db.dossiers || [];
+  const seances = db.seances || [];
+  res.json(dossiers.map(d => ({
+    id: d.id, titre: d.titre,
+    seanceCount: seances.filter(s => s.dossierId === d.id).length
+  })));
+});
+app.post('/api/revision/dossiers', requireSuperAdmin, (req, res) => {
+  const { titre } = req.body;
+  if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const db = loadDB();
+  if (!db.dossiers) db.dossiers = [];
+  const dossier = { id: db.nextId++, titre: titre.trim(), createdAt: new Date().toISOString().split('T')[0] };
+  db.dossiers.push(dossier); saveDB(db);
+  res.json({ id: dossier.id, titre: dossier.titre, seanceCount: 0 });
+});
+app.delete('/api/revision/dossiers/:id', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.dossiers) db.dossiers = [];
+  db.dossiers = db.dossiers.filter(d => d.id !== parseInt(req.params.id));
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── RÉVISION : SÉANCES ───────────────────────────────────────────────────────
 app.get('/api/revision/seances', requireAuth, (req, res) => {
   const db = loadDB();
   const seances = db.seances || [];
-  res.json(seances.map(s => ({
+  const dossierId = req.query.dossierId ? parseInt(req.query.dossierId) : null;
+  const filtered = dossierId ? seances.filter(s => s.dossierId === dossierId) : seances;
+  res.json(filtered.map(s => ({
     id: s.id, titre: s.titre, createdAt: s.createdAt,
     schemaCount: (s.schemas||[]).length
   })));
 });
 app.post('/api/revision/seances', requireSuperAdmin, (req, res) => {
-  const { titre } = req.body;
+  const { titre, dossierId } = req.body;
   if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
+  if (!dossierId) return res.status(400).json({ error: 'Dossier requis' });
   const db = loadDB();
   if (!db.seances) db.seances = [];
-  const seance = { id: db.nextId++, titre: titre.trim(), createdAt: new Date().toISOString().split('T')[0], schemas: [] };
+  const seance = { id: db.nextId++, titre: titre.trim(), dossierId: parseInt(dossierId), createdAt: new Date().toISOString().split('T')[0], schemas: [] };
   db.seances.push(seance); saveDB(db);
   res.json({ id: seance.id, titre: seance.titre, createdAt: seance.createdAt, schemaCount: 0 });
 });
