@@ -3527,16 +3527,323 @@ async function ouvrirSeance(id) {
       html += '<div class="dashboard-empty">Aucun schéma pour le moment</div>';
     } else {
       html += schemas.map(function(sc) {
-        return '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px">' +
+        return '<div class="schema-card" data-id="' + sc.id + '" style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer">' +
           '<img src="/api/revision/seances/' + id + '/schemas/' + sc.id + '/image" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">' +
           '<div>' + sc.titre + '</div>' +
         '</div>';
       }).join('');
     }
     list.innerHTML = html;
+    list.querySelectorAll('.schema-card').forEach(function(card) {
+      card.addEventListener('click', function() { ouvrirSchema(id, parseInt(card.dataset.id)); });
+    });
   } catch(e) {
     list.innerHTML = '<div class="dashboard-empty">Erreur de chargement</div>';
   }
+}
+
+async function ouvrirSchema(seanceId, schemaId) {
+  var list = document.getElementById('revision-list');
+  if (!list) return;
+  list.innerHTML = '<div class="dashboard-empty">Chargement...</div>';
+  try {
+    const schema = await api('GET', '/revision/seances/' + seanceId + '/schemas/' + schemaId);
+    revPoints = schema.reperes;
+    var imgUrl = '/api/revision/seances/' + seanceId + '/schemas/' + schemaId + '/image';
+    var html = '<button class="btn-action" onclick="ouvrirSeance(' + seanceId + ')" style="margin-bottom:16px">← Retour</button>';
+    html += '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:14px">' + schema.titre + '</div>';
+    html += '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">' +
+      '<button id="rev-tab-1" onclick="revShowTab(1)" style="flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--teal,#0097A7);background:var(--teal,#0097A7);color:#fff;font-weight:700;font-size:12.5px;cursor:pointer">Cacher / Révéler</button>' +
+      '<button id="rev-tab-2" onclick="revShowTab(2)" style="flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,#fff);color:var(--text2);font-weight:700;font-size:12.5px;cursor:pointer">Glisser-déposer</button>' +
+      '<button id="rev-tab-3" onclick="revShowTab(3)" style="flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,#fff);color:var(--text2);font-weight:700;font-size:12.5px;cursor:pointer">Pointer-cliquer</button>' +
+    '</div>';
+    html += '<div id="rev-panel-1">' +
+      '<div id="rev-m1-stage" style="position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border)">' +
+        '<img src="' + imgUrl + '" style="display:block;width:100%;height:auto">' +
+      '</div>' +
+      '<ul id="rev-m1-list" style="list-style:none;padding:0;margin:16px 0 0;display:grid;gap:8px"></ul>' +
+      '<div style="margin-top:12px;display:flex;gap:8px">' +
+        '<button class="btn-action" onclick="revM1SetAll(false)">Tout cacher</button>' +
+        '<button class="btn-action" onclick="revM1SetAll(true)">Tout révéler</button>' +
+      '</div>' +
+    '</div>';
+    html += '<div id="rev-panel-2" style="display:none">' +
+      '<div id="rev-m2-stage" style="position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border)">' +
+        '<img src="' + imgUrl + '" style="display:block;width:100%;height:auto;filter:saturate(.85)">' +
+      '</div>' +
+      '<div id="rev-m2-tray" style="display:flex;flex-wrap:wrap;gap:9px;margin-top:16px"></div>' +
+      '<div id="rev-m2-score" style="margin-top:10px;font-size:12.5px;font-weight:700;color:var(--text2)"></div>' +
+      '<button class="btn-action" onclick="revInitM2()" style="margin-top:10px">Recommencer</button>' +
+    '</div>';
+    html += '<div id="rev-panel-3" style="display:none">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px">' +
+        '<div id="rev-m3-question" style="font-size:14px"></div>' +
+        '<div id="rev-m3-progress" style="font-size:12px;color:var(--text2);font-weight:700"></div>' +
+      '</div>' +
+      '<div id="rev-m3-stage" style="position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);cursor:crosshair">' +
+        '<img src="' + imgUrl + '" style="display:block;width:100%;height:auto;filter:saturate(.85)">' +
+      '</div>' +
+      '<div id="rev-m3-summary" style="display:none"></div>' +
+      '<button class="btn-action" onclick="revInitM3()" style="margin-top:10px">Recommencer</button>' +
+    '</div>';
+    list.innerHTML = html;
+    revInitM1();
+    revInitM2();
+    revInitM3();
+  } catch(e) {
+    list.innerHTML = '<div class="dashboard-empty">Erreur de chargement</div>';
+  }
+}
+
+var revPoints = [];
+var revTol = 9;
+var revDrag = null;
+var revM3Queue = [], revM3Idx = 0, revM3Score = 0, revM3Locked = false;
+
+function revShuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+function revShowTab(n) {
+  for (var i = 1; i <= 3; i++) {
+    var panel = document.getElementById('rev-panel-' + i);
+    var tab = document.getElementById('rev-tab-' + i);
+    if (!panel || !tab) continue;
+    if (i === n) {
+      panel.style.display = 'block';
+      tab.style.background = 'var(--teal,#0097A7)';
+      tab.style.color = '#fff';
+      tab.style.borderColor = 'var(--teal,#0097A7)';
+    } else {
+      panel.style.display = 'none';
+      tab.style.background = 'var(--surface,#fff)';
+      tab.style.color = 'var(--text2)';
+      tab.style.borderColor = 'var(--border)';
+    }
+  }
+}
+function revInitM1() {
+  var stage = document.getElementById('rev-m1-stage');
+  var list = document.getElementById('rev-m1-list');
+  if (!stage || !list) return;
+  stage.querySelectorAll('[data-rev-pin]').forEach(function(p) { p.remove(); });
+  list.innerHTML = '';
+  revPoints.forEach(function(p, i) {
+    var pin = document.createElement('div');
+    pin.setAttribute('data-rev-pin', p.id);
+    pin.style.cssText = 'position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:var(--teal-dark,#006064);color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25)';
+    pin.style.left = p.x + '%';
+    pin.style.top = p.y + '%';
+    pin.textContent = (i + 1);
+    pin.addEventListener('click', function() { revM1Reveal(p.id, pin.dataset.revealed !== 'true'); });
+    stage.appendChild(pin);
+    var row = document.createElement('li');
+    row.setAttribute('data-rev-row', p.id);
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13.5px';
+    row.innerHTML = '<span style="width:22px;height:22px;border-radius:50%;background:var(--teal-dark,#006064);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + (i + 1) + '</span><span style="flex:1;font-weight:600;color:var(--text3)">? ? ? ? ? ?</span><button class="btn-action" style="font-size:11.5px;padding:5px 10px">Révéler</button>';
+    row.querySelector('button').addEventListener('click', function() { revM1Reveal(p.id, true); });
+    list.appendChild(row);
+  });
+}
+function revM1Reveal(id, show) {
+  var point = revPoints.find(function(p) { return p.id === id; });
+  var pin = document.querySelector('[data-rev-pin="' + id + '"]');
+  var row = document.querySelector('[data-rev-row="' + id + '"]');
+  if (!point || !pin || !row) return;
+  var ans = row.querySelector('span:nth-child(2)');
+  var btn = row.querySelector('button');
+  if (show) {
+    pin.style.background = 'var(--success,#2E7D32)';
+    pin.textContent = '✓';
+    pin.dataset.revealed = 'true';
+    ans.textContent = point.label;
+    ans.style.color = 'var(--success,#2E7D32)';
+    btn.textContent = 'Cacher';
+    btn.onclick = function() { revM1Reveal(id, false); };
+  } else {
+    pin.style.background = 'var(--teal-dark,#006064)';
+    var idx = revPoints.findIndex(function(p) { return p.id === id; });
+    pin.textContent = (idx + 1);
+    pin.dataset.revealed = 'false';
+    ans.textContent = '? ? ? ? ? ?';
+    ans.style.color = 'var(--text3)';
+    btn.textContent = 'Révéler';
+    btn.onclick = function() { revM1Reveal(id, true); };
+  }
+}
+function revM1SetAll(show) {
+  revPoints.forEach(function(p) { revM1Reveal(p.id, show); });
+}
+function revInitM2() {
+  var stage = document.getElementById('rev-m2-stage');
+  var tray = document.getElementById('rev-m2-tray');
+  var scoreEl = document.getElementById('rev-m2-score');
+  if (!stage || !tray || !scoreEl) return;
+  stage.querySelectorAll('[data-rev-hotspot]').forEach(function(h) { h.remove(); });
+  tray.innerHTML = '';
+  scoreEl.textContent = '0 / ' + revPoints.length + ' placés';
+  revPoints.forEach(function(p) {
+    var h = document.createElement('div');
+    h.setAttribute('data-rev-hotspot', p.id);
+    h.style.cssText = 'position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:2.5px dashed var(--teal,#0097A7);background:rgba(255,255,255,0.5)';
+    h.style.left = p.x + '%';
+    h.style.top = p.y + '%';
+    stage.appendChild(h);
+  });
+  revShuffle(revPoints).forEach(function(p) {
+    var chip = document.createElement('div');
+    chip.setAttribute('data-rev-chip', p.id);
+    chip.textContent = p.label;
+    chip.style.cssText = 'touch-action:none;cursor:grab;background:var(--surface,#fff);border:1.5px solid var(--teal,#0097A7);color:var(--teal-dark,#006064);font-size:12.5px;font-weight:700;padding:8px 13px;border-radius:999px';
+    chip.addEventListener('pointerdown', revM2DragStart);
+    tray.appendChild(chip);
+  });
+}
+function revM2DragStart(e) {
+  var chip = e.currentTarget;
+  chip.setPointerCapture(e.pointerId);
+  var r = chip.getBoundingClientRect();
+  revDrag = { chip: chip, offX: e.clientX - r.left, offY: e.clientY - r.top };
+  chip.style.position = 'fixed';
+  chip.style.zIndex = '999';
+  chip.style.width = r.width + 'px';
+  chip.style.cursor = 'grabbing';
+  chip.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)';
+  revM2DragMove(e);
+  chip.addEventListener('pointermove', revM2DragMove);
+  chip.addEventListener('pointerup', revM2DragEnd);
+}
+function revM2DragMove(e) {
+  if (!revDrag) return;
+  revDrag.chip.style.left = (e.clientX - revDrag.offX) + 'px';
+  revDrag.chip.style.top = (e.clientY - revDrag.offY) + 'px';
+}
+function revM2DragEnd(e) {
+  if (!revDrag) return;
+  var chip = revDrag.chip;
+  chip.removeEventListener('pointermove', revM2DragMove);
+  chip.removeEventListener('pointerup', revM2DragEnd);
+  var stage = document.getElementById('rev-m2-stage');
+  var sRect = stage.getBoundingClientRect();
+  var px = ((e.clientX - sRect.left) / sRect.width) * 100;
+  var py = ((e.clientY - sRect.top) / sRect.height) * 100;
+  chip.style.position = '';
+  chip.style.left = '';
+  chip.style.top = '';
+  chip.style.width = '';
+  chip.style.zIndex = '';
+  chip.style.cursor = 'grab';
+  chip.style.boxShadow = '';
+  var nearest = null, nearestDist = Infinity;
+  stage.querySelectorAll('[data-rev-hotspot]').forEach(function(h) {
+    if (h.dataset.filled === 'true') return;
+    var hx = parseFloat(h.style.left), hy = parseFloat(h.style.top);
+    var d = Math.hypot(px - hx, py - hy);
+    if (d < nearestDist) { nearestDist = d; nearest = h; }
+  });
+  if (nearest && nearestDist <= revTol) {
+    if (nearest.dataset.revHotspot === chip.dataset.revChip) {
+      nearest.style.borderStyle = 'solid';
+      nearest.style.background = 'var(--success,#2E7D32)';
+      nearest.style.borderColor = 'var(--success,#2E7D32)';
+      nearest.style.color = '#fff';
+      nearest.style.display = 'flex';
+      nearest.style.alignItems = 'center';
+      nearest.style.justifyContent = 'center';
+      nearest.style.fontWeight = '800';
+      nearest.textContent = '✓';
+      nearest.dataset.filled = 'true';
+      chip.style.display = 'none';
+      var scoreEl = document.getElementById('rev-m2-score');
+      var filledCount = document.querySelectorAll('#rev-m2-stage [data-filled="true"]').length;
+      scoreEl.textContent = filledCount + ' / ' + revPoints.length + ' placés';
+    } else {
+      nearest.style.borderColor = 'var(--danger,#E57373)';
+      nearest.style.background = 'rgba(229,115,115,0.18)';
+      setTimeout(function() {
+        nearest.style.borderColor = 'var(--teal,#0097A7)';
+        nearest.style.background = 'rgba(255,255,255,0.5)';
+      }, 450);
+    }
+  }
+  revDrag = null;
+}
+function revInitM3() {
+  var stage = document.getElementById('rev-m3-stage');
+  var summary = document.getElementById('rev-m3-summary');
+  if (!stage || !summary) return;
+  stage.style.display = '';
+  stage.querySelectorAll('[data-rev-mark]').forEach(function(m) { m.remove(); });
+  summary.style.display = 'none';
+  revM3Queue = revShuffle(revPoints);
+  revM3Idx = 0;
+  revM3Score = 0;
+  revM3Locked = false;
+  stage.onclick = revM3Click;
+  revM3Render();
+}
+function revM3Render() {
+  var stage = document.getElementById('rev-m3-stage');
+  var qEl = document.getElementById('rev-m3-question');
+  var pEl = document.getElementById('rev-m3-progress');
+  if (revM3Idx >= revM3Queue.length) { revM3End(); return; }
+  var p = revM3Queue[revM3Idx];
+  qEl.innerHTML = 'Où se trouve : <b>' + p.label + '</b> ?';
+  pEl.textContent = 'Repère ' + (revM3Idx + 1) + ' / ' + revM3Queue.length;
+  stage.querySelectorAll('[data-rev-mark]').forEach(function(m) { m.remove(); });
+  var oldBtn = document.getElementById('rev-m3-next-btn');
+  if (oldBtn) oldBtn.remove();
+  revM3Locked = false;
+}
+function revM3Click(e) {
+  if (revM3Locked || revM3Idx >= revM3Queue.length) return;
+  var stage = document.getElementById('rev-m3-stage');
+  var r = stage.getBoundingClientRect();
+  var px = ((e.clientX - r.left) / r.width) * 100;
+  var py = ((e.clientY - r.top) / r.height) * 100;
+  var target = revM3Queue[revM3Idx];
+  var dist = Math.hypot(px - target.x, py - target.y);
+  revM3Locked = true;
+  var mark = document.createElement('div');
+  mark.setAttribute('data-rev-mark', '1');
+  mark.style.cssText = 'position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;pointer-events:none';
+  mark.style.left = px + '%';
+  mark.style.top = py + '%';
+  if (dist <= revTol) {
+    mark.style.background = 'var(--success,#2E7D32)';
+    mark.textContent = '✓';
+    revM3Score++;
+    stage.appendChild(mark);
+    setTimeout(function() { revM3Idx++; revM3Render(); }, 550);
+  } else {
+    mark.style.background = 'var(--danger,#E57373)';
+    mark.textContent = '✕';
+    stage.appendChild(mark);
+    var tmark = document.createElement('div');
+    tmark.setAttribute('data-rev-mark', '1');
+    tmark.style.cssText = 'position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:var(--success,#2E7D32);opacity:.55;pointer-events:none';
+    tmark.style.left = target.x + '%';
+    tmark.style.top = target.y + '%';
+    stage.appendChild(tmark);
+    var next = document.createElement('button');
+    next.id = 'rev-m3-next-btn';
+    next.className = 'btn-action';
+    next.textContent = 'Suivant';
+    next.style.cssText = 'position:absolute;right:10px;bottom:10px';
+    next.onclick = function() { next.remove(); revM3Idx++; revM3Render(); };
+    stage.appendChild(next);
+  }
+}
+function revM3End() {
+  var stage = document.getElementById('rev-m3-stage');
+  var summary = document.getElementById('rev-m3-summary');
+  stage.style.display = 'none';
+  summary.style.display = 'block';
+  summary.innerHTML = '<div style="text-align:center;padding:30px 10px"><div style="font-size:34px;font-weight:800;color:var(--teal-dark,#006064)">' + revM3Score + ' / ' + revM3Queue.length + '</div><div style="color:var(--text2);font-size:13.5px;margin-top:6px">repères correctement localisés</div></div>';
 }
 
 function afficherFormulaireSchema(seanceId) {
