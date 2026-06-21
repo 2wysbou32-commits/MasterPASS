@@ -5310,12 +5310,16 @@ async function doSaveEmail() {
 }
 
 function loadSettingsPanel() {
-  if (currentUser && currentUser.email) {
-    document.getElementById('settings-email').value = currentUser.email;
+  const emailEl = document.getElementById('settings-email');
+  if (emailEl && currentUser && currentUser.email) {
+    emailEl.value = currentUser.email;
   }
-  document.getElementById('settings-pw-error').style.display = 'none';
-  document.getElementById('settings-pw-success').style.display = 'none';
-  document.getElementById('settings-email-success').style.display = 'none';
+  const pwErr = document.getElementById('settings-pw-error');
+  if (pwErr) pwErr.style.display = 'none';
+  const pwOk = document.getElementById('settings-pw-success');
+  if (pwOk) pwOk.style.display = 'none';
+  const emailOk = document.getElementById('settings-email-success');
+  if (emailOk) emailOk.style.display = 'none';
   const prefs = currentUser?.notifPrefs || { announcements: true, discussions: true, files: true };
   ['announcements','discussions','files'].forEach(function(key) {
     const cb = document.getElementById('notif-pref-' + key);
