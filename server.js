@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+const sharp = require('sharp');
 
 // R2 via API HTTP directe (pas de SDK — évite les problèmes SSL)
 const crypto = require('crypto');
@@ -770,6 +771,20 @@ app.get('/api/revision/seances/:id/schemas/:schemaId/image', requireAuth, async 
   if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
   const schema = (seance.schemas||[]).find(sc => sc.id === parseInt(req.params.schemaId));
   if (!schema) return res.status(404).json({ error: 'Schéma introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (user?.role !== 'admin' && user?.role !== 'subadmin') {
+    try {
+      let imgBuffer;
+      if (r2Enabled && schema.r2Key) { imgBuffer = await fetchFromR2ToBuffer(schema.r2Key); }
+      else if (schema.filename) { imgBuffer = fs.readFileSync(path.join(UPLOADS_DIR, schema.filename)); }
+      if (imgBuffer) {
+        const userName = user?.login || user?.name || 'Inconnu';
+        const watermarked = await addImageWatermark(imgBuffer, userName);
+        res.setHeader('Content-Type', 'image/png');
+        return res.send(watermarked);
+      }
+    } catch(e) { console.error('Watermark image révision:', e.message); }
+  }
   if (r2Enabled && schema.r2Key) { await proxyFileFromR2(schema.r2Key, res, true, req); return; }
   if (schema.filename) { res.sendFile(path.join(UPLOADS_DIR, schema.filename)); return; }
   res.status(404).json({ error: 'Image introuvable' });
@@ -953,6 +968,24 @@ async function addWatermark(pdfBuffer, userName) {
     console.error('Watermark error:', e.message);
     return pdfBuffer;
   }
+}
+async function addImageWatermark(imageBuffer, userName) {
+  try {
+    const image = sharp(imageBuffer);
+    const metadata = await image.metadata();
+    const width = metadata.width || 800;
+    const height = metadata.height || 600;
+    const watermarkText = `${userName} — MasterPASS`;
+    const fontSize = Math.max(12, Math.round(width / 45));
+    const svg = `<svg width="${width}" height="${height}"><text x="${width/2}" y="${height-14}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-weight="600" font-size="${fontSize}" fill="rgba(90,90,90,0.55)">${escapeXml(watermarkText)}</text></svg>`;
+    return await image.composite([{ input: Buffer.from(svg), top: 0, left: 0 }]).png().toBuffer();
+  } catch (e) {
+    console.error('Watermark image error:', e.message);
+    return imageBuffer;
+  }
+}
+function escapeXml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/preview', requireAuth, async (req, res) => {
