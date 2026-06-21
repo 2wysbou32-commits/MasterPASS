@@ -3682,7 +3682,7 @@ function revInitM1() {
   revPoints.forEach(function(p, i) {
     var pin = document.createElement('div');
     pin.setAttribute('data-rev-pin', p.id);
-    pin.style.cssText = 'position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:var(--teal-dark,#006064);color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25)';
+    pin.style.cssText = 'position:absolute;min-width:26px;height:26px;transform:translate(-50%,-50%);border-radius:50%;background:var(--teal-dark,#006064);color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25);padding:0;white-space:nowrap;transition:background .15s ease,border-radius .15s ease,padding .15s ease';
     pin.style.left = p.x + '%';
     pin.style.top = p.y + '%';
     pin.textContent = (i + 1);
@@ -3705,7 +3705,10 @@ function revM1Reveal(id, show) {
   var btn = row.querySelector('button');
   if (show) {
     pin.style.background = 'var(--success,#2E7D32)';
-    pin.textContent = '✓';
+    pin.style.borderRadius = '999px';
+    pin.style.padding = '4px 12px';
+    pin.style.height = 'auto';
+    pin.textContent = point.label;
     pin.dataset.revealed = 'true';
     ans.textContent = point.label;
     ans.style.color = 'var(--success,#2E7D32)';
@@ -3713,6 +3716,9 @@ function revM1Reveal(id, show) {
     btn.onclick = function() { revM1Reveal(id, false); };
   } else {
     pin.style.background = 'var(--teal-dark,#006064)';
+    pin.style.borderRadius = '50%';
+    pin.style.padding = '0';
+    pin.style.height = '26px';
     var idx = revPoints.findIndex(function(p) { return p.id === id; });
     pin.textContent = (idx + 1);
     pin.dataset.revealed = 'false';
@@ -3770,9 +3776,27 @@ function revM2DragMove(e) {
   if (!revDrag) return;
   revDrag.chip.style.left = (e.clientX - revDrag.offX) + 'px';
   revDrag.chip.style.top = (e.clientY - revDrag.offY) + 'px';
+  revM2AutoScroll(e);
+}
+function revM2AutoScroll(e) {
+  if (!revDrag) return;
+  var margin = 80, speed = 14, dir = 0;
+  if (e.clientY < margin) { dir = -1; }
+  else if (e.clientY > window.innerHeight - margin) { dir = 1; }
+  revDrag.scrollDir = dir;
+  if (dir !== 0 && !revDrag.scrollTimer) {
+    revDrag.scrollTimer = setInterval(function() {
+      if (!revDrag || !revDrag.scrollDir) return;
+      window.scrollBy(0, revDrag.scrollDir * speed);
+    }, 16);
+  } else if (dir === 0 && revDrag.scrollTimer) {
+    clearInterval(revDrag.scrollTimer);
+    revDrag.scrollTimer = null;
+  }
 }
 function revM2DragEnd(e) {
   if (!revDrag) return;
+  if (revDrag.scrollTimer) { clearInterval(revDrag.scrollTimer); revDrag.scrollTimer = null; }
   var chip = revDrag.chip;
   chip.removeEventListener('pointermove', revM2DragMove);
   chip.removeEventListener('pointerup', revM2DragEnd);
