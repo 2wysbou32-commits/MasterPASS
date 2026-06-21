@@ -2990,15 +2990,11 @@ function setupApp() {
   updateAvatarPreview();
   updateSidebarAvatar();
   if (currentUser?.role === 'admin') {
-    // admin notifications via push only
-  }
-  // Vérifier la session toutes les 30 secondes (anti-partage de compte)
+   // Vérifier la session toutes les 30 secondes (anti-partage de compte)
   startSessionPolling();
   updateAdminDiscBadge();
-  // Activer les notifications push (étudiants uniquement)
-  if (currentUser?.role === 'student') {
-    setTimeout(initPushNotifications, 2000);
-  }
+  // Activer les notifications push (tous les rôles)
+  setTimeout(initPushNotifications, 2000);
 }
 function showDashboard() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
