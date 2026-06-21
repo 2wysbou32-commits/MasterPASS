@@ -1993,7 +1993,7 @@ input[type="file"]{display:none;}
           </div>
         </div>
 
-        <div class="settings-card" style="margin-bottom:20px">
+        <div class="settings-card" style="margin-bottom:20px;margin-top:24px">
           <div class="settings-card-header">
             <div class="settings-card-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></div>
             <div><div class="settings-card-title">Notifications</div><div class="settings-card-sub">Choisis ce qui te notifie</div></div>
@@ -2002,21 +2002,21 @@ input[type="file"]{display:none;}
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
               <div><div style="font-size:13.5px;font-weight:600;color:var(--text)">Annonces</div><div style="font-size:12px;color:var(--text3)">Annonces publiées par l'équipe</div></div>
               <label class="notif-toggle">
-                <input type="checkbox" id="notif-pref-announcements" onchange="toggleNotifPref('announcements', this)">
+                <input type="checkbox" id="notif-pref-announcements" checked onchange="toggleNotifPref('announcements', this)">
                 <span class="slider"></span>
               </label>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
               <div><div style="font-size:13.5px;font-weight:600;color:var(--text)">Nouvelles discussions</div><div style="font-size:12px;color:var(--text3)">Nouvelles questions et réponses</div></div>
               <label class="notif-toggle">
-                <input type="checkbox" id="notif-pref-discussions" onchange="toggleNotifPref('discussions', this)">
+               <input type="checkbox" id="notif-pref-discussions" checked onchange="toggleNotifPref('discussions', this)">
                 <span class="slider"></span>
               </label>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
               <div><div style="font-size:13.5px;font-weight:600;color:var(--text)">Nouveaux fichiers</div><div style="font-size:12px;color:var(--text3)">Ajouts dans Dossiers &amp; Fichiers</div></div>
               <label class="notif-toggle">
-                <input type="checkbox" id="notif-pref-files" onchange="toggleNotifPref('files', this)">
+               <input type="checkbox" id="notif-pref-files" checked onchange="toggleNotifPref('files', this)">
                 <span class="slider"></span>
               </label>
             </div>
