@@ -6035,33 +6035,7 @@ function renderDiscCenter() {
         html += renderThreadCard(t, isNew);
       });
     });
-    var codesHtml = '';
-    if (available.length) {
-      html += available.map(function(c) {
-        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;border-bottom:1px solid var(--border)">' +
-          '<code style="flex:1;font-size:15px;font-weight:800;color:var(--teal-dark);letter-spacing:1px">' + c.code + '</code>' +
-          '<button data-code="' + c.code + '" onclick="copyInviteCode(this.dataset.code,this)" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif">Copier</button>' +
-          '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
-          '</div>';
-      }).join('');
-    }
-    if (!showAvail && used.length) {
-      codesHtml += used.map(function(c) {
-        var usedDate = c.usedAt ? new Date(c.usedAt).toLocaleDateString('fr-FR') : '';
-        var usedUser = c.usedBy ? (users.find(function(u){return u.login===c.usedBy||u.id===c.usedBy;})||{name:c.usedBy}).name : '';
-        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;border-bottom:1px solid var(--border);opacity:0.6">' +
-          '<code style="flex:1;font-size:14px;font-weight:700;color:var(--text3)">' + c.code + '</code>' +
-          '<span style="font-size:11px;color:var(--text3)">✅ ' + usedDate + (usedUser ? ' · ' + usedUser : '') + '</span>' +
-          '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
-          '</div>';
-      }).join('');
-    }
-    if (!codesHtml) codesHtml = '<div style="padding:20px;color:var(--text3)">Aucun code ' + (showAvail ? 'disponible' : 'utilisé') + '</div>';
-    listBody.innerHTML = codesHtml;
-    var ba = document.getElementById('badge-available');
-    var bu = document.getElementById('badge-used');
-    if (ba) ba.textContent = available.length;
-    if (bu) bu.textContent = used.length;
+    list.innerHTML = html;
     return;
   }
 
