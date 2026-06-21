@@ -3598,10 +3598,25 @@ async function ouvrirSchema(seanceId, schemaId) {
     var imgUrl = '/api/revision/seances/' + seanceId + '/schemas/' + schemaId + '/image';
     var html = '<button class="btn-action" onclick="ouvrirSeance(' + seanceId + ')" style="margin-bottom:16px">← Retour</button>';
     html += '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:14px">' + schema.titre + '</div>';
-    html += '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">' +
-      '<button id="rev-tab-1" onclick="revShowTab(1)" style="flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--teal,#0097A7);background:var(--teal,#0097A7);color:#fff;font-weight:700;font-size:12.5px;cursor:pointer">Cacher / Révéler</button>' +
-      '<button id="rev-tab-2" onclick="revShowTab(2)" style="flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,#fff);color:var(--text2);font-weight:700;font-size:12.5px;cursor:pointer">Glisser-déposer</button>' +
-      '<button id="rev-tab-3" onclick="revShowTab(3)" style="flex:1;min-width:140px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,#fff);color:var(--text2);font-weight:700;font-size:12.5px;cursor:pointer">Pointer-cliquer</button>' +
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">' +
+      '<div id="rev-tab-1" onclick="revShowTab(1)" style="position:relative;cursor:pointer;text-align:center;padding:14px 8px;border-radius:14px;border:2px solid var(--teal,#0097A7);background:rgba(0,151,167,0.10)">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor" style="width:22px;height:22px;color:var(--teal-dark,#006064)"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-top:6px">Cacher / révéler</div>' +
+        '<div style="font-size:10.5px;color:var(--text2);margin-top:2px">Mémorise puis vérifie</div>' +
+        '<div id="rev-tab-1-badge" style="display:none;position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:var(--success,#2E7D32);color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center">✓</div>' +
+      '</div>' +
+      '<div id="rev-tab-2" onclick="revShowTab(2)" style="position:relative;cursor:pointer;text-align:center;padding:14px 8px;border-radius:14px;border:1.5px solid var(--border);background:var(--surface,#fff)">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor" style="width:22px;height:22px;color:var(--text2)"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg>' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-top:6px">Glisser-déposer</div>' +
+        '<div style="font-size:10.5px;color:var(--text2);margin-top:2px">Place chaque étiquette</div>' +
+        '<div id="rev-tab-2-badge" style="display:none;position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:var(--success,#2E7D32);color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center">✓</div>' +
+      '</div>' +
+      '<div id="rev-tab-3" onclick="revShowTab(3)" style="position:relative;cursor:pointer;text-align:center;padding:14px 8px;border-radius:14px;border:1.5px solid var(--border);background:var(--surface,#fff)">' +
+        '<svg viewBox="0 0 24 24" fill="currentColor" style="width:22px;height:22px;color:var(--text2)"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-top:6px">Pointer-cliquer</div>' +
+        '<div style="font-size:10.5px;color:var(--text2);margin-top:2px">Clique au bon endroit</div>' +
+        '<div id="rev-tab-3-badge" style="display:none;position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:var(--success,#2E7D32);color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center">✓</div>' +
+      '</div>' +
     '</div>';
     html += '<div id="rev-panel-1">' +
       '<div id="rev-m1-stage" style="position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border)">' +
@@ -3655,21 +3670,51 @@ function revShuffle(arr) {
   }
   return a;
 }
+function revFadeIn(el) {
+  el.style.opacity = '0';
+  el.style.transition = 'none';
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      el.style.transition = 'opacity .25s ease';
+      el.style.opacity = '1';
+    });
+  });
+}
+function revUpdateBadges() {
+  var s1 = document.getElementById('rev-m1-stage');
+  var s2 = document.getElementById('rev-m2-stage');
+  var s3 = document.getElementById('rev-m3-summary');
+  var b1 = document.getElementById('rev-tab-1-badge');
+  var b2 = document.getElementById('rev-tab-2-badge');
+  var b3 = document.getElementById('rev-tab-3-badge');
+  if (s1 && b1) {
+    var pins = s1.querySelectorAll('[data-rev-pin]');
+    var revealed = s1.querySelectorAll('[data-rev-pin][data-revealed="true"]');
+    b1.style.display = (pins.length && revealed.length === pins.length) ? 'flex' : 'none';
+  }
+  if (s2 && b2) {
+    var hotspots = s2.querySelectorAll('[data-rev-hotspot]');
+    var filled = s2.querySelectorAll('[data-rev-hotspot][data-filled="true"]');
+    b2.style.display = (hotspots.length && filled.length === hotspots.length) ? 'flex' : 'none';
+  }
+  if (b3) {
+    b3.style.display = (s3 && s3.style.display === 'block') ? 'flex' : 'none';
+  }
+}
 function revShowTab(n) {
   for (var i = 1; i <= 3; i++) {
     var panel = document.getElementById('rev-panel-' + i);
     var tab = document.getElementById('rev-tab-' + i);
     if (!panel || !tab) continue;
     if (i === n) {
+      tab.style.border = '2px solid var(--teal,#0097A7)';
+      tab.style.background = 'rgba(0,151,167,0.10)';
       panel.style.display = 'block';
-      tab.style.background = 'var(--teal,#0097A7)';
-      tab.style.color = '#fff';
-      tab.style.borderColor = 'var(--teal,#0097A7)';
+      revFadeIn(panel);
     } else {
-      panel.style.display = 'none';
+      tab.style.border = '1.5px solid var(--border)';
       tab.style.background = 'var(--surface,#fff)';
-      tab.style.color = 'var(--text2)';
-      tab.style.borderColor = 'var(--border)';
+      panel.style.display = 'none';
     }
   }
 }
@@ -3727,6 +3772,7 @@ function revM1Reveal(id, show) {
     btn.textContent = 'Révéler';
     btn.onclick = function() { revM1Reveal(id, true); };
   }
+  revUpdateBadges();
 }
 function revM1SetAll(show) {
   revPoints.forEach(function(p) { revM1Reveal(p.id, show); });
@@ -3850,6 +3896,7 @@ function revM2DragEnd(e) {
   revDrag.parent.insertBefore(chip, revDrag.next);
   if (placed) { chip.style.display = 'none'; }
   revDrag = null;
+  revUpdateBadges();
 }
 function revInitM3() {
   var stage = document.getElementById('rev-m3-stage');
@@ -3936,6 +3983,7 @@ function revM3End() {
   stage.style.display = 'none';
   summary.style.display = 'block';
   summary.innerHTML = '<div style="text-align:center;padding:30px 10px"><div style="font-size:34px;font-weight:800;color:var(--teal-dark,#006064)">' + revM3Score + ' / ' + revM3Queue.length + '</div><div style="color:var(--text2);font-size:13.5px;margin-top:6px">repères correctement localisés</div></div>';
+  revUpdateBadges();
 }
 
 function afficherFormulaireSchema(seanceId) {
