@@ -29,13 +29,17 @@ async function sendPushToAll(title, body, url = '/', category = null, threadId =
   const db = loadDB();
   const subs = db.pushSubscriptions || [];
   const payload = JSON.stringify({ title, body, url });
+  console.log('[PUSH DEBUG] ===', subs.length, 'abonnement(s) — category:', category, '— threadId:', threadId);
   await Promise.allSettled(subs.map(async (sub) => {
     const user = db.users.find(u => u.id === sub.userId);
-    if (category && user && user.notifPrefs && user.notifPrefs[category] === false) return;
-    if (threadId && user && (user.mutedThreads || []).includes(threadId)) return;
+    console.log('[PUSH DEBUG] sub.userId:', sub.userId, '(type:', typeof sub.userId, ') — user trouvé:', !!user, user ? ('— ' + user.name + ' — notifPrefs:' + JSON.stringify(user.notifPrefs) + ' — mutedThreads:' + JSON.stringify(user.mutedThreads)) : '');
+    if (category && user && user.notifPrefs && user.notifPrefs[category] === false) { console.log('[PUSH DEBUG] → BLOQUÉ (préférence', category, ')'); return; }
+    if (threadId && user && (user.mutedThreads || []).includes(threadId)) { console.log('[PUSH DEBUG] → BLOQUÉ (sourdine thread', threadId, ')'); return; }
+    console.log('[PUSH DEBUG] → envoi en cours pour', user?.name || sub.userId);
     try {
       await webpush.sendNotification(sub.subscription, payload);
     } catch(e) {
+      console.log('[PUSH DEBUG] → erreur envoi:', e.statusCode, e.message);
       if (e.statusCode === 410) {
         // Subscription expirée — la supprimer
         db.pushSubscriptions = (db.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== sub.subscription.endpoint);
