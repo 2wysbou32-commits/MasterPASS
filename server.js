@@ -1535,15 +1535,16 @@ app.post('/api/push/subscribe', requireAuth, (req, res) => {
   if (!subscription) return res.status(400).json({ error: 'Subscription manquante' });
   const db = loadDB();
   if (!db.pushSubscriptions) db.pushSubscriptions = [];
-  // Éviter les doublons
-  const exists = db.pushSubscriptions.find(s => s.subscription.endpoint === subscription.endpoint);
-  if (!exists) {
+  const idx = db.pushSubscriptions.findIndex(s => s.subscription.endpoint === subscription.endpoint);
+  if (idx >= 0) {
+    // Réassocier cet appareil au compte actuellement connecté
+    db.pushSubscriptions[idx].userId = req.session.userId;
+  } else {
     db.pushSubscriptions.push({ userId: req.session.userId, subscription });
-    saveDB(db);
   }
+  saveDB(db);
   res.json({ ok: true });
 });
-
 // Se désabonner
 app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
   const { endpoint } = req.body;
