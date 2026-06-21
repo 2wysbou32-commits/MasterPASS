@@ -6056,8 +6056,7 @@ function renderDiscCenter() {
     attachDiscCenterListeners();
     return;
   }
-  function openDiscFolder(name) { _discFolderOpen = name; renderDiscCenter(); }
-  function closeDiscFolderView() { _discFolderOpen = null; renderDiscCenter(); }
+  
   const _lastSeen = loadLastSeen();
 
   list.innerHTML = threads.map(function(t) {
@@ -6068,6 +6067,8 @@ function renderDiscCenter() {
   }).join('');
   attachDiscCenterListeners();
 }
+function openDiscFolder(name) { _discFolderOpen = name; renderDiscCenter(); }
+function closeDiscFolderView() { _discFolderOpen = null; renderDiscCenter(); }
 
 function renderThreadCard(t, isNew) {
   var date = new Date(t.lastActivity).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
