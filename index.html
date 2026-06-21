@@ -2989,8 +2989,7 @@ function setupApp() {
   }).catch(function(){});
   updateAvatarPreview();
   updateSidebarAvatar();
-  if (currentUser?.role === 'admin') {
-   // Vérifier la session toutes les 30 secondes (anti-partage de compte)
+  // Vérifier la session toutes les 30 secondes (anti-partage de compte)
   startSessionPolling();
   updateAdminDiscBadge();
   // Activer les notifications push (tous les rôles)
