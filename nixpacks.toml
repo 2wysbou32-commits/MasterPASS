@@ -1,2 +1,8 @@
 [variables]
 FROM_EMAIL = "masterpass.lille@gmail.com"
+
+
+
+
+[phases.setup]
+nixPkgs = ['...', 'fontconfig', 'dejavu_fonts']
