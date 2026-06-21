@@ -3598,7 +3598,8 @@ async function ouvrirSchema(seanceId, schemaId) {
 var revPoints = [];
 var revTol = 9;
 var revDrag = null;
-var revM3Queue = [], revM3Idx = 0, revM3Score = 0, revM3Locked = false;
+var revM3Queue = [], revM3Idx = 0, revM3Score = 0, revM3Locked = false, revM3Attempts = 0;
+var revM3MaxAttempts = 3;
 
 function revShuffle(arr) {
   var a = arr.slice();
@@ -3707,10 +3708,11 @@ function revM2DragStart(e) {
   var chip = e.currentTarget;
   chip.setPointerCapture(e.pointerId);
   var r = chip.getBoundingClientRect();
-  revDrag = { chip: chip, offX: e.clientX - r.left, offY: e.clientY - r.top };
+  revDrag = { chip: chip, offX: e.clientX - r.left, offY: e.clientY - r.top, parent: chip.parentNode, next: chip.nextSibling, w: r.width };
+  document.body.appendChild(chip);
   chip.style.position = 'fixed';
-  chip.style.zIndex = '999';
-  chip.style.width = r.width + 'px';
+  chip.style.zIndex = '9999';
+  chip.style.width = revDrag.w + 'px';
   chip.style.cursor = 'grabbing';
   chip.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)';
   revM2DragMove(e);
@@ -3731,13 +3733,6 @@ function revM2DragEnd(e) {
   var sRect = stage.getBoundingClientRect();
   var px = ((e.clientX - sRect.left) / sRect.width) * 100;
   var py = ((e.clientY - sRect.top) / sRect.height) * 100;
-  chip.style.position = '';
-  chip.style.left = '';
-  chip.style.top = '';
-  chip.style.width = '';
-  chip.style.zIndex = '';
-  chip.style.cursor = 'grab';
-  chip.style.boxShadow = '';
   var nearest = null, nearestDist = Infinity;
   stage.querySelectorAll('[data-rev-hotspot]').forEach(function(h) {
     if (h.dataset.filled === 'true') return;
@@ -3745,31 +3740,39 @@ function revM2DragEnd(e) {
     var d = Math.hypot(px - hx, py - hy);
     if (d < nearestDist) { nearestDist = d; nearest = h; }
   });
-  if (nearest && nearestDist <= revTol) {
-    if (nearest.dataset.revHotspot === chip.dataset.revChip) {
-      nearest.style.borderStyle = 'solid';
-      nearest.style.background = 'var(--success,#2E7D32)';
-      nearest.style.borderColor = 'var(--success,#2E7D32)';
-      nearest.style.color = '#fff';
-      nearest.style.display = 'flex';
-      nearest.style.alignItems = 'center';
-      nearest.style.justifyContent = 'center';
-      nearest.style.fontWeight = '800';
-      nearest.textContent = '✓';
-      nearest.dataset.filled = 'true';
-      chip.style.display = 'none';
-      var scoreEl = document.getElementById('rev-m2-score');
-      var filledCount = document.querySelectorAll('#rev-m2-stage [data-filled="true"]').length;
-      scoreEl.textContent = filledCount + ' / ' + revPoints.length + ' placés';
-    } else {
-      nearest.style.borderColor = 'var(--danger,#E57373)';
-      nearest.style.background = 'rgba(229,115,115,0.18)';
-      setTimeout(function() {
-        nearest.style.borderColor = 'var(--teal,#0097A7)';
-        nearest.style.background = 'rgba(255,255,255,0.5)';
-      }, 450);
-    }
+  var placed = false;
+  if (nearest && nearestDist <= revTol && nearest.dataset.revHotspot === chip.dataset.revChip) {
+    nearest.style.borderStyle = 'solid';
+    nearest.style.background = 'var(--success,#2E7D32)';
+    nearest.style.borderColor = 'var(--success,#2E7D32)';
+    nearest.style.color = '#fff';
+    nearest.style.display = 'flex';
+    nearest.style.alignItems = 'center';
+    nearest.style.justifyContent = 'center';
+    nearest.style.fontWeight = '800';
+    nearest.textContent = '✓';
+    nearest.dataset.filled = 'true';
+    placed = true;
+    var scoreEl = document.getElementById('rev-m2-score');
+    var filledCount = document.querySelectorAll('#rev-m2-stage [data-filled="true"]').length;
+    scoreEl.textContent = filledCount + ' / ' + revPoints.length + ' placés';
+  } else if (nearest && nearestDist <= revTol) {
+    nearest.style.borderColor = 'var(--danger,#E57373)';
+    nearest.style.background = 'rgba(229,115,115,0.18)';
+    setTimeout(function() {
+      nearest.style.borderColor = 'var(--teal,#0097A7)';
+      nearest.style.background = 'rgba(255,255,255,0.5)';
+    }, 450);
   }
+  chip.style.position = '';
+  chip.style.left = '';
+  chip.style.top = '';
+  chip.style.width = '';
+  chip.style.zIndex = '';
+  chip.style.cursor = 'grab';
+  chip.style.boxShadow = '';
+  revDrag.parent.insertBefore(chip, revDrag.next);
+  if (placed) { chip.style.display = 'none'; }
   revDrag = null;
 }
 function revInitM3() {
@@ -3797,46 +3800,59 @@ function revM3Render() {
   stage.querySelectorAll('[data-rev-mark]').forEach(function(m) { m.remove(); });
   var oldBtn = document.getElementById('rev-m3-next-btn');
   if (oldBtn) oldBtn.remove();
+  revM3Attempts = 0;
   revM3Locked = false;
 }
 function revM3Click(e) {
   if (revM3Locked || revM3Idx >= revM3Queue.length) return;
   var stage = document.getElementById('rev-m3-stage');
+  var pEl = document.getElementById('rev-m3-progress');
   var r = stage.getBoundingClientRect();
   var px = ((e.clientX - r.left) / r.width) * 100;
   var py = ((e.clientY - r.top) / r.height) * 100;
   var target = revM3Queue[revM3Idx];
   var dist = Math.hypot(px - target.x, py - target.y);
-  revM3Locked = true;
+  stage.querySelectorAll('[data-rev-mark="attempt"]').forEach(function(m) { m.remove(); });
   var mark = document.createElement('div');
-  mark.setAttribute('data-rev-mark', '1');
+  mark.setAttribute('data-rev-mark', 'attempt');
   mark.style.cssText = 'position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;pointer-events:none';
   mark.style.left = px + '%';
   mark.style.top = py + '%';
   if (dist <= revTol) {
     mark.style.background = 'var(--success,#2E7D32)';
     mark.textContent = '✓';
-    revM3Score++;
     stage.appendChild(mark);
-    setTimeout(function() { revM3Idx++; revM3Render(); }, 550);
+    revM3Score++;
+    revM3Locked = true;
+    revM3ShowNextBtn();
   } else {
+    revM3Attempts++;
     mark.style.background = 'var(--danger,#E57373)';
     mark.textContent = '✕';
     stage.appendChild(mark);
-    var tmark = document.createElement('div');
-    tmark.setAttribute('data-rev-mark', '1');
-    tmark.style.cssText = 'position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:var(--success,#2E7D32);opacity:.55;pointer-events:none';
-    tmark.style.left = target.x + '%';
-    tmark.style.top = target.y + '%';
-    stage.appendChild(tmark);
-    var next = document.createElement('button');
-    next.id = 'rev-m3-next-btn';
-    next.className = 'btn-action';
-    next.textContent = 'Suivant';
-    next.style.cssText = 'position:absolute;right:10px;bottom:10px';
-    next.onclick = function() { next.remove(); revM3Idx++; revM3Render(); };
-    stage.appendChild(next);
+    if (revM3Attempts >= revM3MaxAttempts) {
+      var tmark = document.createElement('div');
+      tmark.setAttribute('data-rev-mark', 'target');
+      tmark.style.cssText = 'position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:var(--success,#2E7D32);opacity:.55;pointer-events:none';
+      tmark.style.left = target.x + '%';
+      tmark.style.top = target.y + '%';
+      stage.appendChild(tmark);
+      revM3Locked = true;
+      revM3ShowNextBtn();
+    } else {
+      pEl.textContent = 'Essai ' + revM3Attempts + ' / ' + revM3MaxAttempts;
+    }
   }
+}
+function revM3ShowNextBtn() {
+  var stage = document.getElementById('rev-m3-stage');
+  var next = document.createElement('button');
+  next.id = 'rev-m3-next-btn';
+  next.className = 'btn-action';
+  next.textContent = 'Suivant';
+  next.style.cssText = 'position:absolute;right:10px;bottom:10px';
+  next.onclick = function(ev) { ev.stopPropagation(); next.remove(); revM3Idx++; revM3Render(); };
+  stage.appendChild(next);
 }
 function revM3End() {
   var stage = document.getElementById('rev-m3-stage');
