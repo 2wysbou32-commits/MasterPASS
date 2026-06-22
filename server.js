@@ -24,7 +24,7 @@ try {
   console.log('⚠️ Web Push non disponible (npm install web-push)');
 }
 
-async function sendPushToAll(title, body, url = '/', category = null, threadId = null, excludeUserId = null) {
+async function sendPushToAll(title, body, url = '/', category = null, threadId = null, excludeUserId = null, excludeUserIds = []) {
   if (!webpush) return;
   const db = loadDB();
   const subs = db.pushSubscriptions || [];
@@ -32,6 +32,7 @@ async function sendPushToAll(title, body, url = '/', category = null, threadId =
   console.log('[PUSH DEBUG] ===', subs.length, 'abonnement(s) — category:', category, '— threadId:', threadId);
   await Promise.allSettled(subs.map(async (sub) => {
     if (excludeUserId && String(sub.userId) === String(excludeUserId)) return;
+    if (excludeUserIds.length && excludeUserIds.includes(String(sub.userId))) return;
     const user = db.users.find(u => String(u.id) === String(sub.userId));
     console.log('[PUSH DEBUG] sub.userId:', sub.userId, '— user:', user?.name || 'inconnu');
     if (category && user && user.notifPrefs && user.notifPrefs[category] === false) { console.log('[PUSH DEBUG] → BLOQUÉ (préférence', category, ')'); return; }
@@ -1887,7 +1888,12 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   if (user.role !== 'admin') {
     if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
     db.adminUnreadDiscussions++;
-    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/', 'discussions', thread.id, user.id).catch(()=>{});
+    const mentionedIds = message ? (message.match(/@\[([^\]]+)\]/g)||[]).map(function(m){
+      const n = m.slice(2,-1).trim();
+      const u2 = db.users.find(function(u){return u.name.toLowerCase()===n.toLowerCase();});
+      return u2 ? String(u2.id) : null;
+    }).filter(Boolean) : [];
+    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/', 'discussions', thread.id, user.id, mentionedIds).catch(()=>{});
     // Notifier les personnes @mentionnées directement
     if (message) {
       const mentionMatches = message.match(/@\[([^\]]+)\]/g) || [];
@@ -1897,15 +1903,15 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
         if (mentionedUser && mentionedUser.id !== user.id) {
           // Respecter le réglage "Mentions @" de l'utilisateur mentionné
           if (mentionedUser.notifPrefs?.mentions === false) return;
-          // La notif mention s'envoie même si discussions est désactivé — on ignore le filtre sendPushToAll
-          const sub = (db.pushSubscriptions||[]).find(s => String(s.userId) === String(mentionedUser.id));
-          if (sub) {
+          // Envoyer à TOUS les appareils de la personne mentionnée, indépendamment des préfs discussions
+          const mentionSubs = (db.pushSubscriptions||[]).filter(s => String(s.userId) === String(mentionedUser.id));
+          mentionSubs.forEach(function(sub) {
             webpush.sendNotification(sub.subscription, JSON.stringify({
               title: '📣 ' + user.name + ' vous a mentionné',
               body: message.substring(0, 80),
               url: '/'
             })).catch(()=>{});
-          }
+          });
         }
       });
     }
