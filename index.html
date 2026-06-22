@@ -7281,6 +7281,9 @@ function backToThreads() {
 
 let _currentThreadResolved = false;
 async function loadThreadReplies(silent) {
+  if (!currentUser) {
+    try { currentUser = await api('GET', '/me'); } catch(e) {}
+  }
   const container = document.getElementById('thread-replies');
   if (!silent) container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
   try {
