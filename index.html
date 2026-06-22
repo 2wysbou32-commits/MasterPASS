@@ -6476,9 +6476,9 @@ console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, 
           '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
           '</div>';
       } else {
-        msgHtml = (r.message||'').split('\n').join('<br>').replace(/@([\w\s\-éèêëàâùûüôîïç]+?)(?=\s@|<br>|$)/g, function(m, name) {
-          return renderMention(name, isMine);
-        });
+        msgHtml = (r.message||'').split('\n').join('<br>')
+          .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
+          .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); });
       }
      var canDelete = currentUser && (currentUser.role === 'admin' || String(r.userId) === String(currentUser.id));
       var reactHtml = '';
@@ -7309,9 +7309,9 @@ async function loadThreadReplies(silent) {
                 '<div style="display:flex;justify-content:space-between;font-size:10px;color:'+(isMine?'rgba(255,255,255,0.7)':'var(--text3)')+'"><span id="'+tId+'">0:00</span><span>🎤 '+durStr+'</span></div>'+
               '</div>';
           })()
-        : r.message.split('\n').join('<br>').replace(/@([\w\s\-éèêëàâùûüôîïç]+?)(?=\s@|<br>|$)/g, function(m, name) {
-            return renderMention(name, isMine);
-          });
+        : r.message.split('\n').join('<br>')
+            .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
+            .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); });
       var canDelete = currentUser?.role === 'admin' || isOwn;
       var reactHtml = '';
       if (r.reactions && Object.keys(r.reactions).length) {
@@ -7385,7 +7385,7 @@ function handleMentionInput(textarea) {
   const val = textarea.value;
   const pos = textarea.selectionStart;
   const before = val.substring(0, pos);
-  const match = before.match(/@([\w\s\-éèêëàâùûüôîïç]*)$/);
+  const match = before.match(/@(\[?[\w\s\-éèêëàâùûüôîïç]*)$/);
   if (!match) { closeMentionMenu(); return; }
   const query = match[1].toLowerCase();
   const filtered = query
@@ -7411,8 +7411,12 @@ function showMentionMenu(textarea, users) {
     _mentionMenu.appendChild(item);
   });
   var rect = textarea.getBoundingClientRect();
-  _mentionMenu.style.left = rect.left + 'px';
-  _mentionMenu.style.top = (rect.top - Math.min(users.length * 38, 180) - 6) + 'px';
+  var menuH = Math.min(users.length * 38, 180);
+  var top = rect.top + window.scrollY - menuH - 6;
+  var left = rect.left + window.scrollX;
+  _mentionMenu.style.position = 'absolute';
+  _mentionMenu.style.left = left + 'px';
+  _mentionMenu.style.top = top + 'px';
   _mentionMenu.style.width = '220px';
   document.body.appendChild(_mentionMenu);
 }
@@ -7437,7 +7441,7 @@ function insertMention(textarea, name) {
   var val = textarea.value;
   var pos = textarea.selectionStart;
   var before = val.substring(0, pos);
-  var newBefore = before.replace(/@[\w\s\-éèêëàâùûüôîïç]*$/, '@' + name + ' ');
+  var newBefore = before.replace(/@[\w\s\-éèêëàâùûüôîïç]*$/, '@[' + name + '] ');
   textarea.value = newBefore + val.substring(pos);
   textarea.selectionStart = textarea.selectionEnd = newBefore.length;
   textarea.focus();
