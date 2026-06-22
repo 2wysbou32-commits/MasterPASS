@@ -24,15 +24,16 @@ try {
   console.log('⚠️ Web Push non disponible (npm install web-push)');
 }
 
-async function sendPushToAll(title, body, url = '/', category = null, threadId = null) {
+async function sendPushToAll(title, body, url = '/', category = null, threadId = null, excludeUserId = null) {
   if (!webpush) return;
   const db = loadDB();
   const subs = db.pushSubscriptions || [];
   const payload = JSON.stringify({ title, body, url });
   console.log('[PUSH DEBUG] ===', subs.length, 'abonnement(s) — category:', category, '— threadId:', threadId);
   await Promise.allSettled(subs.map(async (sub) => {
+    if (excludeUserId && sub.userId === excludeUserId) return;
     const user = db.users.find(u => u.id === sub.userId);
-    console.log('[PUSH DEBUG] sub.userId:', sub.userId, '(type:', typeof sub.userId, ') — user trouvé:', !!user, user ? ('— ' + user.name + ' — notifPrefs:' + JSON.stringify(user.notifPrefs) + ' — mutedThreads:' + JSON.stringify(user.mutedThreads)) : '');
+    console.log('[PUSH DEBUG]
     if (category && user && user.notifPrefs && user.notifPrefs[category] === false) { console.log('[PUSH DEBUG] → BLOQUÉ (préférence', category, ')'); return; }
     if (threadId && user && (user.mutedThreads || []).includes(threadId)) { console.log('[PUSH DEBUG] → BLOQUÉ (sourdine thread', threadId, ')'); return; }
     console.log('[PUSH DEBUG] → envoi en cours pour', user?.name || sub.userId);
@@ -1886,7 +1887,7 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   if (user.role !== 'admin') {
     if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
     db.adminUnreadDiscussions++;
-    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/', 'discussions', thread.id).catch(()=>{});
+    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/', 'discussions', thread.id, user.id).catch(()=>{});
     // Notifier les personnes @mentionnées directement
     if (message) {
       const mentionMatches = message.match(/@\[([^\]]+)\]/g) || [];
