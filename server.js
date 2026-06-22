@@ -1898,7 +1898,7 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
           // Respecter le réglage "Mentions @" de l'utilisateur mentionné
           if (mentionedUser.notifPrefs?.mentions === false) return;
           // La notif mention s'envoie même si discussions est désactivé — on ignore le filtre sendPushToAll
-          const sub = (db.pushSubscriptions||[]).find(s => s.userId === mentionedUser.id);
+          const sub = (db.pushSubscriptions||[]).find(s => String(s.userId) === String(mentionedUser.id));
           if (sub) {
             webpush.sendNotification(sub.subscription, JSON.stringify({
               title: '📣 ' + user.name + ' vous a mentionné',
