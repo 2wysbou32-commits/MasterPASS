@@ -1889,13 +1889,14 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
     sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/', 'discussions', thread.id).catch(()=>{});
     // Notifier les personnes @mentionnées directement
     if (message) {
-      const mentionMatches = message.match(/@([^@\n]+?)(?=\s@|\s*$|\n)/g) || [];
+      const mentionMatches = message.match(/@\[([^\]]+)\]/g) || [];
       mentionMatches.forEach(function(m) {
-        const mentionedName = m.slice(1).trim();
+        const mentionedName = m.slice(2, -1).trim();
         const mentionedUser = db.users.find(u => u.name.toLowerCase() === mentionedName.toLowerCase());
         if (mentionedUser && mentionedUser.id !== user.id) {
           // Respecter le réglage "Mentions @" de l'utilisateur mentionné
-          if (mentionedUser.notifPrefs && mentionedUser.notifPrefs.mentions === false) return;
+          if (mentionedUser.notifPrefs?.mentions === false) return;
+          // La notif mention s'envoie même si discussions est désactivé — on ignore le filtre sendPushToAll
           const sub = (db.pushSubscriptions||[]).find(s => s.userId === mentionedUser.id);
           if (sub) {
             webpush.sendNotification(sub.subscription, JSON.stringify({
