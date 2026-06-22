@@ -1894,6 +1894,8 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
         const mentionedName = m.slice(1).trim();
         const mentionedUser = db.users.find(u => u.name.toLowerCase() === mentionedName.toLowerCase());
         if (mentionedUser && mentionedUser.id !== user.id) {
+          // Respecter le réglage "Mentions @" de l'utilisateur mentionné
+          if (mentionedUser.notifPrefs && mentionedUser.notifPrefs.mentions === false) return;
           const sub = (db.pushSubscriptions||[]).find(s => s.userId === mentionedUser.id);
           if (sub) {
             webpush.sendNotification(sub.subscription, JSON.stringify({
