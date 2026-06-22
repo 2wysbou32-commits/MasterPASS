@@ -5584,29 +5584,35 @@ async function publishAnnouncement() {
 
 
 // ── NOTIFICATIONS PUSH ───────────────────────────────────────────────────────
+// APRÈS
 async function initPushNotifications() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   try {
-    // Enregistrer le service worker
     const reg = await navigator.serviceWorker.register('/sw.js');
     console.log('[PUSH] Service Worker enregistré');
 
-    // Vérifier la permission
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
+    // Demander la permission seulement si pas encore décidé
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+    }
+    if (Notification.permission !== 'granted') return;
 
-    // Récupérer la clé VAPID
     const { key } = await api('GET', '/push/vapid-key');
 
-    // S'abonner
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(key)
-    });
+    // Vérifier si un abonnement existe déjà
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      // Pas d'abonnement — en créer un
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key)
+      });
+    }
 
-    // Envoyer la subscription au serveur
+    // Toujours renvoyer au serveur pour s'assurer que le userId est à jour
     await api('POST', '/push/subscribe', { subscription: sub.toJSON() });
-   console.log('[PUSH] Abonné aux notifications');
+    console.log('[PUSH] Abonné aux notifications');
   } catch(e) {
     console.log('[PUSH] Non disponible:', e.message);
   }
