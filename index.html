@@ -5836,7 +5836,7 @@ function ctxEdit() {
   api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id, { message: newMsg.trim() })
     .then(function() {
       var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
-      if (isInline) loadThreadRepliesInline(); else loadThreadReplies(true);
+      if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true);
     })
     .catch(e => toast(e.message, 'error'));
 }
@@ -5847,7 +5847,7 @@ function ctxDelete() {
   if (!confirm('Supprimer ce message ?')) return;
   var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
   api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id)
-    .then(function() { if (isInline) loadThreadRepliesInline(); else loadThreadReplies(true); })
+    .then(function() { if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true); })
     .catch(function(e) { toast(e.message, 'error'); });
 }
 
@@ -6562,7 +6562,7 @@ async function toggleRecording2() {
           await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', {
             message: '', audio: reader.result, audioDuration: _recordSeconds
           });
-          await loadThreadRepliesInline();
+          await loadThreadRepliesInline(true);
         } catch(e) { toast(e.message, 'error'); }
       };
       reader.readAsDataURL(blob);
@@ -6825,7 +6825,7 @@ async function deleteReplyInline(replyId, skipConfirm) {
   if (!skipConfirm && !confirm('Supprimer cette réponse ?')) return;
   try {
     await api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + replyId);
-    await loadThreadRepliesInline();
+    await loadThreadRepliesInline(true);
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -6844,14 +6844,16 @@ async function postReply2() {
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
     cancelReply();
-    await loadThreadRepliesInline();
+    await loadThreadRepliesInline(true);
+    const _c = document.getElementById('thread-replies2');
+    if (_c) _c.scrollTop = _c.scrollHeight;
   } catch(e) { toast(e.message, 'error'); }
   finally { _sendingReply2 = false; if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
 }
 async function toggleResolve2() {
   try {
     await api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/resolve');
-    await loadThreadRepliesInline();
+    await loadThreadRepliesInline(true);
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -7822,7 +7824,7 @@ async function sendVoiceMessage(ctx) {
       });
       cancelVoicePreview(ctx);
       if (ctx === 'main') await loadThreadReplies(false);
-      else await loadThreadRepliesInline();
+      else await loadThreadRepliesInline(true);
     } catch(e) { toast(e.message, 'error'); }
   };
   reader.readAsDataURL(_voiceBlob);
