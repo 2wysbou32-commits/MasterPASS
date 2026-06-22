@@ -7243,6 +7243,8 @@ async function openThread(threadId) {
   _currentThreadId = threadId;
   showView('thread-detail-view');
   await loadThreadReplies();
+  const _cm = document.getElementById('thread-replies');
+  if (_cm) _cm.scrollTop = _cm.scrollHeight;
   const resolveBtn = document.getElementById('resolve-btn');
   if (resolveBtn) resolveBtn.style.display = currentUser?.role === 'admin' ? 'inline-block' : 'none';
   updateMuteBtn();
