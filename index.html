@@ -3348,8 +3348,12 @@ function showTutoStep(n) {
   });
   var skipBtn = document.getElementById('tuto-skip-btn');
   var nextBtn = document.getElementById('tuto-next-btn');
-  if (skipBtn) skipBtn.textContent = n >= _tutoTotal-1 ? 'Terminer' : 'Passer';
-  if (nextBtn) nextBtn.style.display = n >= _tutoTotal-1 ? 'none' : 'inline-block';
+  if (skipBtn) skipBtn.style.display = n >= _tutoTotal-1 ? 'none' : 'inline-block';
+  if (nextBtn) {
+    nextBtn.style.display = 'inline-block';
+    nextBtn.textContent = n >= _tutoTotal-1 ? 'Terminer ✓' : 'Suivant →';
+    nextBtn.onclick = n >= _tutoTotal-1 ? closeTutorial : tutoNext;
+  }
   var fn = document.getElementById('tuto-firstname');
   if (fn && currentUser) fn.textContent = currentUser.name.split(' ')[0];
 }
