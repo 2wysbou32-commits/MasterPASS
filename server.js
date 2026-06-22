@@ -33,7 +33,7 @@ async function sendPushToAll(title, body, url = '/', category = null, threadId =
   await Promise.allSettled(subs.map(async (sub) => {
     if (excludeUserId && sub.userId === excludeUserId) return;
     const user = db.users.find(u => u.id === sub.userId);
-    console.log('[PUSH DEBUG]
+    console.log('[PUSH DEBUG] sub.userId:', sub.userId, '— user:', user?.name || 'inconnu');
     if (category && user && user.notifPrefs && user.notifPrefs[category] === false) { console.log('[PUSH DEBUG] → BLOQUÉ (préférence', category, ')'); return; }
     if (threadId && user && (user.mutedThreads || []).includes(threadId)) { console.log('[PUSH DEBUG] → BLOQUÉ (sourdine thread', threadId, ')'); return; }
     console.log('[PUSH DEBUG] → envoi en cours pour', user?.name || sub.userId);
