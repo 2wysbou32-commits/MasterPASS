@@ -6462,8 +6462,7 @@ async function loadThreadRepliesInline(silent) {
     }
     _repliesCache = data.replies;
     container.innerHTML = data.replies.map(function(r) {
-      var isMine = String(r.userId) === String(currentUser?.id);
-console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, typeof currentUser?.id, '->', isMine);
+      var isMine = currentUser != null && String(r.userId) === String(currentUser.id);
       var isAdmin = r.userRole === 'admin' || r.userRole === 'subadmin';
       var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       var initials = (r.userName||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
@@ -7302,7 +7301,7 @@ async function loadThreadReplies(silent) {
     _repliesCache = data.replies;
     container.innerHTML = data.replies.map(function(r) {
       var isAdmin = r.userRole === 'admin';
-      var isOwn = String(r.userId) === String(currentUser?.id);
+      var isOwn = currentUser != null && String(r.userId) === String(currentUser.id);
       var isMine = isOwn;
       var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       var initials = r.userName.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
@@ -7479,7 +7478,9 @@ async function postReply() {
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
     cancelReply();
-    await loadThreadReplies(false);
+    await loadThreadReplies(true);
+    const _cm = document.getElementById('thread-replies');
+    if (_cm) _cm.scrollTop = _cm.scrollHeight;
   } catch(e) { toast(e.message, 'error'); }
   finally { _sendingReply = false; if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
 }
