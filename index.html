@@ -2114,8 +2114,13 @@ input[type="file"]{display:none;}
       <p style="color:var(--text2);font-size:14px;line-height:1.6">Chaque fichier a une section discussion. Pose tes questions, réponds aux autres étudiants.</p>
     </div>
     <div class="tutorial-step" style="display:none;text-align:center">
-      <div style="font-size:48px;margin-bottom:16px">⭐</div>
-      <h2 style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:8px">Les favoris</h2>
+      <div style="font-size:48px;margin-bottom:16px">🧠</div>
+      <h2 style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:8px">La révision</h2>
+      <p style="color:var(--text2);font-size:14px;line-height:1.6">Dans "Révision", retrouve tes schémas classés par dossiers et séances. Entraîne-toi en 3 modes — cacher/révéler, glisser-déposer, pointer-cliquer — et garde une trace de ta dernière révision.</p>
+    </div>
+    <div class="tutorial-step" style="display:none;text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">🔔</div>
+      <h2 style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:8px">Les annonces</h2>
       <p style="color:var(--text2);font-size:14px;line-height:1.6">Marque les fichiers importants avec l'étoile ⭐ pour les retrouver rapidement dans "Favoris".</p>
     </div>
     <div class="tutorial-step" style="display:none;text-align:center">
@@ -2149,6 +2154,7 @@ input[type="file"]{display:none;}
     <!-- Dots -->
     <div style="display:flex;justify-content:center;gap:8px;margin:24px 0 20px">
       <div class="tutorial-dot active" style="width:8px;height:8px;border-radius:50%;background:var(--teal);transition:all 0.2s"></div>
+      <div class="tutorial-dot" style="width:8px;height:8px;border-radius:50%;background:var(--border);transition:all 0.2s"></div>
       <div class="tutorial-dot" style="width:8px;height:8px;border-radius:50%;background:var(--border);transition:all 0.2s"></div>
       <div class="tutorial-dot" style="width:8px;height:8px;border-radius:50%;background:var(--border);transition:all 0.2s"></div>
       <div class="tutorial-dot" style="width:8px;height:8px;border-radius:50%;background:var(--border);transition:all 0.2s"></div>
@@ -3330,7 +3336,7 @@ function checkAndShowTutorial() {
 }
 
 let _tutoStep = 0;
-let _tutoTotal = 6;
+let _tutoTotal = 8;
 
 function showTutoStep(n) {
   _tutoStep = n;
