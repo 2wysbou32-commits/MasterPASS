@@ -1851,7 +1851,12 @@ app.get('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
     const user = db.users.find(u => u.id === r.userId);
     return { ...r, userAvatar: user?.avatar || null };
   });
-  res.json({ thread: { id: thread.id, title: thread.title, resolved: thread.resolved }, replies });
+  // Participants du fil + tous les admins/subadmins (pour le menu @mention)
+  const participantIds = new Set([thread.userId, ...( thread.replies||[]).map(r => r.userId)]);
+  const mentionables = db.users
+    .filter(u => participantIds.has(u.id) || u.role === 'admin' || u.role === 'subadmin')
+    .map(u => ({ id: u.id, name: u.name, role: u.role }));
+  res.json({ thread: { id: thread.id, title: thread.title, resolved: thread.resolved }, replies, mentionables });
 });
 
 // POST a reply to a thread
@@ -1882,6 +1887,24 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
     if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
     db.adminUnreadDiscussions++;
     sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/', 'discussions', thread.id).catch(()=>{});
+    // Notifier les personnes @mentionnées directement
+    if (message) {
+      const mentionMatches = message.match(/@([^@\n]+?)(?=\s@|\s*$|\n)/g) || [];
+      mentionMatches.forEach(function(m) {
+        const mentionedName = m.slice(1).trim();
+        const mentionedUser = db.users.find(u => u.name.toLowerCase() === mentionedName.toLowerCase());
+        if (mentionedUser && mentionedUser.id !== user.id) {
+          const sub = (db.pushSubscriptions||[]).find(s => s.userId === mentionedUser.id);
+          if (sub) {
+            webpush.sendNotification(sub.subscription, JSON.stringify({
+              title: '📣 ' + user.name + ' vous a mentionné',
+              body: message.substring(0, 80),
+              url: '/'
+            })).catch(()=>{});
+          }
+        }
+      });
+    }
   }
   saveDB(db);
   res.json(reply);
