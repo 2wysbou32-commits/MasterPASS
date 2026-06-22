@@ -7366,10 +7366,12 @@ function handleMentionInput(textarea) {
   const val = textarea.value;
   const pos = textarea.selectionStart;
   const before = val.substring(0, pos);
-  const match = before.match(/@(\w[\w\s\-éèêëàâùûüôîïç]*)$/);
+  const match = before.match(/@([\w\s\-éèêëàâùûüôîïç]*)$/);
   if (!match) { closeMentionMenu(); return; }
   const query = match[1].toLowerCase();
-  const filtered = _mentionables.filter(u => u.name.toLowerCase().startsWith(query));
+  const filtered = query
+    ? _mentionables.filter(u => u.name.toLowerCase().startsWith(query))
+    : _mentionables;
   if (!filtered.length) { closeMentionMenu(); return; }
   showMentionMenu(textarea, filtered);
 }
