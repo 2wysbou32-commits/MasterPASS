@@ -2017,10 +2017,17 @@ input[type="file"]{display:none;}
                 <span class="slider"></span>
               </label>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
               <div><div style="font-size:13.5px;font-weight:600;color:var(--text)">Nouveaux fichiers</div><div style="font-size:12px;color:var(--text3)">Ajouts dans Dossiers &amp; Fichiers</div></div>
               <label class="notif-toggle">
                <input type="checkbox" id="notif-pref-files" checked onchange="toggleNotifPref('files', this)">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
+              <div><div style="font-size:13.5px;font-weight:600;color:var(--text)">Mentions @</div><div style="font-size:12px;color:var(--text3)">Quand quelqu'un te mentionne dans une discussion</div></div>
+              <label class="notif-toggle">
+                <input type="checkbox" id="notif-pref-mentions" checked onchange="toggleNotifPref('mentions', this)">
                 <span class="slider"></span>
               </label>
             </div>
@@ -5333,14 +5340,14 @@ function loadSettingsPanel() {
   if (pwOk) pwOk.style.display = 'none';
   const emailOk = document.getElementById('settings-email-success');
   if (emailOk) emailOk.style.display = 'none';
-  const prefs = currentUser?.notifPrefs || { announcements: true, discussions: true, files: true };
-  ['announcements','discussions','files'].forEach(function(key) {
+  const prefs = currentUser?.notifPrefs || { announcements: true, discussions: true, files: true, mentions: true };
+  ['announcements','discussions','files','mentions'].forEach(function(key) {
     const cb = document.getElementById('notif-pref-' + key);
     if (cb) cb.checked = prefs[key] !== false;
   });
 }
 async function toggleNotifPref(key, checkbox) {
-  const prefs = currentUser?.notifPrefs || { announcements: true, discussions: true, files: true };
+  const prefs = currentUser?.notifPrefs || { announcements: true, discussions: true, files: true, mentions: true };
   prefs[key] = checkbox.checked;
   try {
     await api('PATCH', '/me/notif-prefs', prefs);
@@ -6469,7 +6476,9 @@ console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, 
           '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
           '</div>';
       } else {
-        msgHtml = (r.message||'').split('\n').join('<br>');
+        msgHtml = (r.message||'').split('\n').join('<br>').replace(/@([\w\s\-éèêëàâùûüôîïç]+?)(?=\s@|<br>|$)/g, function(m, name) {
+          return renderMention(name, isMine);
+        });
       }
      var canDelete = currentUser && (currentUser.role === 'admin' || String(r.userId) === String(currentUser.id));
       var reactHtml = '';
@@ -7301,7 +7310,7 @@ async function loadThreadReplies(silent) {
               '</div>';
           })()
         : r.message.split('\n').join('<br>').replace(/@([\w\s\-éèêëàâùûüôîïç]+?)(?=\s@|<br>|$)/g, function(m, name) {
-            return '<span style="color:var(--teal);font-weight:700">@' + name + '</span>';
+            return renderMention(name, isMine);
           });
       var canDelete = currentUser?.role === 'admin' || isOwn;
       var reactHtml = '';
@@ -7357,6 +7366,16 @@ canDelete: (currentUser?.role === 'admin') || String(r.userId) === String(curren
 }
 
 // ===== SYSTÈME @MENTION =====
+function renderMention(name, isMine) {
+  var isMe = currentUser && name.trim().toLowerCase() === currentUser.name.toLowerCase();
+  if (isMine) {
+    return '<span style="background:rgba(255,255,255,0.25);color:white;font-weight:700;border-radius:4px;padding:0 4px">@' + name + '</span>';
+  }
+  if (isMe) {
+    return '<span style="background:rgba(0,196,212,0.2);color:var(--teal);font-weight:700;border-radius:4px;padding:0 4px">@' + name + '</span>';
+  }
+  return '<span style="color:var(--text3);font-weight:600">@' + name + '</span>';
+}
 let _mentionables = [];
 let _mentionOpen = false;
 let _mentionIdx = 0;
