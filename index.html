@@ -1128,6 +1128,10 @@ input[type="file"]{display:none;}
 }
 .ann-type-btn input[type=radio] { display:none; }
 .ann-type-btn:has(input:checked) { border-color:var(--teal); background:rgba(0,196,212,0.12); color:var(--teal); }
+.mention-menu { position:fixed;background:var(--surface,white);border:1.5px solid var(--border);border-radius:10px;box-shadow:0 4px 20px var(--shadow2);z-index:9999;max-height:180px;overflow-y:auto;min-width:180px; }
+.mention-item { display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--text);transition:background 0.1s; }
+.mention-item:hover,.mention-item.active { background:rgba(0,196,212,0.08); }
+.mention-item .mention-role { font-size:10px;color:var(--teal);font-weight:700;margin-left:auto; }
 .notif-toggle { position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0; }
 .notif-toggle input { opacity:0;width:0;height:0; }
 .notif-toggle .slider { position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:24px;transition:.2s; }
@@ -2289,7 +2293,7 @@ input[type="file"]{display:none;}
                 </div>
                 <button onclick="cancelReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px">×</button>
               </div>
-              <textarea id="reply-input2" placeholder="Ajoute une réponse..." style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();postReply2();}"></textarea>
+              <textarea id="reply-input2" placeholder="Ajoute une réponse..." style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';handleMentionInput(this)" onkeydown="handleMentionKeydown(event,this);if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)&&!_mentionOpen){event.preventDefault();postReply2();}"></textarea>
               <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px">
                 <div style="display:flex;align-items:center;gap:8px">
                   <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
@@ -2388,8 +2392,8 @@ input[type="file"]{display:none;}
     <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 2px 12px var(--shadow2)">
       <textarea id="reply-input" placeholder="Ajoute une réponse..."
         style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box"
-        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
-        onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();postReply();}"></textarea>
+        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';handleMentionInput(this)"
+        onkeydown="handleMentionKeydown(event,this);if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)&&!_mentionOpen){event.preventDefault();postReply();}"></textarea>
       <div id="voice-preview-main" style="display:none;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap">
         <button onclick="playVoicePreview('main')" id="preview-play-btn-main" style="width:32px;height:32px;border-radius:50%;background:var(--teal-dark);color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>
         <canvas id="preview-waveform-main" height="32" style="flex:1;max-width:160px;border-radius:4px"></canvas>
@@ -3000,6 +3004,11 @@ function setupApp() {
   updateAdminDiscBadge();
   // Activer les notifications push (tous les rôles)
   setTimeout(initPushNotifications, 2000);
+  // Fermer le menu @mention si on clique ailleurs
+  document.addEventListener('click', function(e) {
+    if (_mentionMenu && !_mentionMenu.contains(e.target)) closeMentionMenu();
+  });
+}
 }
 function showDashboard() {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -6418,6 +6427,7 @@ async function loadThreadRepliesInline() {
   container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
   try {
     const data = await api('GET', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies');
+    _mentionables = (data.mentionables || []).filter(u => u.id !== currentUser?.id);
     // Show "filename > thread title"
     var fname = _discussionFileName || '';
     try { fname = decodeURIComponent(fname); } catch(e) {}
@@ -7249,6 +7259,7 @@ async function loadThreadReplies(silent) {
   try {
     const data = await api('GET', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies');
     _currentThreadResolved = data.thread.resolved;
+    _mentionables = (data.mentionables || []).filter(u => u.id !== currentUser?.id);
     document.getElementById('thread-title-display').textContent = data.thread.title;
     const resolveBtn = document.getElementById('resolve-btn');
     if (resolveBtn) {
@@ -7289,7 +7300,9 @@ async function loadThreadReplies(silent) {
                 '<div style="display:flex;justify-content:space-between;font-size:10px;color:'+(isMine?'rgba(255,255,255,0.7)':'var(--text3)')+'"><span id="'+tId+'">0:00</span><span>🎤 '+durStr+'</span></div>'+
               '</div>';
           })()
-        : r.message.split('\n').join('<br>');
+        : r.message.split('\n').join('<br>').replace(/@([\w\s\-éèêëàâùûüôîïç]+?)(?=\s@|<br>|$)/g, function(m, name) {
+            return '<span style="color:var(--teal);font-weight:700">@' + name + '</span>';
+          });
       var canDelete = currentUser?.role === 'admin' || isOwn;
       var reactHtml = '';
       if (r.reactions && Object.keys(r.reactions).length) {
@@ -7342,6 +7355,74 @@ canDelete: (currentUser?.role === 'admin') || String(r.userId) === String(curren
     container.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
   }
 }
+
+// ===== SYSTÈME @MENTION =====
+let _mentionables = [];
+let _mentionOpen = false;
+let _mentionIdx = 0;
+let _mentionMenu = null;
+
+function handleMentionInput(textarea) {
+  const val = textarea.value;
+  const pos = textarea.selectionStart;
+  const before = val.substring(0, pos);
+  const match = before.match(/@(\w[\w\s\-éèêëàâùûüôîïç]*)$/);
+  if (!match) { closeMentionMenu(); return; }
+  const query = match[1].toLowerCase();
+  const filtered = _mentionables.filter(u => u.name.toLowerCase().startsWith(query));
+  if (!filtered.length) { closeMentionMenu(); return; }
+  showMentionMenu(textarea, filtered);
+}
+
+function showMentionMenu(textarea, users) {
+  closeMentionMenu();
+  _mentionOpen = true;
+  _mentionIdx = 0;
+  _mentionMenu = document.createElement('div');
+  _mentionMenu.className = 'mention-menu';
+  _mentionMenu.id = 'mention-menu';
+  users.forEach(function(u, i) {
+    var item = document.createElement('div');
+    item.className = 'mention-item' + (i === 0 ? ' active' : '');
+    item.innerHTML = '<span>' + u.name + '</span>' + ((u.role === 'admin' || u.role === 'subadmin') ? '<span class="mention-role">👨‍🏫</span>' : '');
+    item.dataset.name = u.name;
+    item.addEventListener('mousedown', function(e) { e.preventDefault(); insertMention(textarea, u.name); });
+    _mentionMenu.appendChild(item);
+  });
+  var rect = textarea.getBoundingClientRect();
+  _mentionMenu.style.left = rect.left + 'px';
+  _mentionMenu.style.top = (rect.top - Math.min(users.length * 38, 180) - 6) + 'px';
+  _mentionMenu.style.width = '220px';
+  document.body.appendChild(_mentionMenu);
+}
+
+function closeMentionMenu() {
+  _mentionOpen = false;
+  var m = document.getElementById('mention-menu');
+  if (m) m.remove();
+  _mentionMenu = null;
+}
+
+function handleMentionKeydown(e, textarea) {
+  if (!_mentionOpen || !_mentionMenu) return;
+  var items = _mentionMenu.querySelectorAll('.mention-item');
+  if (e.key === 'ArrowDown') { e.preventDefault(); _mentionIdx = Math.min(_mentionIdx+1, items.length-1); items.forEach(function(el,i){el.classList.toggle('active',i===_mentionIdx);}); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); _mentionIdx = Math.max(_mentionIdx-1, 0); items.forEach(function(el,i){el.classList.toggle('active',i===_mentionIdx);}); }
+  else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); var active = items[_mentionIdx]; if (active) insertMention(textarea, active.dataset.name); }
+  else if (e.key === 'Escape') { closeMentionMenu(); }
+}
+
+function insertMention(textarea, name) {
+  var val = textarea.value;
+  var pos = textarea.selectionStart;
+  var before = val.substring(0, pos);
+  var newBefore = before.replace(/@[\w\s\-éèêëàâùûüôîïç]*$/, '@' + name + ' ');
+  textarea.value = newBefore + val.substring(pos);
+  textarea.selectionStart = textarea.selectionEnd = newBefore.length;
+  textarea.focus();
+  closeMentionMenu();
+}
+// ============================
 
 let _sendingReply = false;
 async function postReply() {
