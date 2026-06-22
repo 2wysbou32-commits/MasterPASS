@@ -6423,7 +6423,7 @@ function backToThreads2() {
   closeInlineDiscussion();
 }
 
-async function loadThreadRepliesInline() {
+async function loadThreadRepliesInline(silent) {
   // Mark this thread as seen
   if (_currentThreadId) {
     _lastSeenComments['thread_' + _currentThreadId] = new Date().toISOString();
@@ -6431,7 +6431,10 @@ async function loadThreadRepliesInline() {
     if (key) localStorage.setItem(key, JSON.stringify(_lastSeenComments));
   }
   const container = document.getElementById('thread-replies2');
-  container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
+  const prevScrollTop = container.scrollTop;
+  const prevScrollHeight = container.scrollHeight;
+  const wasAtBottom = prevScrollHeight - prevScrollTop - container.clientHeight < 100;
+  if (!silent) container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
   try {
     const data = await api('GET', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies');
     _mentionables = (data.mentionables || []).filter(u => u.id !== currentUser?.id);
@@ -6505,7 +6508,11 @@ console.log('isMine check:', r.userId, typeof r.userId, '===', currentUser?.id, 
       row += '</div>';
       return row;
     }).join('');
-    container.scrollTop = container.scrollHeight;
+    if (!silent || wasAtBottom) {
+      container.scrollTop = container.scrollHeight;
+    } else {
+      container.scrollTop = prevScrollTop + (container.scrollHeight - prevScrollHeight);
+    }
     setTimeout(function() {
       container.querySelectorAll('canvas[data-mine]').forEach(function(canvas) {
         canvas.width = 120;
@@ -7090,13 +7097,13 @@ function startDiscussionRefresh() {
   _discussionRefreshTimer = setInterval(async function() {
     var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
     if (_currentThreadId) {
-      if (isInline) await loadThreadRepliesInline();
+      if (isInline) await loadThreadRepliesInline(true);
       else await loadThreadReplies(true);
     } else if (_discussionFileId) {
       if (isInline) await loadThreadsInline(true);
       else await loadThreads(true);
     }
-  }, 30000);
+  }, 8000);
 }
 
 function stopDiscussionRefresh() {
