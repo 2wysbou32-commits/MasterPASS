@@ -2285,7 +2285,6 @@ input[type="file"]{display:none;}
               </button>
             </div>
             <div id="thread-replies2" style="margin-bottom:24px;min-height:100px;width:100%;box-sizing:border-box;"></div>
-<div id="debug-bar" style="background:red;color:white;font-size:11px;padding:4px;word-break:break-all"></div>
             <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden">
               <div id="voice-preview-side" style="display:none;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap">
                 <button onclick="playVoicePreview('side')" id="preview-play-btn-side" style="width:32px;height:32px;border-radius:50%;background:var(--teal-dark);color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>
@@ -2386,6 +2385,7 @@ input[type="file"]{display:none;}
 
     <!-- Réponses -->
     <div id="thread-replies" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;min-height:100px"></div>
+<div id="debug-bar" style="background:red;color:white;font-size:11px;padding:4px;word-break:break-all"></div>
 
     <!-- Formulaire réponse -->
     <!-- Barre de réponse (citation) -->
@@ -7306,6 +7306,7 @@ async function loadThreadReplies(silent) {
     container.innerHTML = data.replies.map(function(r) {
       var isAdmin = r.userRole === 'admin';
       var isOwn = currentUser != null && String(r.userId) === String(currentUser.id);
+if (r === data.replies[0]) { var dbg = document.getElementById('debug-bar'); if (dbg) dbg.textContent = 'user:' + (currentUser ? currentUser.id + '/' + typeof currentUser.id : 'NULL') + ' | r.userId:' + r.userId + '/' + typeof r.userId + ' | isOwn:' + isOwn; }
       var isMine = isOwn;
       var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       var initials = r.userName.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
