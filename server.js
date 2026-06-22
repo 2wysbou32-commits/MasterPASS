@@ -31,8 +31,8 @@ async function sendPushToAll(title, body, url = '/', category = null, threadId =
   const payload = JSON.stringify({ title, body, url });
   console.log('[PUSH DEBUG] ===', subs.length, 'abonnement(s) — category:', category, '— threadId:', threadId);
   await Promise.allSettled(subs.map(async (sub) => {
-    if (excludeUserId && sub.userId === excludeUserId) return;
-    const user = db.users.find(u => u.id === sub.userId);
+    if (excludeUserId && String(sub.userId) === String(excludeUserId)) return;
+    const user = db.users.find(u => String(u.id) === String(sub.userId));
     console.log('[PUSH DEBUG] sub.userId:', sub.userId, '— user:', user?.name || 'inconnu');
     if (category && user && user.notifPrefs && user.notifPrefs[category] === false) { console.log('[PUSH DEBUG] → BLOQUÉ (préférence', category, ')'); return; }
     if (threadId && user && (user.mutedThreads || []).includes(threadId)) { console.log('[PUSH DEBUG] → BLOQUÉ (sourdine thread', threadId, ')'); return; }
