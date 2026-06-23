@@ -6431,6 +6431,9 @@ function backToThreads2() {
 }
 
 async function loadThreadRepliesInline(silent) {
+  if (!currentUser) {
+    try { currentUser = await api('GET', '/me'); } catch(e) {}
+  }
   // Mark this thread as seen
   if (_currentThreadId) {
     _lastSeenComments['thread_' + _currentThreadId] = new Date().toISOString();
@@ -7281,6 +7284,9 @@ function backToThreads() {
 
 let _currentThreadResolved = false;
 async function loadThreadReplies(silent) {
+  if (!currentUser) {
+    try { currentUser = await api('GET', '/me'); } catch(e) {}
+  }
   if (!currentUser) {
     try { currentUser = await api('GET', '/me'); } catch(e) {}
   }
