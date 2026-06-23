@@ -6341,8 +6341,12 @@ function closeInlineDiscussion() {
     _allThreads = threads;
     renderDiscCenter();
     updateDiscCenterBadge();
+    const savedScroll = loadNavState('lastDiscCenterScroll');
+    if (savedScroll) setTimeout(() => { const el = document.getElementById('disc-center-list'); if (el) el.scrollTop = savedScroll.top; }, 100);
   }).catch(function() {
     renderDiscCenter();
+    const savedScroll = loadNavState('lastDiscCenterScroll');
+    if (savedScroll) setTimeout(() => { const el = document.getElementById('disc-center-list'); if (el) el.scrollTop = savedScroll.top; }, 100);
     updateDiscCenterBadge();
   });
 }
@@ -6407,6 +6411,8 @@ async function loadThreadsInline(silent) {
 }
 
 async function openThreadInline(threadId) {
+  const discList = document.getElementById('disc-center-list');
+  if (discList) saveNavState('lastDiscCenterScroll', { top: discList.scrollTop });
   _currentThreadId = threadId;
   document.getElementById('threads-list-view2').style.display = 'none';
   document.getElementById('thread-detail-view2').style.display = 'block';
@@ -7163,7 +7169,7 @@ function closeDiscussion() {
   _discussionFileId = null;
   _currentThreadId = null;
   const savedScroll = loadNavState('lastFileScroll');
-  if (savedScroll && savedScroll.folderId === currentFolder?.id) {
+  if (savedScroll) {
     setTimeout(() => { const el = document.getElementById('files-list-body'); if (el) el.scrollTop = savedScroll.top; }, 50);
   }
 }
