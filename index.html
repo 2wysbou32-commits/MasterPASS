@@ -5820,7 +5820,7 @@ function initBubbleEvents(containerId) {
       if (canDel && confirm('Supprimer ce message ?')) {
         // Appel direct API sans double confirm
         var container2 = document.getElementById('thread-replies2');
-        var isInline = container2 && container2.innerHTML.trim() !== '' && document.getElementById('disc-inline-view') && document.getElementById('disc-inline-view').style.display !== 'none';
+        vvar isInline = container2 && container2.innerHTML.trim() !== '' && document.getElementById('disc-inline-view') && document.getElementById('disc-inline-view').style.display !== 'none' && (document.getElementById('disc-inline-view').offsetWidth || 0) > 0;
         if (isInline) deleteReplyInline(cid, true); else deleteReply(cid, true);
       }
     }
@@ -5842,7 +5842,7 @@ function ctxEdit() {
   // Edit reply in thread
   api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id, { message: newMsg.trim() })
     .then(function() {
-      var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+      var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
       if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true);
     })
     .catch(e => toast(e.message, 'error'));
@@ -5852,7 +5852,7 @@ function ctxDelete() {
   closeMsgContextMenu();
   if (!_ctxComment) return;
   if (!confirm('Supprimer ce message ?')) return;
-  var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+  var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
   api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id)
     .then(function() { if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true); })
     .catch(function(e) { toast(e.message, 'error'); });
@@ -5864,7 +5864,7 @@ async function reactMsg(emoji, commentId) {
   if (!cid || !_discussionFileId || !_currentThreadId) return;
   try {
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid + '/react', { emoji });
-    var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+    var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
     if (isInline) await loadThreadRepliesInline(true); else await loadThreadReplies(true);
   } catch(e) { toast(e.message, 'error'); }
 }
@@ -7028,7 +7028,7 @@ function setReply(commentId, userName, msgPreview) {
   var replyBar = document.getElementById('reply-bar') || document.getElementById('reply-bar2');
   var replyName = document.getElementById('reply-name') || document.getElementById('reply-name2');
   var replyPreview = document.getElementById('reply-preview') || document.getElementById('reply-preview2');
-  var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+  var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
   var replyBar = isInline ? document.getElementById('reply-bar2') : document.getElementById('reply-bar');
   var replyName = isInline ? document.getElementById('reply-name2') : document.getElementById('reply-name');
   var replyPreview = isInline ? document.getElementById('reply-preview2') : document.getElementById('reply-preview');
@@ -7104,7 +7104,7 @@ let _discussionRefreshTimer = null;
 function startDiscussionRefresh() {
   stopDiscussionRefresh();
   _discussionRefreshTimer = setInterval(async function() {
-    var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none';
+    var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
     if (_currentThreadId) {
       if (isInline) await loadThreadRepliesInline(true);
       else await loadThreadReplies(true);
