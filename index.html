@@ -7155,8 +7155,7 @@ async function openDiscussion(fileId, fileName) {
   if (viewFiles) viewFiles.style.display = 'none';
   panel.setAttribute('style', 'display:block');
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='none';
-  const hdr = document.querySelector('#threads-list-view [style*="sticky"]'); if(hdr) hdr.style.top='0';
-const hdr2 = document.querySelector('#thread-detail-view [style*="sticky"]'); if(hdr2) hdr2.style.top='0';
+  const hdr = document.querySelector('#threads-list-view [style*="sticky"]'); if(hdr) hdr.style.top='0'; const hdr2 = document.querySelector('#thread-detail-view [style*="sticky"]'); if(hdr2) hdr2.style.top='0';
   document.getElementById('discussion-filename').textContent = '💬 ' + fileName;
   // Mark as seen
   saveLastSeen(fileId);
@@ -7173,8 +7172,7 @@ function closeDiscussion() {
   const panel = document.getElementById('discussion-panel');
   panel.setAttribute('style', 'display:none');
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='block';
-  const hdr = document.querySelector('#threads-list-view [style*="sticky"]'); if(hdr) hdr.style.top='88px';
-const hdr2 = document.querySelector('#thread-detail-view [style*="sticky"]'); if(hdr2) hdr2.style.top='88px';
+  const hdr = document.querySelector('#threads-list-view [style*="sticky"]'); if(hdr) hdr.style.top='88px'; const hdr2 = document.querySelector('#thread-detail-view [style*="sticky"]'); if(hdr2) hdr2.style.top='88px';
   const viewFiles = document.getElementById('view-files');
   if (viewFiles) viewFiles.style.display = 'block';
   _discussionFileId = null;
