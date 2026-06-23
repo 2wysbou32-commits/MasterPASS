@@ -2268,7 +2268,7 @@ input[type="file"]{display:none;}
           </div>
           <!-- Détail fil -->
           <div id="thread-detail-view2" style="display:none;width:100%">
-            <div style="position:fixed;top:88px;left:260px;right:0;z-index:40;padding:8px 60px 16px;border-bottom:1.5px solid var(--border);background:var(--bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)">
+            <div style="position:sticky;top:112px;z-index:10;padding:8px 0 16px;border-bottom:1.5px solid var(--border);background:var(--bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)">
               <div style="position:relative;display:flex;align-items:center;margin-bottom:12px;min-height:34px;padding:6px 0">
                 <button onclick="closeInlineDiscussion()" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;flex-shrink:0;position:absolute;left:0">
                   <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
@@ -2284,7 +2284,7 @@ input[type="file"]{display:none;}
                 Tous les fils
               </button>
             </div>
-            <div style="height:100px"></div>
+
 <div id="thread-replies2" style="margin-bottom:24px;min-height:100px;width:100%;box-sizing:border-box;"></div>
             <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden">
               <div id="voice-preview-side" style="display:none;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap">
@@ -2369,7 +2369,7 @@ input[type="file"]{display:none;}
   <!-- VUE D'UN FIL -->
   <div id="thread-detail-view" style="display:none">
     <!-- Header fil -->
-    <div style="position:fixed;top:88px;left:260px;right:0;z-index:40;padding:8px 60px 16px;border-bottom:2px solid var(--border);background:var(--bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)">
+    <div style="position:sticky;top:112px;z-index:10;padding:8px 0 16px;border-bottom:2px solid var(--border);background:var(--bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)">
       <div style="position:relative;display:flex;align-items:center;min-height:34px;padding:6px 0">
         <button onclick="backToThreads()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;position:absolute;left:0">
           <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
@@ -2385,7 +2385,6 @@ input[type="file"]{display:none;}
     </div>
 
     <!-- Réponses -->
-    <div style="height:130px"></div>
 <div id="thread-replies" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;min-height:100px"></div>
 
     <!-- Formulaire réponse -->
