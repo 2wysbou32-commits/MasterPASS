@@ -2285,8 +2285,8 @@ input[type="file"]{display:none;}
               </button>
             </div>
 
-<div id="thread-replies2" style="margin-bottom:24px;min-height:100px;width:100%;box-sizing:border-box;"></div>
-            <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden">
+<div id="thread-replies2" style="margin-bottom:24px;min-height:100px;width:100%;box-sizing:border-box;padding-bottom:160px;">
+            <div style="position:fixed;bottom:0;left:260px;right:0;z-index:30;padding:12px 60px;background:var(--bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border)"><div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden">
               <div id="voice-preview-side" style="display:none;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap">
                 <button onclick="playVoicePreview('side')" id="preview-play-btn-side" style="width:32px;height:32px;border-radius:50%;background:var(--teal-dark);color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>
                 <canvas id="preview-waveform-side" height="32" style="flex:1;max-width:140px;border-radius:4px"></canvas>
@@ -2322,8 +2322,8 @@ input[type="file"]{display:none;}
                 </div>
               </div>
             </div>
+         </div></div>
           </div>
-        </div>
       </div>
 
 
@@ -2385,7 +2385,7 @@ input[type="file"]{display:none;}
     </div>
 
     <!-- Réponses -->
-<div id="thread-replies" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;min-height:100px"></div>
+<div id="thread-replies" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;min-height:100px;padding-bottom:160px">
 
     <!-- Formulaire réponse -->
     <!-- Barre de réponse (citation) -->
@@ -2397,7 +2397,7 @@ input[type="file"]{display:none;}
       <button onclick="cancelReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1;flex-shrink:0">×</button>
     </div>
 
-    <div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 2px 12px var(--shadow2)">
+    <div style="position:fixed;bottom:0;left:260px;right:0;z-index:30;padding:12px 60px;background:var(--bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border)"><div style="background:var(--surface,white);border-radius:16px;border:1.5px solid var(--border);overflow:hidden;box-shadow:0 2px 12px var(--shadow2)">
       <textarea id="reply-input" placeholder="Ajoute une réponse..."
         style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box"
         oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';handleMentionInput(this)"
@@ -2428,7 +2428,7 @@ input[type="file"]{display:none;}
           <button onclick="postReply()" style="padding:9px 22px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Répondre</button>
         </div>
       </div>
-    </div>
+    </div></div>
   </div>
 </div>
 
@@ -7156,6 +7156,7 @@ async function openDiscussion(fileId, fileName) {
   const panel = document.getElementById('discussion-panel');
   if (viewFiles) viewFiles.style.display = 'none';
   panel.setAttribute('style', 'display:block');
+  const bc = document.getElementById('breadcrumb'); if(bc) bc.innerHTML = `<span style="font-size:13px;color:var(--teal);font-weight:600">💬 ${fileName}</span>`;
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='none';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='none';
   const hdr = document.getElementById('threads-list-header'); if(hdr) hdr.style.top='0'; const hdr2 = document.getElementById('thread-detail-header'); if(hdr2) hdr2.style.top='0';
@@ -7174,6 +7175,7 @@ function closeDiscussion() {
   stopDiscussionRefresh();
   const panel = document.getElementById('discussion-panel');
   panel.setAttribute('style', 'display:none');
+  const bc = document.getElementById('breadcrumb'); if(bc) { updateBreadcrumb && updateBreadcrumb(); }
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='flex';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='block';
   const hdr = document.getElementById('threads-list-header'); if(hdr) hdr.style.top='88px'; const hdr2 = document.getElementById('thread-detail-header'); if(hdr2) hdr2.style.top='88px';
