@@ -6116,6 +6116,7 @@ function setDiscSort(sort) {
 
 function renderDiscCenter() {
   const list = document.getElementById('disc-center-list');
+  const prevScroll = list ? list.scrollTop : 0;
   let threads = _allThreads;
   if (_discCenterFilter === 'open') threads = threads.filter(t => !t.resolved);
   if (_discCenterFilter === 'resolved') threads = threads.filter(t => t.resolved);
@@ -6178,6 +6179,8 @@ function renderDiscCenter() {
    return renderThreadCard(t, isNew);
   }).join('');
   attachDiscCenterListeners();
+  const savedScroll = loadNavState('lastDiscCenterScroll');
+  if (savedScroll) setTimeout(() => { if (list) list.scrollTop = savedScroll.top; }, 50);
 }
 function openDiscFolder(name) { _discFolderOpen = name; renderDiscCenter(); }
 function closeDiscFolderView() { _discFolderOpen = null; renderDiscCenter(); }
@@ -6342,12 +6345,8 @@ function closeInlineDiscussion() {
     _allThreads = threads;
     renderDiscCenter();
     updateDiscCenterBadge();
-    const savedScroll = loadNavState('lastDiscCenterScroll');
-    if (savedScroll) setTimeout(() => { const el = document.getElementById('disc-center-list'); if (el) el.scrollTop = savedScroll.top; }, 100);
   }).catch(function() {
     renderDiscCenter();
-    const savedScroll = loadNavState('lastDiscCenterScroll');
-    if (savedScroll) setTimeout(() => { const el = document.getElementById('disc-center-list'); if (el) el.scrollTop = savedScroll.top; }, 100);
     updateDiscCenterBadge();
   });
 }
