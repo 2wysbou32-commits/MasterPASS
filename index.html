@@ -7352,7 +7352,7 @@ if (r === data.replies[0]) { var dbg = document.getElementById('debug-bar'); if 
         });
         reactHtml += '</div>';
       }
-      var row = '<div style="display:flex;flex-direction:column;align-items:'+(isMine?'flex-end':'flex-start')+';margin-bottom:10px">';
+      var row = '<div style="width:100%;display:flex;flex-direction:column;align-items:'+(isMine?'flex-end':'flex-start')+';margin-bottom:10px">';
       if (!isMine) {
         row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:40px">' +
           '<span style="font-size:11px;font-weight:700;color:'+(isAdmin?'var(--teal-dark)':'var(--text2)')+'">'+r.userName+(isAdmin?' 👨‍🏫':'')+'</span>' +
