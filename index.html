@@ -2333,7 +2333,7 @@ input[type="file"]{display:none;}
   <!-- VUE LISTE DES FILS -->
   <div id="threads-list-view">
     <!-- Header -->
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--border);position:sticky;top:88px;z-index:10">
+    <div id="threads-list-header" style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--border);position:sticky;top:88px;z-index:10">
       <button onclick="document.getElementById('panel-discussions-center').contains(document.getElementById('discussion-panel')) ? closeInlineDiscussion() : closeDiscussion()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         Retour
@@ -2369,8 +2369,7 @@ input[type="file"]{display:none;}
   <!-- VUE D'UN FIL -->
   <div id="thread-detail-view" style="display:none">
     <!-- Header fil -->
-    <div style="position:sticky;top:88px;z-index:10;margin:0 -60px;padding:10px 60px 14px;border-radius:0 0 20px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(0,196,212,0.12);border-top:none;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
-      <div style="position:relative;display:flex;align-items:center;min-height:34px;padding:6px 0">
+    <div id="thread-detail-header" style="position:sticky;top:88px;z-index:10;margin:0 -60px;padding:10px 60px 14px;border-radius:0 0 20px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(0,196,212,0.12);border-top:none;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
         <button onclick="backToThreads()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;position:absolute;left:0">
           <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
           Fils
@@ -6314,6 +6313,7 @@ async function goToThread(fileId, fileName, threadId) {
     // Go directly to thread - skip list
     document.getElementById('threads-list-view2').style.display = 'none';
     document.getElementById('thread-detail-view2').style.display = 'block';
+    const tb = document.querySelector('.topbar'); if(tb) tb.style.display='none';
     const aa = document.getElementById('thread-admin-actions2');
     if (aa) aa.style.display = currentUser?.role === 'admin' ? 'block' : 'none';
     await new Promise(r => requestAnimationFrame(r));
@@ -7155,7 +7155,7 @@ async function openDiscussion(fileId, fileName) {
   if (viewFiles) viewFiles.style.display = 'none';
   panel.setAttribute('style', 'display:block');
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='none';
-  const hdr = document.querySelector('#threads-list-view [style*="sticky"]'); if(hdr) hdr.style.top='0'; const hdr2 = document.querySelector('#thread-detail-view [style*="sticky"]'); if(hdr2) hdr2.style.top='0';
+  const hdr = document.getElementById('threads-list-header'); if(hdr) hdr.style.top='0'; const hdr2 = document.getElementById('thread-detail-header'); if(hdr2) hdr2.style.top='0';
   document.getElementById('discussion-filename').textContent = '💬 ' + fileName;
   // Mark as seen
   saveLastSeen(fileId);
@@ -7172,7 +7172,7 @@ function closeDiscussion() {
   const panel = document.getElementById('discussion-panel');
   panel.setAttribute('style', 'display:none');
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='block';
-  const hdr = document.querySelector('#threads-list-view [style*="sticky"]'); if(hdr) hdr.style.top='88px'; const hdr2 = document.querySelector('#thread-detail-view [style*="sticky"]'); if(hdr2) hdr2.style.top='88px';
+  const hdr = document.getElementById('threads-list-header'); if(hdr) hdr.style.top='88px'; const hdr2 = document.getElementById('thread-detail-header'); if(hdr2) hdr2.style.top='88px';
   const viewFiles = document.getElementById('view-files');
   if (viewFiles) viewFiles.style.display = 'block';
   _discussionFileId = null;
