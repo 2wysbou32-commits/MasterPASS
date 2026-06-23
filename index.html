@@ -2385,7 +2385,7 @@ input[type="file"]{display:none;}
 
     <!-- Réponses -->
     <div id="thread-replies" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;min-height:100px"></div>
-<div id="debug-bar" style="background:red;color:white;font-size:11px;padding:4px;word-break:break-all"></div>
+
 
     <!-- Formulaire réponse -->
     <!-- Barre de réponse (citation) -->
@@ -6467,7 +6467,6 @@ async function loadThreadRepliesInline(silent) {
     _repliesCache = data.replies;
     container.innerHTML = data.replies.map(function(r) {
       var isMine = currentUser != null && String(r.userId) === String(currentUser.id);
-if (r === data.replies[0]) { var dbg = document.getElementById('debug-bar'); if (dbg) dbg.textContent = 'user:' + (currentUser ? currentUser.id + '/' + typeof currentUser.id : 'NULL') + ' | r.userId:' + r.userId + '/' + typeof r.userId + ' | isMine:' + isMine; }
       var isAdmin = r.userRole === 'admin' || r.userRole === 'subadmin';
       var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       var initials = (r.userName||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
@@ -7315,7 +7314,6 @@ async function loadThreadReplies(silent) {
     container.innerHTML = data.replies.map(function(r) {
       var isAdmin = r.userRole === 'admin';
       var isOwn = currentUser != null && String(r.userId) === String(currentUser.id);
-if (r === data.replies[0]) { var dbg = document.getElementById('debug-bar'); if (dbg) dbg.textContent = 'user:' + (currentUser ? currentUser.id + '/' + typeof currentUser.id : 'NULL') + ' | r.userId:' + r.userId + '/' + typeof r.userId + ' | isOwn:' + isOwn; }
       var isMine = isOwn;
       var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
       var initials = r.userName.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
