@@ -5820,7 +5820,7 @@ function initBubbleEvents(containerId) {
       if (canDel && confirm('Supprimer ce message ?')) {
         // Appel direct API sans double confirm
         var container2 = document.getElementById('thread-replies2');
-        vvar isInline = container2 && container2.innerHTML.trim() !== '' && document.getElementById('disc-inline-view') && document.getElementById('disc-inline-view').style.display !== 'none' && (document.getElementById('disc-inline-view').offsetWidth || 0) > 0;
+        var isInline = container2 && container2.innerHTML.trim() !== '' && document.getElementById('disc-inline-view') && document.getElementById('disc-inline-view').style.display !== 'none' && (document.getElementById('disc-inline-view').offsetWidth || 0) > 0;
         if (isInline) deleteReplyInline(cid, true); else deleteReply(cid, true);
       }
     }
