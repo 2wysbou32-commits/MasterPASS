@@ -4702,9 +4702,10 @@ async function loadFiles(){
   if(container) container.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-state-title">Chargement…</div></div>';
   try{const files=await api('GET',`/folders/${currentFolder.id}/files`);renderFilesSorted(files);
     const savedScroll = loadNavState('lastFileScroll');
-    if (savedScroll && savedScroll.folderId === id) {
+    if (savedScroll) {
       setTimeout(() => { const el = document.getElementById('files-list-body'); if (el) el.scrollTop = savedScroll.top; }, 100);
     }
+    clearNavState('lastFileScroll');
   }
   catch(e){if(container) container.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-state-title">Erreur de chargement</div></div>';}
 }
@@ -7311,9 +7312,10 @@ function backToThreads() {
   showView('threads-list-view');
   loadThreads(true).then(() => {
     const savedScroll = loadNavState('lastThreadScroll');
-    if (savedScroll && savedScroll.fileId === _discussionFileId) {
+    if (savedScroll) {
       setTimeout(() => { const el = document.getElementById('threads-list'); if (el) el.scrollTop = savedScroll.top; }, 100);
     }
+    clearNavState('lastThreadScroll');
   });
 }
 
