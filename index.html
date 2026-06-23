@@ -2780,7 +2780,11 @@ input[type="file"]{display:none;}
 <script>
 const $=id=>document.getElementById(id);
 let currentUser=null,currentFolder=null;
-
+  
+// ── MÉMORISATION DE POSITION ─────────────────────────────────────────────────
+function saveNavState(key, value) { try { sessionStorage.setItem(key, JSON.stringify(value)); } catch(e) {} }
+function loadNavState(key) { try { const v = sessionStorage.getItem(key); return v ? JSON.parse(v) : null; } catch(e) { return null; } }
+function clearNavState(key) { try { sessionStorage.removeItem(key); } catch(e) {} }
 function formatSize(b){if(b<1024)return b+' o';if(b<1048576)return (b/1024).toFixed(0)+' Ko';if(b<1073741824)return (b/1048576).toFixed(1)+' Mo';return (b/1073741824).toFixed(2)+' Go';}
 
 async function api(method,path,body){
@@ -4640,6 +4644,8 @@ async function loadSubfolders(folderId) {
 async function openFolder(id,name){
   currentSubfolder = null;
   currentFolder={id,name};
+  saveNavState('lastFolder', { id, name });
+  clearNavState('lastFileScroll');
   $('view-folders').style.display='none';
   $('view-files').style.display='block';
   // Mettre le nom du dossier dans la topbar
@@ -4694,7 +4700,12 @@ async function deleteFolder(id){
 async function loadFiles(){
   const container=document.getElementById('files-list-body');
   if(container) container.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-state-title">Chargement…</div></div>';
-  try{const files=await api('GET',`/folders/${currentFolder.id}/files`);renderFilesSorted(files);}
+  try{const files=await api('GET',`/folders/${currentFolder.id}/files`);renderFilesSorted(files);
+    const savedScroll = loadNavState('lastFileScroll');
+    if (savedScroll && savedScroll.folderId === id) {
+      setTimeout(() => { const el = document.getElementById('files-list-body'); if (el) el.scrollTop = savedScroll.top; }, 100);
+    }
+  }
   catch(e){if(container) container.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-state-title">Erreur de chargement</div></div>';}
 }
 
@@ -7122,6 +7133,9 @@ function stopDiscussionRefresh() {
 }
 
 async function openDiscussion(fileId, fileName) {
+  const filesList = document.getElementById('files-list-body');
+  if (filesList) saveNavState('lastFileScroll', { folderId: currentFolder?.id, top: filesList.scrollTop });
+  saveNavState('lastDiscussion', { fileId, fileName });
   _discussionFileId = fileId;
   _discussionFileName = fileName;
   _currentThreadId = null;
@@ -7148,6 +7162,10 @@ function closeDiscussion() {
   if (viewFiles) viewFiles.style.display = 'block';
   _discussionFileId = null;
   _currentThreadId = null;
+  const savedScroll = loadNavState('lastFileScroll');
+  if (savedScroll && savedScroll.folderId === currentFolder?.id) {
+    setTimeout(() => { const el = document.getElementById('files-list-body'); if (el) el.scrollTop = savedScroll.top; }, 50);
+  }
 }
 
 function showView(viewId) {
@@ -7244,11 +7262,18 @@ async function loadThreads(silent) {
 }
 
 async function openThread(threadId) {
+  const threadsList = document.getElementById('threads-list');
+  if (threadsList) saveNavState('lastThreadScroll', { fileId: _discussionFileId, top: threadsList.scrollTop });
+  saveNavState('lastThread', { threadId, fileId: _discussionFileId });
   _currentThreadId = threadId;
   showView('thread-detail-view');
   await loadThreadReplies();
   const _cm = document.getElementById('thread-replies');
-  if (_cm) _cm.scrollTop = _cm.scrollHeight;
+  if (_cm) {
+    _cm.scrollTop = _cm.scrollHeight;
+    setTimeout(() => { _cm.scrollTop = _cm.scrollHeight; }, 200);
+    setTimeout(() => { _cm.scrollTop = _cm.scrollHeight; }, 600);
+  }
   const resolveBtn = document.getElementById('resolve-btn');
   if (resolveBtn) resolveBtn.style.display = currentUser?.role === 'admin' ? 'inline-block' : 'none';
   updateMuteBtn();
@@ -7278,7 +7303,12 @@ async function toggleMuteThread() {
 function backToThreads() {
   _currentThreadId = null;
   showView('threads-list-view');
-  loadThreads(true);
+  loadThreads(true).then(() => {
+    const savedScroll = loadNavState('lastThreadScroll');
+    if (savedScroll && savedScroll.fileId === _discussionFileId) {
+      setTimeout(() => { const el = document.getElementById('threads-list'); if (el) el.scrollTop = savedScroll.top; }, 100);
+    }
+  });
 }
 
 let _currentThreadResolved = false;
