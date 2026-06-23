@@ -2268,7 +2268,7 @@ input[type="file"]{display:none;}
           </div>
           <!-- Détail fil -->
           <div id="thread-detail-view2" style="display:none;width:100%">
-            <div style="position:sticky;top:88px;z-index:10;margin:0 -60px;padding:10px 60px 14px;border-radius:0 0 20px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(0,196,212,0.12);border-top:none;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
+            <div style="position:sticky;top:0;z-index:10;margin:0 -60px;padding:10px 60px 14px;border-radius:0 0 20px 20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(0,196,212,0.12);border-top:none;box-shadow:0 8px 32px rgba(0,0,0,0.15)">
               <div style="position:relative;display:flex;align-items:center;margin-bottom:12px;min-height:34px;padding:6px 0">
                 <button onclick="closeInlineDiscussion()" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;flex-shrink:0;position:absolute;left:0">
                   <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
@@ -6783,8 +6783,7 @@ function showThreadsList() {
   document.getElementById('threads-list-view2').style.display = 'block';
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='flex';
   loadThreadsInline(false);
-  const discControls = document.getElementById('disc-controls-bar'); if(discControls) discControls.style.display='flex';
-const discFilters = document.getElementById('disc-filters-bar'); if(discFilters) discFilters.style.display='flex';
+  const discControls = document.getElementById('disc-controls-bar'); if(discControls) discControls.style.display='flex'; const discFilters = document.getElementById('disc-filters-bar'); if(discFilters) discFilters.style.display='flex';
 }
 
 async function deleteThreadInline(threadId) {
@@ -7157,6 +7156,7 @@ async function openDiscussion(fileId, fileName) {
   const panel = document.getElementById('discussion-panel');
   if (viewFiles) viewFiles.style.display = 'none';
   panel.setAttribute('style', 'display:block');
+  const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='none';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='none';
   const hdr = document.getElementById('threads-list-header'); if(hdr) hdr.style.top='0'; const hdr2 = document.getElementById('thread-detail-header'); if(hdr2) hdr2.style.top='0';
   document.getElementById('discussion-filename').textContent = '💬 ' + fileName;
@@ -7174,6 +7174,7 @@ function closeDiscussion() {
   stopDiscussionRefresh();
   const panel = document.getElementById('discussion-panel');
   panel.setAttribute('style', 'display:none');
+  const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='flex';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='block';
   const hdr = document.getElementById('threads-list-header'); if(hdr) hdr.style.top='88px'; const hdr2 = document.getElementById('thread-detail-header'); if(hdr2) hdr2.style.top='88px';
   const viewFiles = document.getElementById('view-files');
