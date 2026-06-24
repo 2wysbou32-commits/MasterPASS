@@ -2344,6 +2344,13 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
   var body = document.getElementById('preview-body');
   var fnEl = document.getElementById('preview-filename');
   if (!overlay || !body) return;
+  var sidebar = document.getElementById('sidebar');
+  if (sidebar && window.innerWidth > 768) {
+    sidebar.classList.add('collapsed');
+    localStorage.setItem('sidebar_collapsed', '1');
+  } else if (sidebar) {
+    sidebar.classList.remove('open');
+  }
   if (fnEl) fnEl.textContent = filename;
   var html = '';
   if (type === 'pdf') {
