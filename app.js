@@ -5319,5 +5319,4 @@ async function unlockAllUsers() {
   await api('PATCH', '/settings', { defaultExpiresAt: iso });
   toast('Date globale mise à jour — tous les comptes débloqués jusqu\'au ' + date);
   loadSecurityPanel();
-}urityPanel();
 }
