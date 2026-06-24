@@ -630,6 +630,28 @@ app.get('/api/folders', requireAuth, (req, res) => {
     }))
   })));
 });
+app.get('/api/search', requireAuth, (req, res) => {
+  const q = (req.query.q || '').toLowerCase().trim();
+  if (!q) return res.json([]);
+  const db = loadDB();
+  const results = [];
+  db.folders.forEach(f => {
+    (f.files || []).forEach(fi => {
+      if (fi.name.toLowerCase().includes(q)) {
+        results.push({ file: { id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, downloadable: fi.downloadable }, folderName: f.name, folderId: f.id });
+      }
+    });
+    (f.subfolders || []).forEach(s => {
+      (s.files || []).forEach(fi => {
+        if (fi.name.toLowerCase().includes(q)) {
+          results.push({ file: { id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, downloadable: fi.downloadable }, folderName: f.name + ' / ' + s.name, folderId: f.id, subId: s.id });
+        }
+      });
+    });
+  });
+  res.json(results);
+});
+
 app.post('/api/folders', requireAdmin, (req, res) => {
   const { name } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
