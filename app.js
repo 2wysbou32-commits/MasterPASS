@@ -5284,7 +5284,7 @@ async function removeGlobalExpiry() {
 }
 
 async function setUserExpiry(userId) {
-  const date = await customPrompt('Débloquer jusqu\'au (format JJ/MM/AAAA) :', '');
+  const date = await customPrompt('Définir une date personnalisée (JJ/MM/AAAA) :', '');
   if (!date) return;
   const parts = date.split('/');
   if (parts.length !== 3) return toast('Format invalide, utilise JJ/MM/AAAA', 'error');
