@@ -1101,7 +1101,8 @@
         <!-- Liste étudiants -->
         <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:20px">
           <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px">👥 Dates personnalisées par étudiant</div>
-          <div id="security-students-list">
+          <input type="text" id="security-search" placeholder="Rechercher un étudiant..." oninput="filterSecurityStudents(this.value)" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;color:var(--text);background:var(--bg);outline:none;margin-bottom:14px;box-sizing:border-box">
+<div id="security-students-list">
             <div style="padding:20px;text-align:center;color:var(--text3)">Chargement…</div>
           </div>
         </div>
