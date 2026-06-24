@@ -5317,6 +5317,9 @@ async function unlockAllUsers() {
   if (parts.length !== 3) return toast('Format invalide, utilise JJ/MM/AAAA', 'error');
   const iso = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).toISOString();
   await api('PATCH', '/settings', { defaultExpiresAt: iso });
+  const users = await api('GET', '/users');
+  const students = users.filter(u => u.role === 'student');
+  await Promise.all(students.map(u => api('PATCH', `/users/${u.id}/expires`, { expiresAt: null })));
   toast('Date globale mise à jour — tous les comptes débloqués jusqu\'au ' + date);
   loadSecurityPanel();
 }
