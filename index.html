@@ -6815,7 +6815,7 @@ function showThreadsList() {
   document.getElementById('threads-list-view2').style.display = 'block';
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='flex';
   loadThreadsInline(false);
-  const discControls = document.getElementById('disc-controls-bar'); if(discControls) discControls.style.display='flex'; const discFilters = document.getElementById('disc-filters-bar'); if(discFilters) discFilters.style.display='flex';
+  const isInline = document.getElementById('disc-inline-view')?.style.display !== 'none'; const discControls = document.getElementById('disc-controls-bar'); if(discControls) discControls.style.display=isInline?'none':'flex'; const discFilters = document.getElementById('disc-filters-bar'); if(discFilters) discFilters.style.display=isInline?'none':'flex';
 }
 
 async function deleteThreadInline(threadId) {
