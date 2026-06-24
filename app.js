@@ -3106,7 +3106,7 @@ function ctxReply() {
   setReply(_ctxComment.id, _ctxComment.userName, _ctxComment.message || 'Vocal');
 }
 
-function ctxEdit() {
+async function ctxEdit() {
   closeMsgContextMenu();
   if (!_ctxComment) return;
   const newMsg = await customPrompt('Modifier le message :', _ctxComment.message);
