@@ -3120,7 +3120,7 @@ async function ctxEdit() {
     .catch(e => toast(e.message, 'error'));
 }
 
-function ctxDelete() {
+async function ctxDelete() {
   closeMsgContextMenu();
   if (!_ctxComment) return;
   if (!await customConfirm('Supprimer ce message ?')) return;
