@@ -261,7 +261,7 @@ function requireAuth(req, res, next) {
   const userExp = dbExp.users.find(u => u.id === req.session.userId);
   if (userExp && userExp.role === 'student') {
     const expiry = userExp.expiresAt || (dbExp.settings && dbExp.settings.defaultExpiresAt);
-    if (expiry && new Date() > new Date(expiry)) {
+    if (expiry && new Date() >= new Date(expiry)) {
       return res.status(403).json({ error: 'ACCOUNT_EXPIRED' });
     }
   }
@@ -628,7 +628,8 @@ app.delete('/api/users/:id', requireSuperAdmin, (req, res) => {
 
 app.get('/api/settings', requireSuperAdmin, (req, res) => {
   const db = loadDB();
-  res.json(db.settings || {});
+  if (!db.settings) { db.settings = { defaultExpiresAt: null }; saveDB(db); }
+  res.json(db.settings);
 });
 app.patch('/api/settings', requireSuperAdmin, (req, res) => {
   const db = loadDB();
