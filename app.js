@@ -16,7 +16,7 @@ function customConfirm(message) {
   });
 }
 
-function customawait customPrompt(message, defaultValue = '') {
+function customPrompt(message, defaultValue = '') {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,30,35,0.6);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center';
@@ -1952,7 +1952,7 @@ async function createFolder(){
   catch(e){toast(e.message,'error');}finally{btn.disabled=false;btn.textContent='Créer le dossier';}
 }
 async function deleteFolder(id){
-  if(!confirm('Supprimer ce dossier et tous ses fichiers ?'))return;
+  if(!await customConfirm(('Supprimer ce dossier et tous ses fichiers ?'))return;
   try{await api('DELETE','/folders/'+id);await loadFolders();loadStats();toast('Dossier supprimé');}
   catch(e){toast(e.message,'error');}
 }
@@ -2322,7 +2322,7 @@ async function deleteSelectedFiles() {
   toast('Fichiers supprimés');
 }
 async function deleteFile(id){
-  if(!confirm('Supprimer ce fichier ?'))return;
+ if(!await customConfirm('Supprimer ce fichier ?'))return;
   try{await api('DELETE',`/folders/${currentFolder.id}/files/${id}`);await loadFiles();loadStats();toast('Fichier supprimé');}
   catch(e){toast(e.message,'error');}
 }
@@ -2544,7 +2544,7 @@ async function createUser(){
 }
 
 async function deleteUser(id){
-  if(!confirm('Supprimer ce compte ?'))return;
+  if(!await customConfirm('Supprimer ce compte ?'))return;
   try{await api('DELETE','/users/'+id);await loadUsers();loadStats();toast('Compte supprimé');}
   catch(e){toast(e.message,'error');}
 }
@@ -3123,7 +3123,7 @@ function ctxEdit() {
 function ctxDelete() {
   closeMsgContextMenu();
   if (!_ctxComment) return;
-  if (!await customawait customConfirm('Supprimer ce message ?')) return;
+  if (!await customConfirm('Supprimer ce message ?')) return;
   var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
   api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id)
     .then(function() { if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true); })
@@ -4117,7 +4117,7 @@ function redrawWaveformProgress(canvas, pct) {
 }
 
 async function deleteReplyInline(replyId, skipConfirm) {
-  if (!skipConfirm && !confirm('Supprimer cette réponse ?')) return;
+  if (!skipConfirm && !await customConfirm('Supprimer cette réponse ?')) return;
   try {
     await api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + replyId);
     await loadThreadRepliesInline(true);
@@ -4812,7 +4812,7 @@ async function postReply() {
 }
 
 async function deleteReply(replyId, skipConfirm) {
-  if (!skipConfirm && !confirm('Supprimer cette réponse ?')) return;
+  if (!skipConfirm && !!await customConfirm('Supprimer cette réponse ?')) return;
   try {
     await api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + replyId);
     await loadThreadReplies(true);
@@ -4847,7 +4847,7 @@ function installPWA() {
     dismissPWA();
     return;
   }
-  _pwaInstallPrompt.await customPrompt();
+  _pwaInstallPrompt.prompt();
   _pwaInstallPrompt.userChoice.then(function(result) {
     if (result.outcome === 'accepted') {
       document.getElementById('pwa-banner').style.display = 'none';
