@@ -725,7 +725,7 @@ async function doSearch(query) {
     return;
   }
   // Afficher le panel de recherche
-  if (panel) panel.style.display = 'block';
+  if (panel) { panel.style.display = 'block'; panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   var clearBtn = document.getElementById('search-clear');
   if (clearBtn) clearBtn.style.display = 'block';
   var rt = document.getElementById('search-results-title');
