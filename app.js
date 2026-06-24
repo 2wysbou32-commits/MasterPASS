@@ -258,6 +258,7 @@ function setupApp() {
   $('nav-role-text').textContent=isAdmin?'Accès complet':isSubAdmin?'Dépôt de fichiers':'Lecture seule';
   $('nav-users').style.display=isAdmin?'flex':'none';
   $('nav-codes').style.display=isAdmin?'flex':'none';
+  $('nav-security').style.display=isAdmin?'flex':'none';
   $('nav-settings').style.display='flex';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-dashboard').classList.add('active');
