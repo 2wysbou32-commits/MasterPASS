@@ -940,13 +940,13 @@ input[type="file"]{display:none;}
 
 /* ── TUTORIEL ── */
 .tutorial-overlay {
-  position:fixed;inset:0;background:rgba(0,30,35,0.75);backdrop-filter:blur(6px);
+  position:fixed;inset:0;background:rgba(0,10,20,0.55);backdrop-filter:blur(18px) saturate(1.4);
   z-index:3000;display:flex;align-items:center;justify-content:center;
 }
 .tutorial-card {
-  background:rgba(10,18,32,0.92);
-  border:1px solid rgba(0,196,212,0.2);
-  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  background:rgba(10,18,32,0.55);
+  border:1px solid rgba(0,196,212,0.35);
+  backdrop-filter:blur(40px) saturate(1.8);-webkit-backdrop-filter:blur(40px) saturate(1.8);
   border-radius:24px;width:480px;max-width:95vw;
   box-shadow:0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,196,212,0.05);
   overflow:hidden;
