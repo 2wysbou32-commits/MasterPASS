@@ -5248,9 +5248,11 @@ async function loadSecurityPanel() {
   const list = document.getElementById('security-students-list');
   if (!list) return;
   if (!students.length) { list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Aucun étudiant.</div>'; return; }
-  list.innerHTML = students.map(u => {
+  const globalExpiry = settings.defaultExpiresAt;
+list.innerHTML = students.map(u => {
     const expiry = u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('fr-FR') : null;
-    const isExpired = u.expiresAt && new Date() > new Date(u.expiresAt);
+    const effectiveExpiry = u.expiresAt || globalExpiry;
+const isExpired = effectiveExpiry && new Date() >= new Date(effectiveExpiry);
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
       <div style="flex:1">
         <div style="font-weight:600;font-size:13px;color:var(--text)">${u.name}</div>
