@@ -265,6 +265,10 @@
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
         <span>Codes d'invitation</span>
       </div>
+    <div class="nav-item" onclick="showPanel('security')" id="nav-security" style="display:none">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+        <span>Sécurité</span>
+      </div>
     </nav>
     <div class="sidebar-bottom">
       <div class="storage-indicator" id="storage-indicator" style="display:none">
@@ -1076,6 +1080,32 @@
         <div id="revision-list"></div>
       </div>
       <!-- CODES PANEL -->
+      <div class="panel" id="panel-security" style="display:none">
+        <div style="margin-bottom:24px;margin-top:20px">
+          <div class="section-title">🔒 Sécurité & Accès</div>
+          <div class="section-sub">Gérez les dates d'expiration des comptes étudiants</div>
+        </div>
+
+        <!-- Date globale -->
+        <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:20px;margin-bottom:24px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px">📅 Date de blocage globale</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Tous les comptes étudiants sans date personnalisée seront bloqués à cette date.</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <input type="date" id="global-expires-input" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;color:var(--text);background:var(--bg);outline:none">
+            <button onclick="saveGlobalExpiry()" style="padding:10px 20px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Enregistrer</button>
+            <button onclick="removeGlobalExpiry()" style="padding:10px 20px;background:transparent;border:1.5px solid var(--border);color:var(--text2);border-radius:10px;font-size:13px;cursor:pointer">Supprimer la date</button>
+          </div>
+          <div id="global-expiry-status" style="margin-top:10px;font-size:12px;color:var(--text3)"></div>
+        </div>
+
+        <!-- Liste étudiants -->
+        <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:20px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px">👥 Dates personnalisées par étudiant</div>
+          <div id="security-students-list">
+            <div style="padding:20px;text-align:center;color:var(--text3)">Chargement…</div>
+          </div>
+        </div>
+      </div>
       <div class="panel" id="panel-codes" style="display:none">
         <!-- Header -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;margin-top:20px">
