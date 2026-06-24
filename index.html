@@ -1484,20 +1484,11 @@ input[type="file"]{display:none;}
   #dashboard-admin-stats { grid-template-columns: repeat(2,1fr) !important; padding: 12px !important; gap: 10px !important; }
   .dashboard-card { padding: 14px; }
   .dashboard-card-title { font-size:12px; margin-bottom:10px; }
-}
-
-@media (max-width: 400px) {
-  .folders-grid { grid-template-columns: 1fr !important; }
-  .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .stat-card { padding: 12px; }
-  /* Discussion reply bar mobile */
   #thread-detail-view [style*="position:fixed"],
   #thread-detail-view2 [style*="position:fixed"] {
     left: 0 !important;
     padding: 12px 16px !important;
   }
-
-  /* Discussion header mobile */
   #thread-detail-header {
     margin: 0 -14px !important;
     padding: 10px 16px 14px !important;
@@ -1507,6 +1498,12 @@ input[type="file"]{display:none;}
     padding: 0 80px !important;
     font-size: 15px !important;
   }
+}
+
+@media (max-width: 400px) {
+  .folders-grid { grid-template-columns: 1fr !important; }
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { padding: 12px; }
 }
   /* ── FIN STYLES ── */
 </style></style>
