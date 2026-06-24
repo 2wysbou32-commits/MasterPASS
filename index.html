@@ -3256,7 +3256,7 @@ function showPanel(name){
   if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='favorites'){$('topbar-title').textContent='Mes favoris';loadFavorites();}
   if(name==='revision'){$('topbar-title').textContent='Révision';loadRevision();}
-  if(name==='discussions-center'){$('topbar-title').textContent='Discussions';loadDiscussionsCenter();}
+  if(name==='discussions-center'){$('topbar-title').textContent='Discussions';loadDiscussionsCenter();const dc=document.getElementById('disc-controls-bar');if(dc)dc.style.display='flex';const df=document.getElementById('disc-filters-bar');if(df)df.style.display='flex';}
   if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='users'){
     $('topbar-title').textContent='Gestion des comptes';
