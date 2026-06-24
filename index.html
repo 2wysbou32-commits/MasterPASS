@@ -6540,7 +6540,7 @@ async function loadThreadRepliesInline(silent) {
       return row;
     }).join('');
     if (!silent || wasAtBottom) {
-      container.scrollTop = container.scrollHeight;
+      container.scrollTop = container.scrollHeight; window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
     } else {
       container.scrollTop = prevScrollTop + (container.scrollHeight - prevScrollHeight);
     }
@@ -7420,7 +7420,7 @@ async function loadThreadReplies(silent) {
       return row;
     }).join('');
     // Init audio — géré par toggleInlineAudio via onclick dans le HTML
-    if (!silent || wasAtBottom) container.scrollTop = container.scrollHeight;
+    if (!silent || wasAtBottom) { container.scrollTop = container.scrollHeight; window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'}); }
     setTimeout(function() {
       container.querySelectorAll('canvas[data-mine]').forEach(function(canvas) {
         canvas.width = canvas.offsetWidth || 120;
