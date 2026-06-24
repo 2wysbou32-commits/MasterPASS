@@ -1,3 +1,43 @@
+function customConfirm(message) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,30,35,0.6);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:white;border-radius:22px;padding:32px;width:420px;max-width:95vw;box-shadow:0 24px 80px rgba(0,0,0,0.22)">
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700;color:#0D2B2E;margin-bottom:24px">${message}</div>
+        <div style="display:flex;gap:10px">
+          <button id="cc-cancel" style="flex:1;height:44px;border:1.5px solid #e0e0e0;background:white;border-radius:11px;font-size:14px;font-weight:500;color:#3A6A70;cursor:pointer">Annuler</button>
+          <button id="cc-confirm" style="flex:1;height:44px;background:linear-gradient(135deg,#00C4D4,#009AAA);border:none;border-radius:11px;font-size:14px;font-weight:700;color:white;cursor:pointer">Confirmer</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#cc-confirm').onclick = () => { document.body.removeChild(overlay); resolve(true); };
+    overlay.querySelector('#cc-cancel').onclick = () => { document.body.removeChild(overlay); resolve(false); };
+  });
+}
+
+function customPrompt(message, defaultValue = '') {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,30,35,0.6);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:white;border-radius:22px;padding:32px;width:420px;max-width:95vw;box-shadow:0 24px 80px rgba(0,0,0,0.22)">
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:700;color:#0D2B2E;margin-bottom:16px">${message}</div>
+        <input id="cp-input" type="text" value="${defaultValue}" style="width:100%;height:46px;border:1px solid rgba(0,196,212,0.3);border-radius:12px;padding:0 16px;font-size:15px;font-family:'Inter',sans-serif;color:#0D2B2E;outline:none;box-sizing:border-box;margin-bottom:20px">
+        <div style="display:flex;gap:10px">
+          <button id="cp-cancel" style="flex:1;height:44px;border:1.5px solid #e0e0e0;background:white;border-radius:11px;font-size:14px;font-weight:500;color:#3A6A70;cursor:pointer">Annuler</button>
+          <button id="cp-confirm" style="flex:1;height:44px;background:linear-gradient(135deg,#00C4D4,#009AAA);border:none;border-radius:11px;font-size:14px;font-weight:700;color:white;cursor:pointer">Confirmer</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector('#cp-input');
+    input.focus();
+    input.select();
+    overlay.querySelector('#cp-confirm').onclick = () => { document.body.removeChild(overlay); resolve(input.value || null); };
+    overlay.querySelector('#cp-cancel').onclick = () => { document.body.removeChild(overlay); resolve(null); };
+    input.onkeydown = e => { if (e.key === 'Enter') overlay.querySelector('#cp-confirm').click(); if (e.key === 'Escape') overlay.querySelector('#cp-cancel').click(); };
+  });
+}
 const $=id=>document.getElementById(id);
 let currentUser=null,currentFolder=null;
   
