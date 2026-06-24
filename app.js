@@ -5250,7 +5250,7 @@ async function loadSecurityPanel() {
   if (!students.length) { list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Aucun étudiant.</div>'; return; }
   const globalExpiry = db.defaultExpiresAt;
 list.innerHTML = students.map(u => {
-    const expiry = u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('fr-FR') : null;
+    const expiry = u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('fr-FR') : (globalExpiry ? new Date(globalExpiry).toLocaleDateString('fr-FR') : null); const hasCustomExpiry = !!u.expiresAt;
     const effectiveExpiry = u.expiresAt || globalExpiry;
 const isExpired = effectiveExpiry && new Date() >= new Date(effectiveExpiry);
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
@@ -5259,7 +5259,7 @@ const isExpired = effectiveExpiry && new Date() >= new Date(effectiveExpiry);
         <div style="font-size:11px;color:var(--text3)">${u.login}</div>
       </div>
       <div style="font-size:12px;color:${isExpired ? '#ef5350' : 'var(--text3)'}">
-        ${expiry ? (isExpired ? '🔴 Expiré le ' : '📅 ') + expiry : '📅 Date globale'}
+        ${isExpired ? `<span style="color:#ef5350;font-weight:700">🔴 Expiré le ${expiry}</span>` : `<span style="color:var(--teal-dark)">${hasCustomExpiry ? '🔒 Perso : ' : '🌐 Global : '}${expiry || '—'}</span>`}
       </div>
       ${isExpired ? `<button onclick="unlockUser(${u.id})" style="padding:6px 12px;background:#ef5350;color:white;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px">🔓 Débloquer</button>` : ''} <button onclick="setUserExpiry(${u.id})" style="padding:6px 12px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">📅 Date perso</button>
     </div>`;
