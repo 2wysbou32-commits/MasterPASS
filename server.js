@@ -164,6 +164,7 @@ function initDB() {
     inviteCodes: [],
     announcements: [],
     connectionLogs: [],
+    settings: { defaultExpiresAt: null },
   };
   saveDB(db); return db;
 }
@@ -256,9 +257,17 @@ function requireAuth(req, res, next) {
     req.session.destroy(() => {});
     return res.status(401).json({ error: 'SESSION_EXPIRED', message: 'Ton compte a été connecté depuis un autre appareil.' });
   }
+  const dbExp = loadDB();
+  const userExp = dbExp.users.find(u => u.id === req.session.userId);
+  if (userExp && userExp.role === 'student') {
+    const expiry = userExp.expiresAt || (dbExp.settings && dbExp.settings.defaultExpiresAt);
+    if (expiry && new Date() > new Date(expiry)) {
+      return res.status(403).json({ error: 'ACCOUNT_EXPIRED' });
+    }
+  }
   next();
 }
-// Admin principal uniquement (comptes, codes, stats)
+// Admin principal uniquement
 function requireSuperAdmin(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
   const user = loadDB().users.find(u => u.id === req.session.userId);
@@ -617,7 +626,26 @@ app.delete('/api/users/:id', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── FOLDERS ───────────────────────────────────────────────────────────────────
+app.get('/api/settings', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  res.json(db.settings || {});
+});
+app.patch('/api/settings', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.settings) db.settings = {};
+  if (req.body.defaultExpiresAt !== undefined) db.settings.defaultExpiresAt = req.body.defaultExpiresAt;
+  saveDB(db);
+  res.json(db.settings);
+});
+app.patch('/api/users/:id/expires', requireSuperAdmin, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => String(u.id) === String(req.params.id));
+  if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+  user.expiresAt = req.body.expiresAt || null;
+  saveDB(db);
+  res.json({ ok: true });
+});
+// ── FOLDERS ───────────────────────────
 app.get('/api/folders', requireAuth, (req, res) => {
   const db = loadDB();
   res.json(db.folders.map(f => ({
