@@ -54,7 +54,7 @@ async function api(method,path,body){
   const r=await fetch('/api'+path,opts);
   const data=await r.json().catch(()=>({error:'Erreur réseau'}));
   // Déconnexion si session remplacée (double connexion détectée)
-  if(r.status===401 && (data.error==='SESSION_EXPIRED'||data.error==='SESSION_REPLACED')){
+  if(r.status===401){
     currentUser=null;
     $('app').style.display='none';
     $('auth-page').style.display='flex';
