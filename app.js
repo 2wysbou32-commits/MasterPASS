@@ -733,22 +733,7 @@ async function doSearch(query) {
   if (rt) rt.style.display = 'block';
   if (rs) { rs.style.display = 'block'; rs.textContent = 'Recherche en cours...'; }
   try {
-    var folders = await api('GET', '/folders');
-    var results = [];
-    (folders||[]).forEach(function(folder) {
-      (folder.files||[]).forEach(function(f) {
-        if (f.name.toLowerCase().includes(query.toLowerCase())) {
-          results.push({ file: f, folderName: folder.name, folderId: folder.id });
-        }
-      });
-      (folder.subfolders||[]).forEach(function(sub) {
-        (sub.files||[]).forEach(function(f) {
-          if (f.name.toLowerCase().includes(query.toLowerCase())) {
-            results.push({ file: f, folderName: folder.name + ' / ' + sub.name, folderId: folder.id, subId: sub.id });
-          }
-        });
-      });
-    });
+    var results = await api('GET', '/search?q=' + encodeURIComponent(query));
     var list = document.getElementById('search-results-list');
     if (!list) return;
     if (!results.length) {
