@@ -1494,12 +1494,8 @@ input[type="file"]{display:none;}
     margin: 0 -14px !important;
   }
   #thread-detail-view2 #thread-admin-actions2 {
-    position: static !important;
-    justify-content: flex-end;
-  }
-  #thread-detail-view2 [style*="position:relative"][style*="min-height:34px"] {
-    flex-wrap: wrap;
-    gap: 8px;
+    position: absolute !important;
+    right: 0 !important;
   }
   #thread-detail-header {
     margin: 0 -14px !important;
@@ -1507,18 +1503,11 @@ input[type="file"]{display:none;}
     border-radius: 0 !important;
   }
   #thread-detail-header [style*="position:relative"] {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 8px !important;
-  }
-  #thread-detail-header [style*="position:absolute;left:0"],
-  #thread-detail-header [style*="position:absolute;right:0"] {
-    position: static !important;
+    flex-wrap: nowrap !important;
   }
   #thread-detail-header #thread-title-display {
-    padding: 0 !important;
-    text-align: left !important;
-    font-size: 16px !important;
+    padding: 0 60px !important;
+    font-size: 15px !important;
   }
   .main-content { padding: 12px !important; }
   .content-area { padding: 12px !important; }
@@ -6578,7 +6567,7 @@ async function loadThreadRepliesInline(silent) {
       return row;
     }).join('');
     if (!silent || wasAtBottom) {
-      container.scrollTop = container.scrollHeight; window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
+      container.scrollTop = container.scrollHeight; if (!silent) window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
     } else {
       container.scrollTop = prevScrollTop + (container.scrollHeight - prevScrollHeight);
     }
@@ -7458,7 +7447,7 @@ async function loadThreadReplies(silent) {
       return row;
     }).join('');
     // Init audio — géré par toggleInlineAudio via onclick dans le HTML
-    if (!silent || wasAtBottom) { container.scrollTop = container.scrollHeight; window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'}); }
+    if (!silent || wasAtBottom) { container.scrollTop = container.scrollHeight; if (!silent) window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'}); }
     setTimeout(function() {
       container.querySelectorAll('canvas[data-mine]').forEach(function(canvas) {
         canvas.width = canvas.offsetWidth || 120;
