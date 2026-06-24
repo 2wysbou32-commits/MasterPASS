@@ -2711,6 +2711,8 @@ async function loadAnnouncements() {
           }).join('')}
         </div>
       </div>`).join('');
+ markAnnouncementsSeen(anns.map(a => a.id));
+    updateAnnouncementsBadge();
   } catch(e) {
     list.innerHTML = '<div style="padding:20px;color:var(--danger)">Erreur de chargement</div>';
   }
