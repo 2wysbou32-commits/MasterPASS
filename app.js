@@ -16,7 +16,7 @@ function customConfirm(message) {
   });
 }
 
-function customPrompt(message, defaultValue = '') {
+function customawait customPrompt(message, defaultValue = '') {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,30,35,0.6);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center';
@@ -778,7 +778,7 @@ async function toggleSubDownload(folderId, subId, fileId) {
 }
 
 async function deleteSubFile(folderId, subId, fileId) {
-  if (!confirm('Supprimer ce fichier ?')) return;
+  if (!await customConfirm('Supprimer ce fichier ?')) return;
   try {
     await api('DELETE', '/folders/' + folderId + '/subfolders/' + subId + '/files/' + fileId);
     await loadSubfolderFiles(folderId, subId);
@@ -837,7 +837,7 @@ async function loadRevision() {
   }
 }
 async function creerDossier() {
-  var titre = prompt('Nom du dossier (ex: Anatomie, Pr Dupont, S1...)');
+  var titre = await customPrompt('Nom du dossier (ex: Anatomie, Pr Dupont, S1...)');
   if (!titre || !titre.trim()) return;
   try {
     await api('POST', '/revision/dossiers', { titre: titre.trim() });
@@ -882,7 +882,7 @@ function revFormatDate(iso) {
 }
 async function renommerDossier(id) {
   var d = _revisionDossiers.find(function(x) { return x.id === id; });
-  var titre = prompt('Nouveau nom du dossier', d ? d.titre : '');
+  var titre = await customPrompt('Nouveau nom du dossier', d ? d.titre : '');
   if (!titre || !titre.trim()) return;
   try {
     await api('PATCH', '/revision/dossiers/' + id, { titre: titre.trim() });
@@ -892,7 +892,7 @@ async function renommerDossier(id) {
   }
 }
 async function supprimerDossier(id) {
-  if (!confirm('Supprimer ce dossier et toutes ses séances ? Cette action est irréversible.')) return;
+  if (!await customConfirm('Supprimer ce dossier et toutes ses séances ? Cette action est irréversible.')) return;
   try {
     await api('DELETE', '/revision/dossiers/' + id);
     loadRevision();
@@ -902,7 +902,7 @@ async function supprimerDossier(id) {
 }
 async function renommerSeance(id) {
   var s = _revisionSeances.find(function(x) { return x.id === id; });
-  var titre = prompt('Nouveau nom de la séance', s ? s.titre : '');
+  var titre = await customPrompt('Nouveau nom de la séance', s ? s.titre : '');
   if (!titre || !titre.trim()) return;
   try {
     await api('PATCH', '/revision/seances/' + id, { titre: titre.trim() });
@@ -912,7 +912,7 @@ async function renommerSeance(id) {
   }
 }
 async function supprimerSeance(id) {
-  if (!confirm('Supprimer cette séance et tous ses schémas ? Cette action est irréversible.')) return;
+  if (!await customConfirm('Supprimer cette séance et tous ses schémas ? Cette action est irréversible.')) return;
   try {
     await api('DELETE', '/revision/seances/' + id);
     ouvrirDossier(_revisionDossierCourant);
@@ -922,7 +922,7 @@ async function supprimerSeance(id) {
 }
 async function renommerSchema(id) {
   var sc = _revisionSchemas.find(function(x) { return x.id === id; });
-  var titre = prompt('Nouveau nom du schéma', sc ? sc.titre : '');
+  var titre = await customPrompt('Nouveau nom du schéma', sc ? sc.titre : '');
   if (!titre || !titre.trim()) return;
   try {
     await api('PATCH', '/revision/seances/' + _revisionSeanceCourante + '/schemas/' + id, { titre: titre.trim() });
@@ -932,7 +932,7 @@ async function renommerSchema(id) {
   }
 }
 async function supprimerSchema(id) {
-  if (!confirm('Supprimer ce schéma ? Cette action est irréversible.')) return;
+  if (!await customConfirm('Supprimer ce schéma ? Cette action est irréversible.')) return;
   try {
     await api('DELETE', '/revision/seances/' + _revisionSeanceCourante + '/schemas/' + id);
     ouvrirSeance(_revisionSeanceCourante);
@@ -1489,7 +1489,7 @@ async function soumettreSchemas(seanceId) {
 }
   
 async function creerSeance() {
-  var titre = prompt('Nom de la séance (ex: CM4 — Anatomie abdominale)');
+  var titre = await customPrompt('Nom de la séance (ex: CM4 — Anatomie abdominale)');
   if (!titre || !titre.trim()) return;
   try {
     await api('POST', '/revision/seances', { titre: titre.trim(), dossierId: _revisionDossierCourant });
@@ -1696,7 +1696,7 @@ async function generateCode() {
 }
 
 async function deleteCode(code) {
-  if (!confirm('Supprimer ce code ?')) return;
+  if (!await customConfirm('Supprimer ce code ?')) return;
   try {
     await api('DELETE', '/invite-codes/' + code);
     loadCodes();
@@ -1739,7 +1739,7 @@ async function uploadSubfolderFiles(files, subId, parentId) {
 
 // ── DOSSIERS ──────────────────────────────────────────────────────────────────
 async function renameFolder(id) {
-  var name = prompt('Nouveau nom :');
+  var name = await customPrompt('Nouveau nom :');
   if (!name) return;
   try {
     await api('PATCH', '/folders/' + id, { name });
@@ -2303,7 +2303,7 @@ async function downloadSelectedFiles() {
 async function deleteSelectedFiles() {
   const checked = document.querySelectorAll('.file-select-cb:checked');
   if (!checked.length) return;
-  if (!confirm(`Supprimer ${checked.length} fichier(s) ?`)) return;
+  if (!await customConfirm(`Supprimer ${checked.length} fichier(s) ?`)) return;
   for (const cb of checked) {
     const id = cb.getAttribute('data-id');
     const card = cb.closest('.file-row');
@@ -2461,7 +2461,7 @@ async function toggleDownload(fileId){
 
 async function clearDoubleConnection(e, userId) {
   e.stopPropagation();
-  if (!confirm("Effacer l'alerte de double connexion pour cet étudiant ?")) return;
+  if (!await customConfirm("Effacer l'alerte de double connexion pour cet étudiant ?")) return;
   try {
     await api('DELETE', '/users/' + userId + '/double-connection');
     await loadUsers();
@@ -2761,7 +2761,7 @@ async function reactAnnouncement(id, emoji) {
   } catch(e) { toast(e.message, 'error'); }
 }
 async function deleteAnnouncement(id) {
-  if (!confirm('Supprimer cette annonce ?')) return;
+  if (!await customConfirm('Supprimer cette annonce ?')) return;
   try {
     await api('DELETE', '/announcements/' + id);
     await loadAnnouncements();
@@ -3089,7 +3089,7 @@ function initBubbleEvents(containerId) {
     } else if (dx < -60) {
       var comment = _repliesCache.find(function(r){ return r.id === cid; });
       var canDel = comment && (String(comment.userId) === String(currentUser?.id) || currentUser?.role === 'admin' || currentUser?.role === 'subadmin');
-      if (canDel && confirm('Supprimer ce message ?')) {
+      if (canDel && await customConfirm('Supprimer ce message ?')) {
         // Appel direct API sans double confirm
         var container2 = document.getElementById('thread-replies2');
         var isInline = container2 && container2.innerHTML.trim() !== '' && document.getElementById('disc-inline-view') && document.getElementById('disc-inline-view').style.display !== 'none' && (document.getElementById('disc-inline-view').offsetWidth || 0) > 0;
@@ -3109,7 +3109,7 @@ function ctxReply() {
 function ctxEdit() {
   closeMsgContextMenu();
   if (!_ctxComment) return;
-  const newMsg = prompt('Modifier le message :', _ctxComment.message);
+  const newMsg = await customPrompt('Modifier le message :', _ctxComment.message);
   if (!newMsg || newMsg.trim() === _ctxComment.message) return;
   // Edit reply in thread
   api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id, { message: newMsg.trim() })
@@ -3123,7 +3123,7 @@ function ctxEdit() {
 function ctxDelete() {
   closeMsgContextMenu();
   if (!_ctxComment) return;
-  if (!confirm('Supprimer ce message ?')) return;
+  if (!await customawait customConfirm('Supprimer ce message ?')) return;
   var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
   api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id)
     .then(function() { if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true); })
@@ -3533,7 +3533,7 @@ function onDiscCenterCheckboxChange() {
 async function deleteSelectedDiscCenter() {
   const checked = document.querySelectorAll('#disc-center-list .disc-center-cb:checked');
   if (!checked.length) return;
-  if (!confirm('Supprimer ' + checked.length + ' fil(s) ?')) return;
+  if (!await customConfirm('Supprimer ' + checked.length + ' fil(s) ?')) return;
   for (const cb of checked) {
     var fid = cb.getAttribute('data-fid');
     var tid = cb.getAttribute('data-tid');
@@ -3911,7 +3911,7 @@ function onThreadCheckboxChangeSb() {
 async function deleteSelectedThreadsSb() {
   const checked = document.querySelectorAll('#threads-list .thread-select-cb-sb:checked');
   if (!checked.length) return;
-  if (!confirm('Supprimer ' + checked.length + ' fil(s) ?')) return;
+  if (!await customConfirm('Supprimer ' + checked.length + ' fil(s) ?')) return;
   const ids = Array.from(checked).map(cb => cb.getAttribute('data-tid'));
   for (const id of ids) {
     try { await api('DELETE', '/threads/' + _discussionFileId + '/' + id); } catch(e) {}
@@ -3968,7 +3968,7 @@ function onThreadCheckboxChangeMain() {
 async function deleteSelectedThreadsMain() {
   const checked = document.querySelectorAll('.thread-select-cb-main:checked');
   if (!checked.length) return;
-  if (!confirm('Supprimer ' + checked.length + ' fil(s) ?')) return;
+  if (!await customConfirm('Supprimer ' + checked.length + ' fil(s) ?')) return;
   const ids = Array.from(checked).map(cb => cb.getAttribute('data-tid'));
   for (const id of ids) {
     try { await api('DELETE', '/threads/' + _discussionFileId + '/' + id); } catch(e) {}
@@ -4030,7 +4030,7 @@ function onThreadCheckboxChange() {
 async function deleteSelectedThreads() {
   const checked = document.querySelectorAll('.thread-select-cb:checked');
   if (!checked.length) return;
-  if (!confirm('Supprimer ' + checked.length + ' fil(s) ?')) return;
+  if (!await customConfirm('Supprimer ' + checked.length + ' fil(s) ?')) return;
   const ids = Array.from(checked).map(cb => cb.getAttribute('data-tid'));
   for (const id of ids) {
     try { await api('DELETE', '/threads/' + _discussionFileId + '/' + id); } catch(e) {}
@@ -4049,7 +4049,7 @@ function showThreadsList() {
 }
 
 async function deleteThreadInline(threadId) {
-  if (!confirm('Supprimer ce fil et toutes ses réponses ?')) return;
+  if (!await customConfirm('Supprimer ce fil et toutes ses réponses ?')) return;
   try {
     await api('DELETE', '/threads/' + _discussionFileId + '/' + threadId);
     await loadThreadsInline(false);
@@ -4206,7 +4206,7 @@ function renameFile(e, fileId, currentName, folderId, subId) {
 
 // ── EXTRAIRE UN SOUS-DOSSIER VERS LA RACINE ──────────────────────────────────
 async function extractSubfolder(parentId, subId) {
-  if (!confirm('Extraire ce dossier vers la racine ?')) return;
+  if (!await customConfirm('Extraire ce dossier vers la racine ?')) return;
   try {
     await api('POST', '/folders/' + parentId + '/subfolders/' + subId + '/extract');
     toast('Dossier extrait vers la racine ✅');
@@ -4820,7 +4820,7 @@ async function deleteReply(replyId, skipConfirm) {
 }
 
 async function deleteThread(threadId) {
-  if (!confirm('Supprimer ce fil et toutes ses réponses ?')) return;
+  if (!await customConfirm('Supprimer ce fil et toutes ses réponses ?')) return;
   try {
     await api('DELETE', '/threads/' + _discussionFileId + '/' + threadId);
     await loadThreads();
@@ -4841,13 +4841,13 @@ async function toggleResolve() {
 
 
 function installPWA() {
-  if (!_pwaInstallPrompt) {
+  if (!_pwaInstallPrompt.prompt()) {
     // iOS - show manual instructions
     toast('Sur iPhone : bouton Partage \u2192 Sur l\u2019\u00e9cran d\u2019accueil', 'info');
     dismissPWA();
     return;
   }
-  _pwaInstallPrompt.prompt();
+  _pwaInstallPrompt.await customPrompt();
   _pwaInstallPrompt.userChoice.then(function(result) {
     if (result.outcome === 'accepted') {
       document.getElementById('pwa-banner').style.display = 'none';
