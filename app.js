@@ -3317,6 +3317,7 @@ async function loadDiscussionsCenter() {
     if (changed) {
       var key = getLastSeenKey();
       if (key) localStorage.setItem(key, JSON.stringify(_lastSeenComments));
+      updateDiscCenterBadge();
     }
     renderDiscCenter();
     // Update global badge
@@ -3708,6 +3709,7 @@ async function loadThreadRepliesInline(silent) {
     _lastSeenComments['thread_' + _currentThreadId] = new Date().toISOString();
     const key = getLastSeenKey();
     if (key) localStorage.setItem(key, JSON.stringify(_lastSeenComments));
+    updateDiscCenterBadge();
   }
   const container = document.getElementById('thread-replies2');
   const prevScrollTop = container.scrollTop;
