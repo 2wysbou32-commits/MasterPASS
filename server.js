@@ -598,7 +598,7 @@ app.get('/api/users', requireSuperAdmin, (req, res) => {
   res.json(db.users.map(u => ({
     id: u.id, name: u.name, login: u.login, role: u.role,
     email: u.email || '', mineure: u.mineure || '', discord: u.discord || '',
-    doubleConnection: !!u.doubleConnectionAt
+    doubleConnection: !!u.doubleConnectionAt, expiresAt: u.expiresAt || null
   })));
 });
 app.post('/api/users', requireSuperAdmin, (req, res) => {
