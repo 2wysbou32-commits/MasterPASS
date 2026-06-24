@@ -5259,7 +5259,7 @@ async function loadSecurityPanel() {
       <div style="font-size:12px;color:${isExpired ? '#ef5350' : 'var(--text3)'}">
         ${expiry ? (isExpired ? '🔴 Expiré le ' : '📅 ') + expiry : '📅 Date globale'}
       </div>
-      <button onclick="setUserExpiry(${u.id})" style="padding:6px 12px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">Débloquer</button>
+      ${isExpired ? `<button onclick="unlockUser(${u.id})" style="padding:6px 12px;background:#ef5350;color:white;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px">🔓 Débloquer</button>` : ''} <button onclick="setUserExpiry(${u.id})" style="padding:6px 12px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">📅 Date perso</button>
     </div>`;
   }).join('');
 }
@@ -5297,4 +5297,13 @@ function filterSecurityStudents(query) {
     row.style.display = text.includes(query.toLowerCase()) ? 'flex' : 'none';
   });
 }
-
+async function unlockUser(userId) {
+  const date = await customPrompt('Débloquer jusqu\'au (JJ/MM/AAAA) :', '');
+  if (!date) return;
+  const parts = date.split('/');
+  if (parts.length !== 3) return toast('Format invalide, utilise JJ/MM/AAAA', 'error');
+  const iso = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).toISOString();
+  await api('PATCH', `/users/${userId}/expires`, { expiresAt: iso });
+  toast('Compte débloqué');
+  loadSecurityPanel();
+}
