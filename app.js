@@ -5250,7 +5250,8 @@ async function loadSecurityPanel() {
   if (!students.length) { list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Aucun étudiant.</div>'; return; }
   const globalExpiry = db.defaultExpiresAt;
 list.innerHTML = students.map(u => {
-    const expiry = u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('fr-FR') : (globalExpiry ? new Date(globalExpiry).toLocaleDateString('fr-FR') : null); const hasCustomExpiry = !!u.expiresAt;
+    const hasCustomExpiry = !!u.expiresAt;
+const expiry = hasCustomExpiry ? new Date(u.expiresAt).toLocaleDateString('fr-FR') : (globalExpiry ? new Date(globalExpiry).toLocaleDateString('fr-FR') : null);
     const effectiveExpiry = u.expiresAt || globalExpiry;
 const isExpired = effectiveExpiry && new Date() >= new Date(effectiveExpiry);
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
