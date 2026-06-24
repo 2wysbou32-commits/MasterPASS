@@ -5311,14 +5311,13 @@ async function unlockUser(userId) {
   loadSecurityPanel();
 }
 async function unlockAllUsers() {
-  const date = await customPrompt('Débloquer tous jusqu\'au (JJ/MM/AAAA) :', '');
+  const date = await customPrompt('Nouvelle date de blocage globale (JJ/MM/AAAA) :', '');
   if (!date) return;
   const parts = date.split('/');
   if (parts.length !== 3) return toast('Format invalide, utilise JJ/MM/AAAA', 'error');
   const iso = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).toISOString();
-  const users = await api('GET', '/users');
-  const students = users.filter(u => u.role === 'student');
-  await Promise.all(students.map(u => api('PATCH', `/users/${u.id}/expires`, { expiresAt: iso })));
-  toast('Tous les comptes débloqués jusqu\'au ' + date);
+  await api('PATCH', '/settings', { defaultExpiresAt: iso });
+  toast('Date globale mise à jour — tous les comptes débloqués jusqu\'au ' + date);
   loadSecurityPanel();
+}urityPanel();
 }
