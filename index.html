@@ -1509,6 +1509,9 @@ input[type="file"]{display:none;}
     padding: 0 60px !important;
     font-size: 15px !important;
   }
+  #thread-admin-actions {
+    position: static !important;
+  }
   .main-content { padding: 12px !important; }
   .content-area { padding: 12px !important; }
 }
@@ -7315,7 +7318,7 @@ async function openThread(threadId) {
   saveNavState('lastThread', { threadId, fileId: _discussionFileId });
   _currentThreadId = threadId;
   showView('thread-detail-view');
-  await loadThreadReplies();
+  await loadThreadReplies(false);
   const _cm = document.getElementById('thread-replies');
   if (_cm) {
     _cm.scrollTop = _cm.scrollHeight;
