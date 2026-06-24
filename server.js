@@ -522,7 +522,8 @@ app.post('/api/login', (req, res) => {
     at: new Date().toISOString(),
     replaced: !!prevSession,
   });
-  if (dbLog.connectionLogs.length > 200) dbLog.connectionLogs = dbLog.connectionLogs.slice(0, 200);
+  const sevenDaysAgo1 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+dbLog.connectionLogs = dbLog.connectionLogs.filter(l => (l.at || l.date) > sevenDaysAgo1);
   saveDB(dbLog);
   console.log('[SESSION] Session active enregistrée pour userId:', user.id);
   // Log de connexion
@@ -535,7 +536,8 @@ app.post('/api/login', (req, res) => {
       ip, date: new Date().toISOString(),
     });
     // Garder uniquement les 200 derniers logs
-    if (db2.connectionLogs.length > 200) db2.connectionLogs = db2.connectionLogs.slice(0, 200);
+    const sevenDaysAgo2 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+db2.connectionLogs = db2.connectionLogs.filter(l => (l.at || l.date) > sevenDaysAgo2);
     saveDB(db2);
   } catch(e) { console.error('[LOG] Erreur log connexion:', e.message); }
   res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', registeredAt: user.registeredAt || '', notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true }, mutedThreads: user.mutedThreads || [] });
