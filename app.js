@@ -510,7 +510,7 @@ function showPanel(name){
   loadUsers();
   loadConnectionLogs();
 }
-if(name==='security') { loadSecurityPanel(); }
+if(name==='security'){ $('topbar-title').textContent='Sécurité & Accès'; loadSecurityPanel(); }
   if(name==='codes'){$('topbar-title').textContent="Codes d'invitation";loadCodes();}
   if(name==='settings'){$('topbar-title').textContent='Mes réglages';loadSettingsPanel();}
   // Afficher la barre de recherche uniquement sur le panel fichiers
@@ -5289,5 +5289,12 @@ async function setUserExpiry(userId) {
   await api('PATCH', `/users/${userId}/expires`, { expiresAt: iso });
   toast('Date mise à jour');
   loadSecurityPanel();
+}
+function filterSecurityStudents(query) {
+  const rows = document.querySelectorAll('#security-students-list > div');
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(query.toLowerCase()) ? 'flex' : 'none';
+  });
 }
 
