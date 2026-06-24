@@ -3073,7 +3073,7 @@ function initBubbleEvents(containerId) {
       e.preventDefault();
     }
   };
-  list.ontouchend = function(e) {
+  list.ontouchend = async function(e) {
     msgLongPressEnd();
     if (!_swipeBubble || !_swiping) { _swipeBubble = null; _swipeRow = null; _swiping = false; return; }
     var dx = e.changedTouches[0].clientX - _touchStartX;
