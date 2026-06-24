@@ -1952,7 +1952,7 @@ async function createFolder(){
   catch(e){toast(e.message,'error');}finally{btn.disabled=false;btn.textContent='Créer le dossier';}
 }
 async function deleteFolder(id){
-  if(!await customConfirm(('Supprimer ce dossier et tous ses fichiers ?'))return;
+  if(!await customConfirm('Supprimer ce dossier et tous ses fichiers ?'))return;
   try{await api('DELETE','/folders/'+id);await loadFolders();loadStats();toast('Dossier supprimé');}
   catch(e){toast(e.message,'error');}
 }
