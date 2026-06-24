@@ -570,13 +570,15 @@
         <div id="admin-notifications-list" style="display:none;background:white;border-radius:14px;border:1.5px solid var(--border);padding:16px;margin-bottom:20px"></div>
         <div class="users-grid" id="users-grid"></div>
         <div style="margin-top:32px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.8px">🔍 Dernières connexions</div>
-            <button onclick="loadConnectionLogs()" class="btn-action" style="font-size:12px;padding:6px 12px">Actualiser</button>
-          </div>
-          <div id="connection-logs" style="background:white;border-radius:14px;border:1.5px solid var(--border);overflow:hidden;font-size:12px">
-            <div style="padding:20px;text-align:center;color:var(--text3)">Clique sur "Actualiser" pour voir les logs</div>
-          </div>
+          <details style="border:1.5px solid var(--border);border-radius:14px;overflow:hidden">
+            <summary style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.8px;list-style:none">
+              🔍 Dernières connexions (7 jours)
+              <button onclick="event.preventDefault();loadConnectionLogs()" class="btn-action" style="font-size:12px;padding:6px 12px">Actualiser</button>
+            </summary>
+            <div id="connection-logs" style="background:white;border-radius:0 0 14px 14px;border-top:1.5px solid var(--border);overflow:hidden;font-size:12px">
+              <div style="padding:20px;text-align:center;color:var(--text3)">Clique sur "Actualiser" pour voir les logs</div>
+            </div>
+          </details>
         </div>
         <div class="settings-section" style="margin-top:24px">
           <div class="settings-section-title" style="color:var(--danger)">Zone de danger</div>
