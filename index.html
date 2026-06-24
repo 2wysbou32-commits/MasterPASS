@@ -6362,6 +6362,7 @@ async function goToThread(fileId, fileName, threadId) {
 
 function closeInlineDiscussion() {
   stopDiscussionRefresh();
+  window.scrollTo({top: 0, behavior: 'instant'});
   document.getElementById('disc-inline-view').style.display = 'none';
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='flex';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='block';
