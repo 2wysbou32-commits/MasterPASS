@@ -47,6 +47,18 @@ function loadNavState(key) { try { const v = sessionStorage.getItem(key); return
 function clearNavState(key) { try { sessionStorage.removeItem(key); } catch(e) {} }
 function formatSize(b){if(b<1024)return b+' o';if(b<1048576)return (b/1024).toFixed(0)+' Ko';if(b<1073741824)return (b/1048576).toFixed(1)+' Mo';return (b/1073741824).toFixed(2)+' Go';}
 
+function showExpiredScreen() {
+  document.body.innerHTML = `
+    <div style="position:fixed;inset:0;background:linear-gradient(135deg,#0D2B2E,#003340);display:flex;align-items:center;justify-content:center;z-index:99999">
+      <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(0,196,212,0.2);border-radius:24px;padding:48px 40px;max-width:440px;width:90%;text-align:center;backdrop-filter:blur(20px)">
+        <div style="font-size:56px;margin-bottom:20px">🔒</div>
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;color:white;margin-bottom:12px">Accès suspendu</div>
+        <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.7;margin-bottom:28px">Ton accès à MasterPASS a été suspendu. Si tu penses que c'est une erreur ou pour renouveler ton accès, contacte l'équipe MasterPASS.</p>
+        <a href="mailto:masterpass.lille@gmail.com" style="display:inline-block;background:linear-gradient(135deg,#00C4D4,#009AAA);color:white;text-decoration:none;padding:14px 28px;border-radius:12px;font-size:14px;font-weight:700">Contacter l'équipe</a>
+      </div>
+    </div>`;
+}
+
 async function api(method,path,body){
   const opts={method,headers:{}};
   if(body instanceof FormData){opts.body=body;}
@@ -80,6 +92,10 @@ async function api(method,path,body){
     }
     modal.style.display = 'flex';
     throw new Error('Session expirée');
+  }
+  if(r.status===403 && data.error==='ACCOUNT_EXPIRED'){
+    showExpiredScreen();
+    throw new Error('ACCOUNT_EXPIRED');
   }
   if(!r.ok){throw new Error(data.error||'Erreur');}
   return data;
@@ -489,10 +505,11 @@ function showPanel(name){
   if(name==='discussions-center'){$('topbar-title').textContent='Discussions';loadDiscussionsCenter();const dc=document.getElementById('disc-controls-bar');if(dc)dc.style.display='flex';const df=document.getElementById('disc-filters-bar');if(df)df.style.display='flex';}
   if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='users'){
-    $('topbar-title').textContent='Gestion des comptes';
-    loadUsers();
-    loadConnectionLogs();
-  }
+  $('topbar-title').textContent='Gestion des comptes';
+  loadUsers();
+  loadConnectionLogs();
+}
+if(name==='security') { loadSecurityPanel(); }
   if(name==='codes'){$('topbar-title').textContent="Codes d'invitation";loadCodes();}
   if(name==='settings'){$('topbar-title').textContent='Mes réglages';loadSettingsPanel();}
   // Afficher la barre de recherche uniquement sur le panel fichiers
@@ -5214,5 +5231,62 @@ function _cleanVoiceMouseListeners() {
   document.removeEventListener('mousemove', _onVoiceMouseMove);
   document.removeEventListener('mouseup', _onVoiceMouseUp);
   _voiceMouseCtx = null;
+}
+async function loadSecurityPanel() {
+  const db = await api('GET', '/settings');
+  const input = document.getElementById('global-expires-input');
+  const status = document.getElementById('global-expiry-status');
+  if (input && db.defaultExpiresAt) {
+    input.value = db.defaultExpiresAt.substring(0, 10);
+    if (status) status.textContent = 'Date actuelle : ' + new Date(db.defaultExpiresAt).toLocaleDateString('fr-FR');
+  } else if (status) {
+    status.textContent = 'Aucune date globale définie.';
+  }
+  const users = await api('GET', '/users');
+  const students = users.filter(u => u.role === 'student');
+  const list = document.getElementById('security-students-list');
+  if (!list) return;
+  if (!students.length) { list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Aucun étudiant.</div>'; return; }
+  list.innerHTML = students.map(u => {
+    const expiry = u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('fr-FR') : null;
+    const isExpired = u.expiresAt && new Date() > new Date(u.expiresAt);
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px;color:var(--text)">${u.name}</div>
+        <div style="font-size:11px;color:var(--text3)">${u.login}</div>
+      </div>
+      <div style="font-size:12px;color:${isExpired ? '#ef5350' : 'var(--text3)'}">
+        ${expiry ? (isExpired ? '🔴 Expiré le ' : '📅 ') + expiry : '📅 Date globale'}
+      </div>
+      <button onclick="setUserExpiry(${u.id})" style="padding:6px 12px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">Débloquer</button>
+    </div>`;
+  }).join('');
+}
+
+async function saveGlobalExpiry() {
+  const input = document.getElementById('global-expires-input');
+  if (!input || !input.value) return toast('Choisis une date', 'error');
+  await api('PATCH', '/settings', { defaultExpiresAt: new Date(input.value).toISOString() });
+  toast('Date globale enregistrée');
+  loadSecurityPanel();
+}
+
+async function removeGlobalExpiry() {
+  await api('PATCH', '/settings', { defaultExpiresAt: null });
+  const input = document.getElementById('global-expires-input');
+  if (input) input.value = '';
+  toast('Date globale supprimée');
+  loadSecurityPanel();
+}
+
+async function setUserExpiry(userId) {
+  const date = await customPrompt('Débloquer jusqu\'au (format JJ/MM/AAAA) :', '');
+  if (!date) return;
+  const parts = date.split('/');
+  if (parts.length !== 3) return toast('Format invalide, utilise JJ/MM/AAAA', 'error');
+  const iso = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).toISOString();
+  await api('PATCH', `/users/${userId}/expires`, { expiresAt: iso });
+  toast('Date mise à jour');
+  loadSecurityPanel();
 }
 
