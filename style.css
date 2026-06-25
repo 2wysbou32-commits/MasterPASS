@@ -1556,4 +1556,13 @@ input[type="file"]{display:none;}
     margin-bottom: 50px;
   }
 }
+
+@media (max-width: 768px) {
+  #dashboard-motivation {
+    margin-bottom: 45px;
+  }
+  #dashboard-main-grid {
+    margin-top: 16px;
+  }
+}
 /* ── FIN STYLES ── */
