@@ -1553,7 +1553,7 @@ input[type="file"]{display:none;}
 
 @media (max-width: 768px) {
   #dashboard-motivation {
-    margin-bottom: 32px;
+    margin-bottom: 50px;
   }
 }
 /* ── FIN STYLES ── */
