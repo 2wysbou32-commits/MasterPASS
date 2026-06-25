@@ -285,6 +285,15 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+function requireSuperAdminOnly(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
+  const user = loadDB().users.find(u => u.id === req.session.userId);
+  if (!user || user.role !== 'admin') {
+    return res.status(403).json({ error: 'Accès réservé à l\'administrateur principal' });
+  }
+  next();
+}
+
 // ── R2 helpers ────────────────────────────────────────────────────────────────
 async function uploadToR2(key, buffer, contentType) {
   const ct = contentType || 'application/octet-stream';
@@ -950,7 +959,7 @@ app.get('/api/folders/:parentId/subfolders/:subId/files', requireAuth, (req, res
     .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false, views: f.views || 0 })));
 });
 
-app.post('/api/folders/:parentId/subfolders/:subId/files', requireAdmin, upload.array('files'), async (req, res) => {
+app.post('/api/folders/:parentId/subfolders/:subId/files', requireSuperAdminOnly, upload.array('files'), async (req, res) => {
   const db = loadDB();
   const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
   if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
@@ -1202,7 +1211,7 @@ app.get('/api/folders/:id/files', requireAuth, (req, res) => {
     .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false, views: f.views || 0 })));
 });
 
-app.post('/api/folders/:id/files', requireAdmin, upload.array('files'), async (req, res) => {
+app.post('/api/folders/:id/files', requireSuperAdminOnly, upload.array('files'), async (req, res) => {
   const folderId = parseInt(req.params.id);
   const db = loadDB();
   const folder = db.folders.find(f => f.id === folderId);
@@ -1426,7 +1435,7 @@ app.post('/api/users/change-password', requireAuth, (req, res) => {
 });
 
 // ── PRESIGN — upload direct navigateur → R2 ───────────────────────────────────
-app.post('/api/folders/:id/presign', requireAdmin, (req, res) => {
+app.post('/api/folders/:id/presign', requireSuperAdminOnly, (req, res) => {
   const folderId = parseInt(req.params.id);
   const db = loadDB();
   const folder = db.folders.find(f => f.id === folderId);
@@ -1483,7 +1492,7 @@ app.post('/api/folders/:id/presign', requireAdmin, (req, res) => {
   res.json({ putUrl, fileId, r2Key });
 });
 
-app.post('/api/folders/:parentId/subfolders/:subId/presign', requireAdmin, (req, res) => {
+app.post('/api/folders/:parentId/subfolders/:subId/presign', requireSuperAdminOnly, (req, res) => {
   const parentId = parseInt(req.params.parentId);
   const subId    = parseInt(req.params.subId);
   const db       = loadDB();
