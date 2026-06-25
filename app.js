@@ -4179,7 +4179,7 @@ async function postReply2() {
   _sendingReply2 = true;
   const input = document.getElementById('reply-input2');
   const message = input.value.trim();
-  if (!message) { _sendingReply2 = false; return; }
+  if ((!message && !_replyImageUrl2) || !_discussionFileId) { _sendingReply = false; return; }
   const btn = document.querySelector('button[onclick="postReply2()"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
@@ -4868,7 +4868,7 @@ async function postReply() {
   _sendingReply = true;
   const input = document.getElementById('reply-input');
   const message = input.value.trim();
-  if (!message || !_discussionFileId) { _sendingReply = false; return; }
+  if ((!message && !_replyImageUrl) || !_discussionFileId) { _sendingReply = false; return; }
   const btn = document.querySelector('#thread-detail-view button[onclick="postReply()"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
