@@ -1324,10 +1324,10 @@ input[type="file"]{display:none;}
   .sidebar.open { transform: translateX(0); }
 
   /* Main content pleine largeur */
-  .main-content { margin-left: 0; padding: 0 !important; }
+  .main-content { margin-left: 0; padding: 0 !important; box-sizing: border-box; width: 100%; }
 
   /* Topbar */
-  .topbar { padding: 0 14px; gap: 10px; }
+  .topbar { padding: 0 14px; gap: 10px; margin: 8px 12px 0; }
   .hamburger-btn { display: flex; }
   .topbar-title { font-size: 15px; }
 
@@ -1439,7 +1439,7 @@ input[type="file"]{display:none;}
   .ctrl-hint { display: none; }
 
   /* Dashboard mobile */
-  .dashboard-grid { grid-template-columns: 1fr !important; gap: 12px; padding: 12px; }
+  .dashboard-grid { grid-template-columns: 1fr !important; gap: 12px; padding: 12px 14px; }
   #dashboard-admin-stats { grid-template-columns: repeat(2,1fr) !important; padding: 12px !important; gap: 10px !important; }
   .dashboard-card { padding: 14px; }
   .dashboard-card-title { font-size:12px; margin-bottom:10px; }
