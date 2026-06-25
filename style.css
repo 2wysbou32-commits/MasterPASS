@@ -1330,12 +1330,12 @@ input[type="file"]{display:none;}
   .main-content { margin-left: 0; padding: 0 !important; box-sizing: border-box; width: 100%; }
 
   /* Topbar */
-  .topbar { padding: 0 14px; gap: 10px; margin: 8px 12px 0; }
+  .topbar { padding: 0 14px; gap: 10px; margin: 8px 14px 0; }
   .hamburger-btn { display: flex; }
   .topbar-title { font-size: 15px; }
 
   /* Content area - less margin on mobile */
-  .content-area { padding: 12px 14px !important; }
+  .content-area { padding: 8px 14px !important; }
   .panel { padding: 0; }
   .announcement-card { margin-bottom: 10px; }
   .search-result-item { padding: 10px 14px; }
