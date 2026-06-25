@@ -827,13 +827,13 @@ async function loadRevision() {
       html += '<div class="dashboard-empty">Aucun dossier pour le moment</div>';
     } else {
       html += dossiers.map(function(d) {
-        return '<div class="dossier-card" data-id="' + d.id + '" style="display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:16px;border:1.5px solid rgba(0,151,167,0.25);margin-bottom:12px;cursor:pointer;background:rgba(255,255,255,0.35);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 4px 20px rgba(0,100,120,0.08);transition:all 0.2s" onmouseover="this.style.background=\'rgba(255,255,255,0.5)\';this.style.boxShadow=\'0 8px 28px rgba(0,100,120,0.15)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.35)\';this.style.boxShadow=\'0 4px 20px rgba(0,100,120,0.08)\'">' +
-  '<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
+        return '<div class="dossier-card" data-id="' + d.id + '" style="display:flex;align-items:center;gap:16px;padding:20px 22px;border-radius:20px;border:1.5px solid rgba(139,92,246,0.2);margin-bottom:14px;cursor:pointer;background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(59,130,246,0.08));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 4px 24px rgba(139,92,246,0.1);transition:all 0.22s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 8px 32px rgba(139,92,246,0.2)\'" onmouseout="this.style.transform=\'translateY(0)\';this.style.boxShadow=\'0 4px 24px rgba(139,92,246,0.1)\'">' +
+  '<div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#8B5CF6,#3B82F6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(139,92,246,0.35)">' +
     '<svg viewBox="0 0 24 24" fill="white" style="width:22px;height:22px"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>' +
   '</div>' +
   '<div style="flex:1;min-width:0">' +
-    '<div style="font-size:15px;font-weight:700;color:var(--text)">' + d.titre + '</div>' +
-    '<div style="font-size:12px;color:var(--teal-dark);margin-top:3px;font-weight:600">📚 ' + d.seanceCount + ' séance(s)</div>' +
+    '<div style="font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.2px">' + d.titre + '</div>' +
+    '<div style="font-size:12px;color:#8B5CF6;margin-top:4px;font-weight:600">' + d.seanceCount + ' séance(s)</div>' +
   '</div>' +
   (isAdmin ? revActionButtons(d.id) : '') +
 '</div>';
