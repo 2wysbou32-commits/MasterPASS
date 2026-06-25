@@ -1484,42 +1484,6 @@ input[type="file"]{display:none;}
   .stat-card { padding: 12px; }
 }
 
-/* ── DASHBOARD HEADER MOBILE FIX ── */
-
-/* Le bloc titre/sous-titre/citation du dashboard */
-#dashboard-view > div:first-child {
-  padding: 20px 24px 4px;
-  box-sizing: border-box;
-  width: 100%;
-}
-
-#dashboard-motivation {
-  margin: 14px 0 0;
-}
-
-/* Sur mobile : alignement avec la grille */
-@media (max-width: 768px) {
-  #dashboard-view > div:first-child {
-    padding: 12px 14px 0;
-  }
-
-  #dashboard-view #dashboard-motivation {
-    margin: 12px 0 4px;
-  }
-
-  /* S'assurer que le panel est bien full-width sans overflow */
-  #panel-files {
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-  }
-
-  #dashboard-view {
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-  }
-}
 /* ── FIX MOBILE DASHBOARD ── */
 @media (max-width: 768px) {
 
