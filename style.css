@@ -1442,7 +1442,7 @@ input[type="file"]{display:none;}
   .ctrl-hint { display: none; }
 
   /* Dashboard mobile */
-  .dashboard-grid { grid-template-columns: 1fr !important; gap: 12px; padding: 12px 14px; }
+  .dashboard-grid { grid-template-columns: 1fr !important; gap: 12px; padding: 12px 14px; box-sizing: border-box; width: 100%; overflow-x: hidden; }
   #dashboard-admin-stats { grid-template-columns: repeat(2,1fr) !important; padding: 12px !important; gap: 10px !important; }
   .dashboard-card { padding: 14px; }
   .dashboard-card-title { font-size:12px; margin-bottom:10px; }
