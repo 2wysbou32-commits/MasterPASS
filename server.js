@@ -2406,6 +2406,22 @@ app.get('/sw.js', (req, res) => {
   }
 });
 
+app.post('/api/threads/upload-image', requireAuth, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    if (!['.jpg','.jpeg','.png','.gif','.webp'].includes(ext))
+      return res.status(400).json({ error: 'Format non supporté (jpg, png, gif, webp)' });
+    const fileId = Date.now();
+    const r2Key = `discussion-images/${fileId}${ext}`;
+    await uploadToR2(r2Key, req.file.buffer, req.file.mimetype);
+    const url = getSignedVideoUrl(r2Key, false);
+    res.json({ url, r2Key });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('*', (req, res) => {
   const indexPath = fs.existsSync(path.join(__dirname, 'public', 'index.html'))
     ? path.join(__dirname, 'public', 'index.html')
