@@ -1471,7 +1471,7 @@ input[type="file"]{display:none;}
   #thread-admin-actions {
     position: static !important;
   }
-  .main-content { padding: 12px !important; }
+  .main-content { padding: 0 !important; }
   .content-area { padding: 12px !important; }
 }
 
