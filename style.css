@@ -1520,4 +1520,67 @@ input[type="file"]{display:none;}
     overflow-x: hidden;
   }
 }
-  /* ── FIN STYLES ── */
+/* ── FIX MOBILE DASHBOARD ── */
+@media (max-width: 768px) {
+
+  /* Empêcher tout débordement horizontal */
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  #app, .main-content, .content-area, #panel-files, #dashboard-view {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  /* La grille dashboard prend toute la largeur sans déborder */
+  .dashboard-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Chaque carte prend 100% sans déborder */
+  .dashboard-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 14px !important;
+    overflow: hidden !important;
+  }
+
+  /* Les items fichiers dans les cartes */
+  .dashboard-file-item {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* Le nom de fichier ne doit pas faire déborder la carte */
+  .dashboard-file-item span,
+  .dashboard-file-item div {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Badge NOUVEAU ne doit pas déborder */
+  .dashboard-file-item [style*="background"] {
+    flex-shrink: 0;
+  }
+
+  /* Header du dashboard (Bonjour + citation) */
+  #dashboard-view > div:first-child {
+    padding: 0 0 8px 0;
+    box-sizing: border-box;
+    width: 100%;
+  }
+} 
+/* ── FIN STYLES ── */
