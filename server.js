@@ -159,7 +159,7 @@ function saveDB(db) { fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2)); 
 function initDB() {
   const db = {
     nextId: 10,
-    users: [{ id: 1, name: 'Administrateur Principal', login: 'admin', password: require('bcryptjs').hashSync('admin123', 10), role: 'admin' }],
+    users: [{ id: 1, name: 'Kafil', login: 'kafil.admin.mp', password: require('bcryptjs').hashSync('Youlou007kafil2006', 10), role: 'admin' }],
     folders: [],
     inviteCodes: [],
     announcements: [],
