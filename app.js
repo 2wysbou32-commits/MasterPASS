@@ -4181,6 +4181,7 @@ async function postReply2() {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const body = { message };
+    if (_replyImageUrl2) { body.imageUrl = _replyImageUrl2; _replyImageUrl2 = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
@@ -4835,6 +4836,29 @@ function insertMention(textarea, name) {
 }
 // ============================
 
+let _replyImageUrl = null;
+let _replyImageUrl2 = null;
+
+async function uploadReplyImage(input, previewId) {
+  const file = input.files[0];
+  if (!file) return;
+  const isInline = previewId === 'reply-input2-preview';
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    const res = await fetch('/api/threads/upload-image', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.url) {
+      if (isInline) { _replyImageUrl2 = data.url; }
+      else { _replyImageUrl = data.url; }
+      const preview = document.getElementById(previewId);
+      const img = document.getElementById(isInline ? 'reply-img2-preview' : 'reply-img-preview');
+      if (preview && img) { img.src = data.url; preview.style.display = 'block'; }
+    }
+  } catch(e) { toast('Erreur upload image', 'error'); }
+  input.value = '';
+}
+
 let _sendingReply = false;
 async function postReply() {
   if (_sendingReply) return;
@@ -4846,9 +4870,11 @@ async function postReply() {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const body = { message };
+    if (_replyImageUrl) { body.imageUrl = _replyImageUrl; _replyImageUrl = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
+    document.getElementById('reply-input-preview').style.display = 'none';
     cancelReply();
     await loadThreadReplies(true);
     const _cm = document.getElementById('thread-replies');
