@@ -4846,11 +4846,15 @@ async function uploadReplyImage(input, previewId) {
   const file = input.files[0];
   if (!file) return;
   const isInline = previewId === 'reply-input2-preview';
+  if (file.size > 10 * 1024 * 1024) { toast('Image trop lourde (max 10 Mo)', 'error'); input.value = ''; return; }
   try {
-    const fd = new FormData();
-    fd.append('image', file);
-    const res = await fetch('/api/threads/upload-image', { method: 'POST', body: fd, credentials: 'include' });
-    const data = await res.json();
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const data = await api('POST', '/threads/upload-image', { base64, filename: file.name, mimetype: file.type });
     if (data.error) { toast(data.error, 'error'); return; }
     if (data.url) {
       if (isInline) { _replyImageUrl2 = data.url; }
