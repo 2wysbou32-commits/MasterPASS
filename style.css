@@ -351,7 +351,6 @@ body::after {
 [data-theme="dark"] body::after {
   background: radial-gradient(circle, rgba(0,60,140,0.18) 0%, transparent 70%);
 }
-}
 
 @keyframes liquidShift {
   0%   { transform: scale(1)    translateX(0px)   translateY(0px); }
@@ -359,6 +358,12 @@ body::after {
   50%  { transform: scale(1.02) translateX(14px)   translateY(-10px); }
   75%  { transform: scale(1.05) translateX(-10px)  translateY(18px); }
   100% { transform: scale(1.03) translateX(20px)   translateY(-8px); }
+}
+
+@keyframes floatBlob {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  50%  { transform: translate(40px, 30px) scale(1.08); }
+  100% { transform: translate(-20px, 50px) scale(0.95); }
 }
 
 /* Tout le contenu au-dessus du fond animé */
