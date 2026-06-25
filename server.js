@@ -1914,7 +1914,7 @@ app.get('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
 // POST a reply to a thread
 app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   console.log('[reply] body keys:', Object.keys(req.body), 'replyToName:', req.body.replyToName);
-  const { message, audio, audioDuration, replyToId, replyToName, replyToPreview } = req.body;
+  const { message, audio, audioDuration, replyToId, replyToName, replyToPreview, imageUrl } = req.body;
   if (!message?.trim() && !audio) return res.status(400).json({ error: 'Message vide' });
   const db = loadDB();
   const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
@@ -1931,7 +1931,8 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
     replyToId: replyToId || null,
     replyToName: replyToName || null,
     replyToPreview: replyToPreview || null,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    imageUrl: imageUrl || null
   };
   if (!thread.replies) thread.replies = [];
   thread.replies.push(reply);
