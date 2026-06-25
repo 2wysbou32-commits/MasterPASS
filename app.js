@@ -4851,6 +4851,7 @@ async function uploadReplyImage(input, previewId) {
     fd.append('image', file);
     const res = await fetch('/api/threads/upload-image', { method: 'POST', body: fd });
     const data = await res.json();
+    if (data.error) { toast(data.error, 'error'); return; }
     if (data.url) {
       if (isInline) { _replyImageUrl2 = data.url; }
       else { _replyImageUrl = data.url; }
@@ -4858,7 +4859,7 @@ async function uploadReplyImage(input, previewId) {
       const img = document.getElementById(isInline ? 'reply-img2-preview' : 'reply-img-preview');
       if (preview && img) { img.src = data.url; preview.style.display = 'block'; }
     }
-  } catch(e) { toast('Erreur upload image', 'error'); }
+  } catch(e) { toast(e.message || 'Erreur upload image', 'error'); }
   input.value = '';
 }
 
