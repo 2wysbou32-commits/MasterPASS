@@ -544,20 +544,6 @@ app.post('/api/login', (req, res) => {
 dbLog.connectionLogs = dbLog.connectionLogs.filter(l => (l.at || l.date) > sevenDaysAgo1);
   saveDB(dbLog);
   console.log('[SESSION] Session active enregistrée pour userId:', user.id);
-  // Log de connexion
-  try {
-    const db2 = loadDB();
-    if (!db2.connectionLogs) db2.connectionLogs = [];
-    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || 'unknown';
-    db2.connectionLogs.unshift({
-      userId: user.id, login: user.login, name: user.name,
-      ip, date: new Date().toISOString(),
-    });
-    // Garder uniquement les 200 derniers logs
-    const sevenDaysAgo2 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-db2.connectionLogs = db2.connectionLogs.filter(l => (l.at || l.date) > sevenDaysAgo2);
-    saveDB(db2);
-  } catch(e) { console.error('[LOG] Erreur log connexion:', e.message); }
   res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', registeredAt: user.registeredAt || '', notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true }, mutedThreads: user.mutedThreads || [] });
 });
 app.post('/api/logout', (req, res) => {
