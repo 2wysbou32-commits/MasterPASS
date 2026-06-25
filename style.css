@@ -222,16 +222,6 @@ body {
   color: var(--text) !important;
   border-color: rgba(0,196,212,0.15) !important;
 }
-[data-theme="dark"] .modal-card, [data-theme="dark"] .modal-content {
-  background: rgba(10,18,32,0.92) !important;
-  border: 1px solid rgba(0,196,212,0.15) !important;
-  backdrop-filter: blur(24px) !important;
-}
-[data-theme="dark"] .auth-card {
-  background: rgba(10,18,32,0.92) !important;
-  border: 1px solid rgba(0,196,212,0.2) !important;
-  backdrop-filter: blur(24px) !important;
-}
 [data-theme="dark"] .settings-card {
   background: rgba(255,255,255,0.05) !important;
   border: 1px solid rgba(255,255,255,0.09) !important;
