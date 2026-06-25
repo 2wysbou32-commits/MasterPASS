@@ -4849,7 +4849,7 @@ async function uploadReplyImage(input, previewId) {
   try {
     const fd = new FormData();
     fd.append('image', file);
-    const res = await fetch('/api/threads/upload-image', { method: 'POST', body: fd });
+    const res = await fetch('/api/threads/upload-image', { method: 'POST', body: fd, credentials: 'include' });
     const data = await res.json();
     if (data.error) { toast(data.error, 'error'); return; }
     if (data.url) {
