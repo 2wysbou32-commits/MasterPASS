@@ -197,7 +197,6 @@ async function checkSession() {
     }
   }
 }
-setInterval(checkSession, 30000);
 
 async function doLogout(){await unsubscribePush();await api('POST','/logout').catch(()=>{});currentUser=null;currentFolder=null;$('app').style.display='none';$('auth-page').style.display='flex';$('login-input').value='';$('password-input').value='';}
 document.addEventListener('DOMContentLoaded', function() {
