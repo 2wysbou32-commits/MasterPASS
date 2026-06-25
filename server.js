@@ -520,13 +520,14 @@ app.post('/api/login', (req, res) => {
   if (!user || !bcrypt.compareSync(password, user.password))
     return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });
   req.session.userId = user.id;
+  const prevSession = getActiveSessions()[user.id];
   req.session.save((err) => {
     if (err) console.log('[SESSION] Save error:', err);
-    else console.log('[SESSION] Saved — sessionID:', req.sessionID, '— userId:', user.id);
+    else {
+      console.log('[SESSION] Saved — sessionID:', req.sessionID, '— userId:', user.id);
+      setActiveSession(user.id, req.sessionID);
+    }
   });
-  // Enregistrer la session active — déconnecter toute session précédente
-  const prevSession = getActiveSessions()[user.id];
-  setActiveSession(user.id, req.sessionID);
 
   // Log de connexion
   const dbLog = loadDB();
