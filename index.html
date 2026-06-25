@@ -836,9 +836,12 @@
                 </div>
                 <button onclick="cancelReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px">×</button>
               </div>
+              <input type="file" id="reply-image-input2" accept="image/*" style="display:none" onchange="uploadReplyImage(this,'reply-input2-preview')">
+<div id="reply-input2-preview" style="display:none;padding:8px 16px 0"><img id="reply-img2-preview" style="max-height:120px;border-radius:8px;max-width:100%"></div>
               <textarea id="reply-input2" placeholder="Ajoute une réponse..." style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';handleMentionInput(this)" onkeydown="handleMentionKeydown(event,this);if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)&&!_mentionOpen){event.preventDefault();postReply2();}"></textarea>
               <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px">
                 <div style="display:flex;align-items:center;gap:8px">
+                  <button onclick="document.getElementById('reply-image-input2').click()" style="background:none;border:none;cursor:pointer;font-size:18px;padding:0 4px" title="Joindre une image">🖼️</button>
                   <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
                   <button id="record-lock-btn2" onclick="handleLockBtnClick('side')" style="display:none;position:absolute;top:-38px;left:50%;transform:translateX(-50%);width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">🔓</button>
                   <button id="record-btn2"
