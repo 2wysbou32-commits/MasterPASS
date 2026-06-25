@@ -1550,4 +1550,10 @@ input[type="file"]{display:none;}
     width: 100%;
   }
 } 
+
+@media (max-width: 768px) {
+  #dashboard-motivation {
+    margin-bottom: 16px;
+  }
+}
 /* ── FIN STYLES ── */
