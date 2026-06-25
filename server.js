@@ -1842,6 +1842,25 @@ app.get('/api/threads/:fileId', requireAuth, (req, res) => {
   res.json(threads);
 });
 
+app.post('/api/threads/upload-image', requireAuth, async (req, res) => {
+  try {
+    const { base64, filename, mimetype } = req.body;
+    if (!base64 || !filename) return res.status(400).json({ error: 'Aucun fichier' });
+    const ext = path.extname(filename).toLowerCase();
+    if (!['.jpg','.jpeg','.png','.gif','.webp'].includes(ext))
+      return res.status(400).json({ error: 'Format non supporté' });
+    const buffer = Buffer.from(base64, 'base64');
+    if (buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 10 Mo)' });
+    const r2Key = `discussion-images/${Date.now()}${ext}`;
+    await uploadToR2(r2Key, buffer, mimetype || 'image/jpeg');
+    const url = getSignedVideoUrl(r2Key, false);
+    res.json({ url, r2Key });
+  } catch(e) {
+    console.error('[upload-image]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // CREATE a thread
 app.post('/api/threads/:fileId', requireAuth, (req, res) => {
   const { title } = req.body;
@@ -2404,25 +2423,6 @@ app.get('/sw.js', (req, res) => {
     res.sendFile(swPath);
   } else {
     res.status(404).send('// sw.js not found');
-  }
-});
-
-app.post('/api/threads/upload-image', requireAuth, async (req, res) => {
-  try {
-    const { base64, filename, mimetype } = req.body;
-    if (!base64 || !filename) return res.status(400).json({ error: 'Aucun fichier' });
-    const ext = path.extname(filename).toLowerCase();
-    if (!['.jpg','.jpeg','.png','.gif','.webp'].includes(ext))
-      return res.status(400).json({ error: 'Format non supporté' });
-    const buffer = Buffer.from(base64, 'base64');
-    if (buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 10 Mo)' });
-    const r2Key = `discussion-images/${Date.now()}${ext}`;
-    await uploadToR2(r2Key, buffer, mimetype || 'image/jpeg');
-    const url = getSignedVideoUrl(r2Key, false);
-    res.json({ url, r2Key });
-  } catch(e) {
-    console.error('[upload-image]', e.message);
-    res.status(500).json({ error: e.message });
   }
 });
 
