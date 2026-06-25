@@ -492,11 +492,7 @@ function showPanel(name){
   if (dp) dp.style.display = 'none';
   const vf = document.getElementById('view-files');
   if (vf && name !== 'files') vf.style.display = 'none';
-  // Cacher tous les panels (style inline nécessaire car il écrase le CSS)
-  document.querySelectorAll('.panel').forEach(p=>{
-    p.classList.remove('active');
-    p.style.display='none';
-  });
+  
   // Afficher le panel cible
   const target=$('panel-'+name);
   if (!target) { console.error('Panel introuvable: panel-' + name); return; }
@@ -505,7 +501,6 @@ function showPanel(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-'+name)?.classList.add('active');
   if(name==='files'){$('topbar-title').textContent='Espace documentaire';backToRoot();clearSearch();}
-  if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
   if(name==='favorites'){$('topbar-title').textContent='Mes favoris';loadFavorites();}
   if(name==='revision'){$('topbar-title').textContent='Révision';loadRevision();}
   if(name==='discussions-center'){$('topbar-title').textContent='Discussions';loadDiscussionsCenter();const dc=document.getElementById('disc-controls-bar');if(dc)dc.style.display='flex';const df=document.getElementById('disc-filters-bar');if(df)df.style.display='flex';}
