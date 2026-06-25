@@ -386,9 +386,16 @@ async function loadDashboard() {
     } catch(e) {}
   }
 
+  // Chargement parallèle
+  const [foldersRes, annsRes, threadsRes] = await Promise.allSettled([
+    api('GET', '/folders'),
+    api('GET', '/announcements'),
+    api('GET', '/threads/all')
+  ]);
+
   // Nouveaux fichiers
-  try {
-    const folders = await api('GET', '/folders');
+  if (foldersRes.status === 'fulfilled') {
+    const folders = foldersRes.value;
     const allFiles = [];
     folders.forEach(f => {
       (f.files||[]).forEach(file => { if(file.addedAt) allFiles.push({...file, folderName: f.name, folderId: f.id}); });
@@ -408,7 +415,6 @@ async function loadDashboard() {
         ${(Date.now() - new Date(f.addedAt).getTime()) < 7*24*60*60*1000 ? '<span style="background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border-radius:6px;padding:2px 7px;font-size:9px;font-weight:700">NOUVEAU</span>' : ''}
       </div>`).join('') : '<div class="dashboard-empty">Aucun fichier récent</div>';
 
-    // Fichiers les plus vus (admin)
     if (isAdmin) {
       const topFiles = [...allFiles].filter(f => f.views > 0).sort((a,b) => (b.views||0) - (a.views||0)).slice(0, 5);
       $('db-top-files').innerHTML = topFiles.length ? topFiles.map(f => `
@@ -421,11 +427,11 @@ async function loadDashboard() {
           <span style="font-size:12px;font-weight:700;color:var(--teal-dark)">👁 ${f.views}</span>
         </div>`).join('') : '<div class="dashboard-empty">Aucune consultation</div>';
     }
-  } catch(e) {}
+  }
 
   // Annonces
-  try {
-    const anns = await api('GET', '/announcements');
+  if (annsRes.status === 'fulfilled') {
+    const anns = annsRes.value;
     const recent = (anns||[]).slice(0,3);
     $('db-announcements').innerHTML = recent.length ? recent.map(a => `
       <div class="dashboard-ann-item" style="cursor:pointer" onclick="showPanel('announcements');setTimeout(()=>{const el=document.getElementById('ann-${a.id}');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});}},500)">
@@ -433,11 +439,11 @@ async function loadDashboard() {
         <div style="font-size:12px;color:var(--text2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${a.message||''}</div>
         <div style="font-size:10px;color:var(--text3);margin-top:4px">${new Date(a.createdAt).toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}</div>
       </div>`).join('') : '<div class="dashboard-empty">Aucune annonce</div>';
-  } catch(e) {}
+  }
 
   // Discussions récentes
-  try {
-    const threads = await api('GET', '/threads/all');
+  if (threadsRes.status === 'fulfilled') {
+    const threads = threadsRes.value;
     const recent = (threads||[]).slice(0,5);
     $('db-discussions').innerHTML = recent.length ? recent.map(t => `
       <div class="dashboard-disc-item" onclick="showPanel('files');setTimeout(()=>{openFolder(${t.folderId},'${t.folderName||''}');setTimeout(()=>openDiscussion('${t.fileId}','${t.fileName||''}'),600);},300)">
@@ -447,7 +453,7 @@ async function loadDashboard() {
         </div>
         <div style="font-size:11px;color:var(--text3)">📄 ${t.fileName||''} · ${t.replyCount||0} rép.</div>
       </div>`).join('') : '<div class="dashboard-empty">Aucune discussion</div>';
-  } catch(e) {}
+  }
 }
 async function updateAdminDiscBadge() {
   if (currentUser?.role !== 'admin' && currentUser?.role !== 'subadmin') return;
