@@ -245,10 +245,15 @@ function setupApp() {
   const isAnyAdmin = isAdmin || isSubAdmin;
   const initials=currentUser.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
-  $('panel-files').classList.add('active');$('panel-files').style.display='block';
+  if (isSubAdmin) {
+    $('panel-discussions-center').classList.add('active');
+    $('panel-discussions-center').style.display='block';
+  } else {
+    $('panel-files').classList.add('active');$('panel-files').style.display='block';
+    $('dashboard-view').style.display='block';
+  }
   $('panel-users').style.display=isAdmin?'':'none';
   $('view-folders').style.display='none';$('view-files').style.display='none';
-  $('dashboard-view').style.display='block';
   // Hide discussion panel when navigating back
   const dp = document.getElementById('discussion-panel'); if(dp) dp.style.display='none';
   currentFolder=null;
@@ -261,20 +266,32 @@ function setupApp() {
   $('nav-settings').style.display='flex';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-revision').style.display=isSubAdmin?'none':'flex';
-  $('nav-dashboard').classList.add('active');
+  $('nav-files').style.display=isSubAdmin?'none':'flex';
+  $('nav-dashboard').style.display=isSubAdmin?'none':'flex';
+  if (isSubAdmin) {
+    $('nav-discussions-center').classList.add('active');
+  } else {
+    $('nav-dashboard').classList.add('active');
+  }
   $('admin-stats').style.display='none';
   $('student-banner').style.display='none';
   $('upload-zone-container').style.display=isAdmin?'block':'none';
   $('storage-indicator').style.display=isAdmin?'block':'none';
   if(!isAnyAdmin)$('student-banner-title').textContent=`Bienvenue, ${currentUser.name.split(' ')[0]} !`;
   $('panel-settings').style.display = 'none';
-  $('topbar-title').textContent='Accueil';
-  loadDashboard();
+  $('topbar-title').textContent = isSubAdmin ? 'Discussions' : 'Accueil';
+  if (isSubAdmin) {
+    loadDiscussionsCenter();
+    const dc = document.getElementById('disc-controls-bar'); if(dc) dc.style.display='flex';
+    const df = document.getElementById('disc-filters-bar'); if(df) df.style.display='flex';
+  } else {
+    loadDashboard();
+    loadFolders();
+  }
   const topbarEl = document.querySelector('.topbar');
   if(topbarEl) topbarEl.style.display = 'flex';
   if($('topbar-search')) $('topbar-search').style.display='block';
   updateTopbar();updateBreadcrumb();
-  loadFolders();
   if(isAnyAdmin)loadStats();
   // Afficher bouton nouvelle annonce pour admin principal seulement
   const annAdminActions = $('ann-admin-actions');
@@ -3374,7 +3391,7 @@ function filterDiscCenter(filter) {
   renderDiscCenter();
 }
 
-let _discSort = 'recent';
+let _discSort = (currentUser?.role === 'subadmin') ? 'folder' : 'recent';
 let _discFolderOpen = null;
 
 function toggleDiscSort(e, btn) {
@@ -3422,13 +3439,19 @@ function renderDiscCenter() {
     if (!_discFolderOpen) {
       let html = Object.entries(groups).sort().map(([folder, ts]) => {
         const openCount = ts.filter(t => !t.resolved).length;
-        return '<div class="disc-folder-card" data-folder="' + encodeURIComponent(folder) + '" style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface,white);margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s">' +
-          '<div style="width:40px;height:40px;border-radius:10px;background:rgba(0,151,167,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📁</div>' +
-          '<div style="flex:1">' +
-            '<div style="font-weight:700;font-size:14px;color:var(--text)">' + folder + '</div>' +
-            '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + ts.length + ' discussion(s)' + (openCount ? ' · ' + openCount + ' ouverte(s)' : '') + '</div>' +
-          '</div>' +
-        '</div>';
+        const _ls = loadLastSeen();
+const unreadCount = ts.filter(t => {
+  const ls = _ls['thread_' + t.threadId] ? new Date(_ls['thread_' + t.threadId]) : null;
+  return ls ? new Date(t.lastActivity) > ls : true;
+}).length;
+return '<div class="disc-folder-card" data-folder="' + encodeURIComponent(folder) + '" style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface,white);margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s">' +
+  '<div style="width:40px;height:40px;border-radius:10px;background:rgba(0,151,167,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📁</div>' +
+  '<div style="flex:1">' +
+    '<div style="font-weight:700;font-size:14px;color:var(--text)">' + folder + '</div>' +
+    '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + ts.length + ' discussion(s)' + (openCount ? ' · ' + openCount + ' ouverte(s)' : '') + '</div>' +
+  '</div>' +
+  (unreadCount > 0 ? '<span style="background:#ef5350;color:white;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700;min-width:20px;text-align:center">' + (unreadCount > 9 ? '9+' : unreadCount) + '</span>' : '') +
+'</div>';
       }).join('');
       list.innerHTML = html;
       list.querySelectorAll('.disc-folder-card').forEach(function(card) {
