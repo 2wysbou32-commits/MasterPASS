@@ -2407,7 +2407,13 @@ app.get('/sw.js', (req, res) => {
   }
 });
 
-app.post('/api/threads/upload-image', requireAuth, multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('image'), async (req, res) => {
+app.post('/api/threads/upload-image', requireAuth, (req, res, next) => {
+  multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('image')(req, res, (err) => {
+    if (err && err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Image trop lourde (max 10 Mo)' });
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
     const ext = path.extname(req.file.originalname).toLowerCase();
