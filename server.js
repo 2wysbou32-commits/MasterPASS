@@ -2407,20 +2407,17 @@ app.get('/sw.js', (req, res) => {
   }
 });
 
-app.post('/api/threads/upload-image', requireAuth, (req, res, next) => {
-  multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }).single('image')(req, res, (err) => {
-    if (err && err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Image trop lourde (max 10 Mo)' });
-    if (err) return res.status(400).json({ error: err.message });
-    next();
-  });
-}, async (req, res) => {
+app.post('/api/threads/upload-image', requireAuth, async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
-    const ext = path.extname(req.file.originalname).toLowerCase();
+    const { base64, filename, mimetype } = req.body;
+    if (!base64 || !filename) return res.status(400).json({ error: 'Aucun fichier' });
+    const ext = path.extname(filename).toLowerCase();
     if (!['.jpg','.jpeg','.png','.gif','.webp'].includes(ext))
       return res.status(400).json({ error: 'Format non supporté' });
+    const buffer = Buffer.from(base64, 'base64');
+    if (buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 10 Mo)' });
     const r2Key = `discussion-images/${Date.now()}${ext}`;
-    await uploadToR2(r2Key, req.file.buffer, req.file.mimetype);
+    await uploadToR2(r2Key, buffer, mimetype || 'image/jpeg');
     const url = getSignedVideoUrl(r2Key, false);
     res.json({ url, r2Key });
   } catch(e) {
