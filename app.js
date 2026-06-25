@@ -971,13 +971,16 @@ async function ouvrirDossier(dossierId) {
       html += '<div class="dashboard-empty">Aucune séance dans ce dossier</div>';
     } else {
       html += seances.map(function(s) {
-        return '<div class="seance-card" data-id="' + s.id + '" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer">' +
-          '<div style="flex:1">' +
-            '<div style="font-size:14px;font-weight:600;color:var(--text)">' + s.titre + '</div>' +
-            '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + s.schemaCount + ' schéma(s)</div>' +
-          '</div>' +
-          (isAdmin ? revActionButtons(s.id) : '') +
-        '</div>';
+        return '<div class="seance-card" data-id="' + s.id + '" style="display:flex;align-items:center;gap:16px;padding:20px 22px;border-radius:20px;border:1.5px solid rgba(139,92,246,0.2);margin-bottom:14px;cursor:pointer;background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(59,130,246,0.08));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 4px 24px rgba(139,92,246,0.1);transition:all 0.22s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 8px 32px rgba(139,92,246,0.2)\'" onmouseout="this.style.transform=\'translateY(0)\';this.style.boxShadow=\'0 4px 24px rgba(139,92,246,0.1)\'">' +
+  '<div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#8B5CF6,#3B82F6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(139,92,246,0.35)">' +
+    '<svg viewBox="0 0 24 24" fill="white" style="width:22px;height:22px"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>' +
+  '</div>' +
+  '<div style="flex:1;min-width:0">' +
+    '<div style="font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.2px">' + s.titre + '</div>' +
+    '<div style="font-size:12px;color:#8B5CF6;margin-top:4px;font-weight:600">' + s.schemaCount + ' schéma(s)</div>' +
+  '</div>' +
+  (isAdmin ? revActionButtons(s.id) : '') +
+'</div>';
       }).join('');
     }
     list.innerHTML = html;
