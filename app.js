@@ -3822,6 +3822,9 @@ async function loadThreadRepliesInline(silent) {
           .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
           .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); });
       }
+      if (r.imageUrl) {
+        msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="window.open(this.src)"></div>';
+      }
      var canDelete = currentUser && (currentUser.role === 'admin' || String(r.userId) === String(currentUser.id));
       var reactHtml = '';
       if (r.reactions && Object.keys(r.reactions).length) {
