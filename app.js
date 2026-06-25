@@ -321,7 +321,7 @@ if(titleWrap) titleWrap.style.display = 'none';
 }
 
 async function loadDashboard() {
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
+  const isAdmin = currentUser?.role === 'admin';
   $('dashboard-title').textContent = `Bonjour, ${currentUser.name.split(' ')[0]} 👋`;
   $('dashboard-sub').textContent = isAdmin ? 'Vue d\'ensemble de votre plateforme' : 'Voici ce qui se passe sur MasterPASS';
   if (!isAdmin) {
