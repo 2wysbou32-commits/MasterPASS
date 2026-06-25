@@ -281,6 +281,7 @@ function setupApp() {
   $('panel-settings').style.display = 'none';
   $('topbar-title').textContent = isSubAdmin ? 'Discussions' : 'Accueil';
   if (isSubAdmin) {
+    _discSort = 'folder';
     loadDiscussionsCenter();
     const dc = document.getElementById('disc-controls-bar'); if(dc) dc.style.display='flex';
     const df = document.getElementById('disc-filters-bar'); if(df) df.style.display='flex';
@@ -3391,7 +3392,7 @@ function filterDiscCenter(filter) {
   renderDiscCenter();
 }
 
-let _discSort = (currentUser?.role === 'subadmin') ? 'folder' : 'recent';
+let _discSort = 'recent';
 let _discFolderOpen = null;
 
 function toggleDiscSort(e, btn) {
