@@ -1503,14 +1503,16 @@ input[type="file"]{display:none;}
 
   /* La grille dashboard prend toute la largeur sans déborder */
   .dashboard-grid {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 12px !important;
-    padding: 0 !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
+  flex-direction: column !important;
+  gap: 12px !important;
+  padding: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
 
+#dashboard-main-grid {
+  display: flex !important;
+}
   /* Chaque carte prend 100% sans déborder */
   .dashboard-card {
     width: 100% !important;
