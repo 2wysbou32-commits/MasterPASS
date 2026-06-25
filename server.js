@@ -1934,7 +1934,7 @@ app.get('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
 app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   console.log('[reply] body keys:', Object.keys(req.body), 'replyToName:', req.body.replyToName);
   const { message, audio, audioDuration, replyToId, replyToName, replyToPreview, imageUrl } = req.body;
-  if (!message?.trim() && !audio) return res.status(400).json({ error: 'Message vide' });
+  if (!message?.trim() && !audio && !imageUrl) return res.status(400).json({ error: 'Message vide' });
   const db = loadDB();
   const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
   if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
