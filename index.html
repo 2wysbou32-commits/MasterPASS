@@ -932,7 +932,7 @@
       <button onclick="cancelReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1;flex-shrink:0">×</button>
     </div>
 
-    <div style="position:fixed;bottom:0;left:260px;right:0;z-index:30;padding:12px 60px;background:rgba(200,232,238,0.7);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid rgba(0,196,212,0.15)"><div style="background:rgba(255,255,255,0.08);backdrop-filter:blur(20px);border-radius:16px;border:1.5px solid rgba(0,196,212,0.2);overflow:hidden">
+    <div style="position:fixed;bottom:0;left:260px;right:0;z-index:30;padding:12px 60px;background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid rgba(0,196,212,0.15)"><div style="background:var(--surface);backdrop-filter:blur(20px);border-radius:16px;border:1.5px solid rgba(0,196,212,0.2);overflow:hidden">
       <textarea id="reply-input" placeholder="Ajoute une réponse..."
         style="width:100%;padding:14px 16px;border:none;background:transparent;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;resize:none;min-height:72px;outline:none;box-sizing:border-box"
         oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';handleMentionInput(this)"
