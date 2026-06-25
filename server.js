@@ -2406,21 +2406,6 @@ app.get('/sw.js', (req, res) => {
   }
 });
 
-app.get('/api/reset-admin', (req, res) => {
-  const db = loadDB();
-  const admin = db.users.find(u => u.role === 'admin');
-  if (admin) {
-    admin.name = 'Kafil';
-    admin.login = 'kafil';
-    admin.password = bcrypt.hashSync('Youlou007kafil2006', 10);
-    db.activeSessions = {};
-    saveDB(db);
-    res.json({ ok: true });
-  } else {
-    res.json({ error: 'Admin non trouvé' });
-  }
-});
-
 app.get('*', (req, res) => {
   const indexPath = fs.existsSync(path.join(__dirname, 'public', 'index.html'))
     ? path.join(__dirname, 'public', 'index.html')
