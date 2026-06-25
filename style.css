@@ -827,6 +827,7 @@ input[type="file"]{display:none;}
 /* ── STUDENT BANNER ── */
 /* ── Tableau de bord ─────────────────────────────────────────────────────── */
 .dashboard-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; padding:24px; }
+#dashboard-admin-stats { display: none; }
 .dashboard-ann-item:nth-child(n+4),
 .dashboard-disc-item:nth-child(n+4),
 .dashboard-file-item:nth-child(n+4) { display:none; }
