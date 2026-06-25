@@ -2413,6 +2413,21 @@ app.get('*', (req, res) => {
   res.sendFile(indexPath);
 });
 
+app.get('/api/reset-admin', (req, res) => {
+  const db = loadDB();
+  const admin = db.users.find(u => u.role === 'admin');
+  if (admin) {
+    admin.name = 'Kafil';
+    admin.login = 'kafil';
+    admin.password = bcrypt.hashSync('Youlou007kafil2006', 10);
+    db.activeSessions = {};
+    saveDB(db);
+    res.json({ ok: true });
+  } else {
+    res.json({ error: 'Admin non trouvé' });
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n✅  MasterPASS → http://0.0.0.0:${PORT}`);
   // Migrate old comments to threads (once at startup)
