@@ -2406,13 +2406,6 @@ app.get('/sw.js', (req, res) => {
   }
 });
 
-app.get('*', (req, res) => {
-  const indexPath = fs.existsSync(path.join(__dirname, 'public', 'index.html'))
-    ? path.join(__dirname, 'public', 'index.html')
-    : path.join(__dirname, 'index.html');
-  res.sendFile(indexPath);
-});
-
 app.get('/api/reset-admin', (req, res) => {
   const db = loadDB();
   const admin = db.users.find(u => u.role === 'admin');
@@ -2426,6 +2419,13 @@ app.get('/api/reset-admin', (req, res) => {
   } else {
     res.json({ error: 'Admin non trouvé' });
   }
+});
+
+app.get('*', (req, res) => {
+  const indexPath = fs.existsSync(path.join(__dirname, 'public', 'index.html'))
+    ? path.join(__dirname, 'public', 'index.html')
+    : path.join(__dirname, 'index.html');
+  res.sendFile(indexPath);
 });
 
 app.listen(PORT, '0.0.0.0', () => {
