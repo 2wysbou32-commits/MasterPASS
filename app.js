@@ -4724,7 +4724,10 @@ async function loadThreadReplies(silent) {
       row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%;margin:' + (isMine?'0 8px 0 auto':'0 auto 0 8px') + '">';
       if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:'+avatarBg+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">'+avatarHtml+'</div>';
       row += '<div>';
-      row += '<div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+';border-left:'+(isAdmin&&!isMine?'3px solid var(--teal)':bubbleBorder)+'">';
+      if (r.imageUrl) {
+        msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="window.open(this.src)"></div>';
+      }
+      row += '<div data-cid=\"'+r.id+'\" class=\"msg-bubble\" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+';border-left:'+(isAdmin&&!isMine?'3px solid var(--teal)':bubbleBorder)+'">';
       row += msgHtml + '</div></div></div>';
       if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">'+date+'</div>';
       row += reactHtml;
