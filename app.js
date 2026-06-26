@@ -4877,8 +4877,7 @@ async function uploadReplyImage(input, previewId) {
       else { _replyImageUrl = data.url; }
       const preview = document.getElementById(previewId);
       const img = document.getElementById(isInline ? 'reply-img2-preview' : 'reply-img-preview');
-      if (preview && img) {
-        img.src = data.url;
+      if (preview) {
         preview.innerHTML = '<div style="position:relative;display:inline-block"><img src="' + data.url + '" style="max-height:120px;border-radius:8px;max-width:100%"><button onclick="cancelReplyImage(\'' + (isInline?'2':'') + '\')" style="position:absolute;top:-6px;right:-6px;background:#ef5350;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0">×</button></div>';
         preview.style.display = 'block';
       }
