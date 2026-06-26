@@ -4188,12 +4188,7 @@ async function postReply2() {
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
-    const _previewEl = document.getElementById('reply-input2-preview');
-    if (_previewEl) _previewEl.style.display = 'none';
-    const _imgEl = document.getElementById('reply-img2-preview');
-    if (_imgEl) _imgEl.src = '';
-    const _imgInput = document.getElementById('reply-image-input2');
-    if (_imgInput) _imgInput.value = '';
+    cancelReplyImage('2');
     cancelReply();
     await loadThreadRepliesInline(true);
     const _c = document.getElementById('thread-replies2');
@@ -4731,6 +4726,9 @@ async function loadThreadReplies(silent) {
       if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:'+avatarBg+';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">'+avatarHtml+'</div>';
       row += '<div>';
       row += '<div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+';border-left:'+(isAdmin&&!isMine?'3px solid var(--teal)':bubbleBorder)+'">';
+      if (r.imageUrl) {
+        msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="window.open(this.src)"></div>';
+      }
       row += msgHtml + '</div></div></div>';
       if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">'+date+'</div>';
       row += reactHtml;
