@@ -4842,10 +4842,22 @@ function insertMention(textarea, name) {
 let _replyImageUrl = null;
 let _replyImageUrl2 = null;
 
+function cancelReplyImage(suffix) {
+  const isInline = suffix === '2';
+  if (isInline) { _replyImageUrl2 = null; }
+  else { _replyImageUrl = null; }
+  const preview = document.getElementById('reply-input' + suffix + '-preview');
+  if (preview) { preview.style.display = 'none'; preview.innerHTML = '<img id="reply-img' + (isInline?'2':'') + '-preview" style="max-height:120px;border-radius:8px;max-width:100%">'; }
+  const input = document.getElementById('reply-image-input' + (isInline?'2':''));
+  if (input) input.value = '';
+}
+
 async function uploadReplyImage(input, previewId) {
   const file = input.files[0];
   if (!file) return;
   const isInline = previewId === 'reply-input2-preview';
+  const btn = document.querySelector(isInline ? 'button[onclick="postReply2()"]' : '#thread-detail-view button[onclick="postReply()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
   if (file.size > 10 * 1024 * 1024) { toast('Image trop lourde (max 10 Mo)', 'error'); input.value = ''; return; }
   try {
     const base64 = await new Promise((resolve, reject) => {
@@ -4861,9 +4873,14 @@ async function uploadReplyImage(input, previewId) {
       else { _replyImageUrl = data.url; }
       const preview = document.getElementById(previewId);
       const img = document.getElementById(isInline ? 'reply-img2-preview' : 'reply-img-preview');
-      if (preview && img) { img.src = data.url; preview.style.display = 'block'; }
+      if (preview && img) {
+        img.src = data.url;
+        preview.innerHTML = '<div style="position:relative;display:inline-block"><img src="' + data.url + '" style="max-height:120px;border-radius:8px;max-width:100%"><button onclick="cancelReplyImage(\'' + (isInline?'2':'') + '\')" style="position:absolute;top:-6px;right:-6px;background:#ef5350;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0">×</button></div>';
+        preview.style.display = 'block';
+      }
     }
   } catch(e) { toast(e.message || 'Erreur upload image', 'error'); }
+  if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   input.value = '';
 }
 
@@ -4883,6 +4900,8 @@ async function postReply() {
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
     document.getElementById('reply-input-preview').style.display = 'none';
+    document.getElementById('reply-img-preview').src = '';
+    document.getElementById('reply-image-input').value = '';
     cancelReply();
     await loadThreadReplies(true);
     const _cm = document.getElementById('thread-replies');
