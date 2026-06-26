@@ -4179,7 +4179,7 @@ async function postReply2() {
   _sendingReply2 = true;
   const input = document.getElementById('reply-input2');
   const message = input.value.trim();
-  if ((!message && !_replyImageUrl2) || !_discussionFileId) { _sendingReply = false; return; }
+  if ((!message && !_replyImageUrl2) || !_discussionFileId) { _sendingReply2 = false; return; }
   const btn = document.querySelector('button[onclick="postReply2()"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
@@ -4188,6 +4188,12 @@ async function postReply2() {
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
+    const _previewEl = document.getElementById('reply-input2-preview');
+    if (_previewEl) _previewEl.style.display = 'none';
+    const _imgEl = document.getElementById('reply-img2-preview');
+    if (_imgEl) _imgEl.src = '';
+    const _imgInput = document.getElementById('reply-image-input2');
+    if (_imgInput) _imgInput.value = '';
     cancelReply();
     await loadThreadRepliesInline(true);
     const _c = document.getElementById('thread-replies2');
