@@ -1853,8 +1853,7 @@ app.post('/api/threads/upload-image', requireAuth, async (req, res) => {
     if (buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 10 Mo)' });
     const r2Key = `discussion-images/${Date.now()}${ext}`;
     await uploadToR2(r2Key, buffer, mimetype || 'image/jpeg');
-    const url = getSignedVideoUrl(r2Key, false);
-    res.json({ url, r2Key });
+    res.json({ r2Key });
   } catch(e) {
     console.error('[upload-image]', e.message);
     res.status(500).json({ error: e.message });
@@ -1920,7 +1919,8 @@ app.get('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
   const replies = (thread.replies || []).map(r => {
     const user = db.users.find(u => u.id === r.userId);
-    return { ...r, userAvatar: user?.avatar || null };
+    const imageUrl = r.imageR2Key ? getSignedVideoUrl(r.imageR2Key, false) : (r.imageUrl || null);
+    return { ...r, imageUrl, userAvatar: user?.avatar || null };
   });
   // Participants du fil + tous les admins/subadmins (pour le menu @mention)
   const participantIds = new Set([thread.userId, ...( thread.replies||[]).map(r => r.userId)]);
@@ -1951,7 +1951,8 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
     replyToName: replyToName || null,
     replyToPreview: replyToPreview || null,
     createdAt: new Date().toISOString(),
-    imageUrl: imageUrl || null
+    imageUrl: null,
+    imageR2Key: imageUrl || null
   };
   if (!thread.replies) thread.replies = [];
   thread.replies.push(reply);
