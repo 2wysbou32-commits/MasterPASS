@@ -4868,14 +4868,15 @@ async function uploadReplyImage(input, previewId) {
     });
     const data = await api('POST', '/threads/upload-image', { base64, filename: file.name, mimetype: file.type });
     if (data.error) { toast(data.error, 'error'); return; }
-    if (data.url) {
-      if (isInline) { _replyImageUrl2 = data.url; }
-      else { _replyImageUrl = data.url; }
+    if (data.r2Key) {
+      if (isInline) { _replyImageUrl2 = data.r2Key; }
+      else { _replyImageUrl = data.r2Key; }
+      const previewSrc = 'data:' + file.type + ';base64,' + await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(file); });
       const preview = document.getElementById(previewId);
       const img = document.getElementById(isInline ? 'reply-img2-preview' : 'reply-img-preview');
-      if (preview && img) {
-        img.src = data.url;
-        preview.innerHTML = '<div style="position:relative;display:inline-block"><img src="' + data.url + '" style="max-height:120px;border-radius:8px;max-width:100%"><button onclick="cancelReplyImage(\'' + (isInline?'2':'') + '\')" style="position:absolute;top:-6px;right:-6px;background:#ef5350;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0">×</button></div>';
+      const preview = document.getElementById(previewId);
+      if (preview) {
+        preview.innerHTML = '<div style="position:relative;display:inline-block"><img src="data:' + file.type + ';base64,' + await new Promise(res2 => { const r2 = new FileReader(); r2.onload = () => res2(r2.result.split(",")[1]); r2.readAsDataURL(file); }) + '" style="max-height:120px;border-radius:8px;max-width:100%"><button onclick="cancelReplyImage(\'' + (isInline?"2":"") + '\')" style="position:absolute;top:-6px;right:-6px;background:#ef5350;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0">×</button></div>';
         preview.style.display = 'block';
       }
     }
@@ -4932,12 +4933,6 @@ async function toggleResolve() {
     await loadThreadReplies(true);
   } catch(e) { toast(e.message, 'error'); }
 }
-
-
-
-
-
-
 
 function installPWA() {
   if (!_pwaInstallPrompt.prompt()) {
