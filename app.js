@@ -4239,12 +4239,12 @@ async function postReply2() {
   const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '')) + _tempImgHtml2 + '</div></div>';
   if (container) { container.insertAdjacentHTML('beforeend', tempHtml); container.scrollTop = container.scrollHeight; }
   input.value = ''; input.style.height = 'auto';
-  cancelReplyImage('2');
   if (_voiceBlob) cancelVoicePreview('side');
   cancelReply();
   if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   try {
     if (_replyImageUploadPromise2) { await _replyImageUploadPromise2; _replyImageUploadPromise2 = null; }
+    cancelReplyImage('2');
     if (!message && !_replyImageUrl2 && !_voiceBlob) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply2 = false; return; }
     const body = { message };
     if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
@@ -4982,12 +4982,12 @@ async function postReply() {
   const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '')) + _tempImgHtml + '</div></div>';
   if (container) { container.insertAdjacentHTML('beforeend', tempHtml); container.scrollTop = container.scrollHeight; }
   input.value = ''; input.style.height = 'auto';
-  cancelReplyImage('');
   if (_voiceBlob) cancelVoicePreview('main');
   cancelReply();
   if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   try {
     if (_replyImageUploadPromise) { await _replyImageUploadPromise; _replyImageUploadPromise = null; }
+    cancelReplyImage('');
     if (!message && !_replyImageUrl && !_voiceBlob) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply = false; return; }
     const body = { message };
     if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
