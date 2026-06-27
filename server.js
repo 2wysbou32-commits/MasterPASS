@@ -478,7 +478,7 @@ function getSignedVideoUrl(r2Key, useLegacy) {
   const now = new Date();
   const amzDate = now.toISOString().replace(/[:-]/g, '').replace(/\.\.\d{3}/, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
-  const expires = 31536000;
+  const expires = 7200;
   const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
 
   const encodedPath = useLegacy
@@ -1853,11 +1853,21 @@ app.post('/api/threads/upload-image', requireAuth, async (req, res) => {
     if (buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 10 Mo)' });
     const r2Key = `discussion-images/${Date.now()}${ext}`;
     await uploadToR2(r2Key, buffer, mimetype || 'image/jpeg');
-    const url = getSignedVideoUrl(r2Key, false);
+    const url = `/api/threads/image/${r2Key}`;
     res.json({ url, r2Key });
   } catch(e) {
     console.error('[upload-image]', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/threads/image/*', requireAuth, async (req, res) => {
+  try {
+    const r2Key = req.params[0];
+    if (!r2Key || !r2Key.startsWith('discussion-images/')) return res.status(404).end();
+    await proxyFileFromR2(r2Key, res, true, req);
+  } catch(e) {
+    res.status(500).end();
   }
 });
 
