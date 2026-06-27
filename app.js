@@ -4873,27 +4873,28 @@ async function uploadReplyImage(input, previewId) {
   if (!file) return;
   const isInline = previewId === 'reply-input2-preview';
   const btn = document.querySelector(isInline ? 'button[onclick="postReply2()"]' : '#thread-detail-view button[onclick="postReply()"]');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
   if (file.size > 10 * 1024 * 1024) { toast('Image trop lourde (max 10 Mo)', 'error'); input.value = ''; return; }
+  // Afficher preview immédiatement depuis le fichier local
+  const localUrl = URL.createObjectURL(file);
+  const preview = document.getElementById(previewId);
+  if (preview) {
+    preview.innerHTML = '<div style="position:relative;display:inline-block"><img src="' + localUrl + '" style="max-height:120px;border-radius:8px;max-width:100%;opacity:0.5"><button onclick="cancelReplyImage(\'' + (isInline?'2':'') + '\')" style="position:absolute;top:-6px;right:-6px;background:#ef5350;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0">×</button></div>';
+    preview.style.display = 'block';
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
   try {
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-    const data = await api('POST', '/threads/upload-image', { base64, filename: file.name, mimetype: file.type });
-    if (data.error) { toast(data.error, 'error'); return; }
+    const fd = new FormData();
+    fd.append('image', file);
+    const data = await api('POST', '/threads/upload-image', fd);
+    if (data.error) { toast(data.error, 'error'); cancelReplyImage(isInline?'2':''); return; }
     if (data.url) {
       if (isInline) { _replyImageUrl2 = data.url; _replyR2Key2 = data.r2Key || null; }
       else { _replyImageUrl = data.url; _replyR2Key = data.r2Key || null; }
-      const preview = document.getElementById(previewId);
-      if (preview) {
-        preview.innerHTML = '<div style="position:relative;display:inline-block"><img src="' + data.url + '" style="max-height:120px;border-radius:8px;max-width:100%"><button onclick="cancelReplyImage(\'' + (isInline?'2':'') + '\')" style="position:absolute;top:-6px;right:-6px;background:#ef5350;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0">×</button></div>';
-        preview.style.display = 'block';
-      }
+      // Remplacer l'URL locale par l'URL définitive, retirer l'opacité
+      const img = preview?.querySelector('img');
+      if (img) { img.src = data.url; img.style.opacity = '1'; }
     }
-  } catch(e) { toast(e.message || 'Erreur upload image', 'error'); }
+  } catch(e) { toast(e.message || 'Erreur upload image', 'error'); cancelReplyImage(isInline?'2':''); }
   if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   input.value = '';
 }
