@@ -4193,9 +4193,11 @@ async function postReply2() {
   // Optimistic UI
   const tempId = 'temp-' + Date.now();
   const container = document.getElementById('thread-replies2');
-  const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '🖼️')) + '</div></div>';
+  const _tempImgHtml2 = _replyImageLocalUrl2 ? '<div style="margin-top:6px"><img src="' + _replyImageLocalUrl2 + '" style="max-width:200px;max-height:180px;border-radius:8px;display:block"></div>' : '';
+  const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '')) + _tempImgHtml2 + '</div></div>';
   if (container) { container.insertAdjacentHTML('beforeend', tempHtml); container.scrollTop = container.scrollHeight; }
   try {
+    if (_replyImageUploadPromise2) { await _replyImageUploadPromise2; _replyImageUploadPromise2 = null; }
     const body = { message };
     if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
     if (_replyImageUrl2) { body.imageUrl = _replyImageUrl2; body.r2Key = _replyR2Key2 || null; _replyImageUrl2 = null; _replyR2Key2 = null; }
@@ -4866,11 +4868,15 @@ let _replyImageUrl = null;
 let _replyImageUrl2 = null;
 let _replyR2Key = null;
 let _replyR2Key2 = null;
+let _replyImageUploadPromise = null;
+let _replyImageUploadPromise2 = null;
+let _replyImageLocalUrl = null;
+let _replyImageLocalUrl2 = null;
 
 function cancelReplyImage(suffix) {
   const isInline = suffix === '2';
-  if (isInline) { _replyImageUrl2 = null; }
-  else { _replyImageUrl = null; }
+  if (isInline) { _replyImageUrl2 = null; _replyImageLocalUrl2 = null; }
+  else { _replyImageUrl = null; _replyImageLocalUrl = null; }
   const preview = document.getElementById('reply-input' + suffix + '-preview');
   if (preview) { preview.style.display = 'none'; preview.innerHTML = '<img id="reply-img' + (isInline?'2':'') + '-preview" style="max-height:120px;border-radius:8px;max-width:100%">'; }
   const input = document.getElementById('reply-image-input' + (isInline?'2':''));
@@ -4885,27 +4891,28 @@ async function uploadReplyImage(input, previewId) {
   if (file.size > 10 * 1024 * 1024) { toast('Image trop lourde (max 10 Mo)', 'error'); input.value = ''; return; }
   // Afficher preview immédiatement depuis le fichier local
   const localUrl = URL.createObjectURL(file);
+  if (isInline) { _replyImageLocalUrl2 = localUrl; } else { _replyImageLocalUrl = localUrl; }
   const preview = document.getElementById(previewId);
   if (preview) {
     preview.innerHTML = '<div style="position:relative;display:inline-block"><img src="' + localUrl + '" style="max-height:120px;border-radius:8px;max-width:100%;opacity:0.5"><button onclick="cancelReplyImage(\'' + (isInline?'2':'') + '\')" style="position:absolute;top:-6px;right:-6px;background:#ef5350;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0">×</button></div>';
     preview.style.display = 'block';
   }
-  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
-  try {
-    const fd = new FormData();
-    fd.append('image', file);
-    const data = await api('POST', '/threads/upload-image', fd);
-    if (data.error) { toast(data.error, 'error'); cancelReplyImage(isInline?'2':''); return; }
-    if (data.url) {
-      if (isInline) { _replyImageUrl2 = data.url; _replyR2Key2 = data.r2Key || null; }
-      else { _replyImageUrl = data.url; _replyR2Key = data.r2Key || null; }
-      // Remplacer l'URL locale par l'URL définitive, retirer l'opacité
-      const img = preview?.querySelector('img');
-      if (img) { img.src = data.url; img.style.opacity = '1'; }
-    }
-  } catch(e) { toast(e.message || 'Erreur upload image', 'error'); cancelReplyImage(isInline?'2':''); }
-  if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   input.value = '';
+  const uploadPromise = (async () => {
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const data = await api('POST', '/threads/upload-image', fd);
+      if (data.error) { toast(data.error, 'error'); cancelReplyImage(isInline?'2':''); return; }
+      if (data.url) {
+        if (isInline) { _replyImageUrl2 = data.url; _replyR2Key2 = data.r2Key || null; }
+        else { _replyImageUrl = data.url; _replyR2Key = data.r2Key || null; }
+        const img = preview?.querySelector('img');
+        if (img) { img.src = data.url; img.style.opacity = '1'; }
+      }
+    } catch(e) { toast(e.message || 'Erreur upload image', 'error'); cancelReplyImage(isInline?'2':''); }
+  })();
+  if (isInline) { _replyImageUploadPromise2 = uploadPromise; } else { _replyImageUploadPromise = uploadPromise; }
 }
 
 let _sendingReply = false;
@@ -4920,9 +4927,11 @@ async function postReply() {
   // Optimistic UI
   const tempId = 'temp-' + Date.now();
   const container = document.getElementById('thread-replies');
-  const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '🖼️')) + '</div></div>';
+  const _tempImgHtml = _replyImageLocalUrl ? '<div style="margin-top:6px"><img src="' + _replyImageLocalUrl + '" style="max-width:200px;max-height:180px;border-radius:8px;display:block"></div>' : '';
+  const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '')) + _tempImgHtml + '</div></div>';
   if (container) { container.insertAdjacentHTML('beforeend', tempHtml); container.scrollTop = container.scrollHeight; }
   try {
+    if (_replyImageUploadPromise) { await _replyImageUploadPromise; _replyImageUploadPromise = null; }
     const body = { message };
     if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
     if (_replyImageUrl) { body.imageUrl = _replyImageUrl; body.r2Key = _replyR2Key || null; _replyImageUrl = null; _replyR2Key = null; }
