@@ -1842,23 +1842,25 @@ app.get('/api/threads/:fileId', requireAuth, (req, res) => {
   res.json(threads);
 });
 
-app.post('/api/threads/upload-image', requireAuth, async (req, res) => {
-  try {
-    const { base64, filename, mimetype } = req.body;
-    if (!base64 || !filename) return res.status(400).json({ error: 'Aucun fichier' });
-    const ext = path.extname(filename).toLowerCase();
-    if (!['.jpg','.jpeg','.png','.gif','.webp'].includes(ext))
-      return res.status(400).json({ error: 'Format non supporté' });
-    const buffer = Buffer.from(base64, 'base64');
-    if (buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 10 Mo)' });
-    const r2Key = `discussion-images/${Date.now()}${ext}`;
-    await uploadToR2(r2Key, buffer, mimetype || 'image/jpeg');
-    const url = `/api/threads/image/${r2Key}`;
-    res.json({ url, r2Key });
-  } catch(e) {
-    console.error('[upload-image]', e.message);
-    res.status(500).json({ error: e.message });
-  }
+app.post('/api/threads/upload-image', requireAuth, (req, res) => {
+  upload.single('image')(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    try {
+      const file = req.file;
+      if (!file) return res.status(400).json({ error: 'Aucun fichier' });
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (!['.jpg','.jpeg','.png','.gif','.webp'].includes(ext))
+        return res.status(400).json({ error: 'Format non supporté' });
+      if (file.size > 10 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 10 Mo)' });
+      const r2Key = `discussion-images/${Date.now()}${ext}`;
+      await uploadToR2(r2Key, file.buffer, file.mimetype);
+      const url = `/api/threads/image/${r2Key}`;
+      res.json({ url, r2Key });
+    } catch(e) {
+      console.error('[upload-image]', e.message);
+      res.status(500).json({ error: e.message });
+    }
+  });
 });
 
 app.get('/api/threads/image/*', requireAuth, async (req, res) => {
