@@ -4184,7 +4184,7 @@ async function postReply2() {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const body = { message };
-    if (_replyImageUrl2) { body.imageUrl = _replyImageUrl2; _replyImageUrl2 = null; }
+    if (_replyImageUrl2) { body.imageUrl = _replyImageUrl2; body.r2Key = _replyR2Key2 || null; _replyImageUrl2 = null; _replyR2Key2 = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
@@ -4845,6 +4845,8 @@ function insertMention(textarea, name) {
 
 let _replyImageUrl = null;
 let _replyImageUrl2 = null;
+let _replyR2Key = null;
+let _replyR2Key2 = null;
 
 function cancelReplyImage(suffix) {
   const isInline = suffix === '2';
@@ -4873,10 +4875,9 @@ async function uploadReplyImage(input, previewId) {
     const data = await api('POST', '/threads/upload-image', { base64, filename: file.name, mimetype: file.type });
     if (data.error) { toast(data.error, 'error'); return; }
     if (data.url) {
-      if (isInline) { _replyImageUrl2 = data.url; }
-      else { _replyImageUrl = data.url; }
+      if (isInline) { _replyImageUrl2 = data.url; _replyR2Key2 = data.r2Key || null; }
+      else { _replyImageUrl = data.url; _replyR2Key = data.r2Key || null; }
       const preview = document.getElementById(previewId);
-      const img = document.getElementById(isInline ? 'reply-img2-preview' : 'reply-img-preview');
       if (preview) {
         preview.innerHTML = '<div style="position:relative;display:inline-block"><img src="' + data.url + '" style="max-height:120px;border-radius:8px;max-width:100%"><button onclick="cancelReplyImage(\'' + (isInline?'2':'') + '\')" style="position:absolute;top:-6px;right:-6px;background:#ef5350;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0">×</button></div>';
         preview.style.display = 'block';
