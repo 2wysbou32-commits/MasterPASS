@@ -4252,15 +4252,12 @@ async function postReply2() {
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     const reply = await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     const tempEl = document.getElementById(tempId);
-    if (tempEl && reply && reply.id) {
+    if (tempEl) tempEl.remove();
+    if (reply && reply.id) {
       reply.userAvatar = currentUser?.avatar || null;
-      tempEl.outerHTML = renderReplyHtml(reply);
-      const newEl = container?.querySelector('[data-rid="' + reply.id + '"]');
-      if (newEl) { _commentDataMap[reply.id] = { id: reply.id, userId: reply.userId, userName: reply.userName, message: reply.message||'', audio: reply.audio||null, isOwn: true, canDelete: true }; initBubbleEvents('thread-replies2'); }
-    } else {
-      await loadThreadRepliesInline(true);
-      const tempEl2 = document.getElementById(tempId);
-      if (tempEl2) tempEl2.remove();
+      if (container) container.insertAdjacentHTML('beforeend', renderReplyHtml(reply));
+      _commentDataMap[reply.id] = { id: reply.id, userId: reply.userId, userName: reply.userName, message: reply.message||'', audio: reply.audio||null, isOwn: true, canDelete: true };
+      initBubbleEvents('thread-replies2');
     }
     if (container) container.scrollTop = container.scrollHeight;
   } catch(e) {
@@ -5008,15 +5005,12 @@ async function postReply() {
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     const reply = await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     const tempEl = document.getElementById(tempId);
-    if (tempEl && reply && reply.id) {
+    if (tempEl) tempEl.remove();
+    if (reply && reply.id) {
       reply.userAvatar = currentUser?.avatar || null;
-      tempEl.outerHTML = renderReplyHtml(reply);
-      const newEl = container?.querySelector('[data-rid="' + reply.id + '"]');
-      if (newEl) { _commentDataMap[reply.id] = { id: reply.id, userId: reply.userId, userName: reply.userName, message: reply.message||'', audio: reply.audio||null, isOwn: true, canDelete: true }; initBubbleEvents('thread-replies'); }
-    } else {
-      await loadThreadReplies(true);
-      const tempEl2 = document.getElementById(tempId);
-      if (tempEl2) tempEl2.remove();
+      if (container) container.insertAdjacentHTML('beforeend', renderReplyHtml(reply));
+      _commentDataMap[reply.id] = { id: reply.id, userId: reply.userId, userName: reply.userName, message: reply.message||'', audio: reply.audio||null, isOwn: true, canDelete: true };
+      initBubbleEvents('thread-replies');
     }
     if (container) container.scrollTop = container.scrollHeight;
   } catch(e) {
