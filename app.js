@@ -4190,6 +4190,11 @@ async function postReply2() {
   if ((!message && !_replyImageUrl2 && !_voiceBlob) || !_discussionFileId) { _sendingReply2 = false; return; }
   const btn = document.querySelector('button[onclick="postReply2()"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  // Optimistic UI
+  const tempId = 'temp-' + Date.now();
+  const container = document.getElementById('thread-replies2');
+  const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '🖼️')) + '</div></div>';
+  if (container) { container.insertAdjacentHTML('beforeend', tempHtml); container.scrollTop = container.scrollHeight; }
   try {
     const body = { message };
     if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
@@ -4200,10 +4205,14 @@ async function postReply2() {
     cancelReplyImage('2');
     if (_voiceBlob) cancelVoicePreview('side');
     cancelReply();
+    const tempEl = document.getElementById(tempId);
+    if (tempEl) tempEl.remove();
     await loadThreadRepliesInline(true);
-    const _c = document.getElementById('thread-replies2');
-    if (_c) _c.scrollTop = _c.scrollHeight;
-  } catch(e) { toast(e.message, 'error'); }
+    if (container) container.scrollTop = container.scrollHeight;
+  } catch(e) {
+    const tempEl = document.getElementById(tempId);
+    if (tempEl) tempEl.innerHTML = '<div style="max-width:75%;background:#b71c1c;color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px">' + (message || '🖼️') + '<div style="font-size:11px;margin-top:4px;opacity:0.85">⚠️ Non envoyé · <span style="text-decoration:underline;cursor:pointer" onclick="this.closest(\'[id^=temp-]\').remove();postReply2()">Réessayer</span></div></div>';
+  }
   finally { _sendingReply2 = false; if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
 }
 async function toggleResolve2() {
@@ -4908,6 +4917,11 @@ async function postReply() {
   if ((!message && !_replyImageUrl && !_voiceBlob) || !_discussionFileId) { _sendingReply = false; return; }
   const btn = document.querySelector('#thread-detail-view button[onclick="postReply()"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  // Optimistic UI
+  const tempId = 'temp-' + Date.now();
+  const container = document.getElementById('thread-replies');
+  const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '🖼️')) + '</div></div>';
+  if (container) { container.insertAdjacentHTML('beforeend', tempHtml); container.scrollTop = container.scrollHeight; }
   try {
     const body = { message };
     if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
@@ -4918,10 +4932,14 @@ async function postReply() {
     cancelReplyImage('');
     if (_voiceBlob) cancelVoicePreview('main');
     cancelReply();
+    const tempEl = document.getElementById(tempId);
+    if (tempEl) tempEl.remove();
     await loadThreadReplies(true);
-    const _cm = document.getElementById('thread-replies');
-    if (_cm) _cm.scrollTop = _cm.scrollHeight;
-  } catch(e) { toast(e.message, 'error'); }
+    if (container) container.scrollTop = container.scrollHeight;
+  } catch(e) {
+    const tempEl = document.getElementById(tempId);
+    if (tempEl) tempEl.innerHTML = '<div style="max-width:75%;background:#b71c1c;color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px">' + (message || '🖼️') + '<div style="font-size:11px;margin-top:4px;opacity:0.85">⚠️ Non envoyé · <span style="text-decoration:underline;cursor:pointer" onclick="this.closest(\'[id^=temp-]\').remove();postReply()">Réessayer</span></div></div>';
+  }
   finally { _sendingReply = false; if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
 }
 
