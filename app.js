@@ -4899,13 +4899,11 @@ async function postReply() {
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const body = { message };
-    if (_replyImageUrl) { body.imageUrl = _replyImageUrl; _replyImageUrl = null; }
+    if (_replyImageUrl) { body.imageUrl = _replyImageUrl; body.r2Key = _replyR2Key || null; _replyImageUrl = null; _replyR2Key = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
-    document.getElementById('reply-input-preview').style.display = 'none';
-    document.getElementById('reply-img-preview').src = '';
-    document.getElementById('reply-image-input').value = '';
+    cancelReplyImage('');
     cancelReply();
     await loadThreadReplies(true);
     const _cm = document.getElementById('thread-replies');
