@@ -4182,6 +4182,49 @@ async function deleteReplyInline(replyId, skipConfirm) {
 }
 
 let _sendingReply2 = false;
+
+function renderReplyHtml(r) {
+  var isMine = currentUser != null && String(r.userId) === String(currentUser.id);
+  var isAdmin = r.userRole === 'admin' || r.userRole === 'subadmin';
+  var date = new Date(r.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+  var initials = (r.userName||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+  var avatarBg = isAdmin ? 'linear-gradient(135deg,#004D61,#003340)' : 'linear-gradient(135deg,var(--teal),var(--teal-dark))';
+  var avatarHtml = r.userAvatar ? '<img src="' + r.userAvatar + '" style="width:100%;height:100%;object-fit:cover">' : initials;
+  var bubbleBg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : 'rgba(255,255,255,0.15)';
+  var bubbleColor = isMine ? 'white' : 'var(--text)';
+  var bubbleBorder = isMine ? 'none' : '1px solid var(--border)';
+  var msgHtml;
+  if (r.audio) {
+    var durSec = r.audioDuration || 0;
+    var durStr = Math.floor(durSec/60) + ':' + (durSec%60<10?'0':'') + durSec%60;
+    var aId = 'ia-' + r.id; var bId = 'ib-' + r.id; var barId = 'ic-' + r.id; var tId = 'it-' + r.id;
+    msgHtml = '<audio id="' + aId + '" src="' + r.audio + '" style="display:none"></audio>' +
+      '<div style="display:flex;align-items:center;gap:10px;padding:4px 0;min-width:160px">' +
+      '<button id="' + bId + '" onclick="toggleInlineAudio(\'' + aId + '\',\'' + bId + '\',\'' + barId + '\',\'' + tId + '\',event)" style="width:32px;height:32px;border-radius:50%;background:' + (isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)') + ';color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>' +
+      '<canvas id="' + barId + '" data-mine="' + isMine + '" height="28" style="width:120px;height:28px;border-radius:3px;display:block"></canvas>' +
+      '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
+      '</div>';
+  } else {
+    msgHtml = (r.message||'').split('\n').join('<br>')
+      .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
+      .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); });
+  }
+  if (r.imageUrl) {
+    msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="openImageLightbox(this.src)"></div>';
+  }
+  var row = '<div data-rid="' + r.id + '" style="width:100%;display:flex;flex-direction:column;margin-bottom:10px;align-items:' + (isMine?'flex-end':'flex-start') + '">';
+  if (!isMine) row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:42px"><span style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + '">' + (r.userName||'') + (isAdmin?' 👨‍🏫':'') + '</span><span style="font-size:10px;color:var(--text3)">' + date + '</span></div>';
+  row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%;margin:' + (isMine?'0 8px 0 auto':'0 auto 0 8px') + '">';
+  if (!isMine) row += '<div style="width:32px;height:32px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0;overflow:hidden;margin-bottom:2px">' + avatarHtml + '</div>';
+  row += '<div>';
+  row += '<div data-cid="' + r.id + '" class="msg-bubble" style="background:' + bubbleBg + ';color:' + bubbleColor + ';border:' + bubbleBorder + ';border-left:' + (isAdmin && !isMine ? '3px solid var(--teal)' : bubbleBorder) + ';border-radius:' + (isMine?'18px 18px 4px 18px':'18px 18px 18px 4px') + ';padding:10px 14px;font-size:14px;line-height:1.5;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)">';
+  if (r.replyToName) row += '<div style="opacity:0.8;font-size:11px;border-left:2px solid rgba(255,255,255,0.5);padding:2px 6px;margin-bottom:4px">↩ ' + r.replyToName + ': ' + String(r.replyToPreview||'').substring(0,40) + '</div>';
+  row += msgHtml + '</div></div></div>';
+  if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">' + date + '</div>';
+  row += '</div>';
+  return row;
+}
+
 async function postReply2() {
   if (_sendingReply2) return;
   _sendingReply2 = true;
@@ -4202,14 +4245,23 @@ async function postReply2() {
   if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   try {
     if (_replyImageUploadPromise2) { await _replyImageUploadPromise2; _replyImageUploadPromise2 = null; }
+    if (!message && !_replyImageUrl2 && !_voiceBlob) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply2 = false; return; }
     const body = { message };
     if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
     if (_replyImageUrl2) { body.imageUrl = _replyImageUrl2; body.r2Key = _replyR2Key2 || null; _replyImageUrl2 = null; _replyR2Key2 = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
-    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
-    await loadThreadRepliesInline(true);
+    const reply = await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     const tempEl = document.getElementById(tempId);
-    if (tempEl) tempEl.remove();
+    if (tempEl && reply && reply.id) {
+      reply.userAvatar = currentUser?.avatar || null;
+      tempEl.outerHTML = renderReplyHtml(reply);
+      const newEl = container?.querySelector('[data-rid="' + reply.id + '"]');
+      if (newEl) { _commentDataMap[reply.id] = { id: reply.id, userId: reply.userId, userName: reply.userName, message: reply.message||'', audio: reply.audio||null, isOwn: true, canDelete: true }; initBubbleEvents('thread-replies2'); }
+    } else {
+      await loadThreadRepliesInline(true);
+      const tempEl2 = document.getElementById(tempId);
+      if (tempEl2) tempEl2.remove();
+    }
     if (container) container.scrollTop = container.scrollHeight;
   } catch(e) {
     const tempEl = document.getElementById(tempId);
@@ -4936,14 +4988,23 @@ async function postReply() {
   if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   try {
     if (_replyImageUploadPromise) { await _replyImageUploadPromise; _replyImageUploadPromise = null; }
+    if (!message && !_replyImageUrl && !_voiceBlob) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply = false; return; }
     const body = { message };
     if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
     if (_replyImageUrl) { body.imageUrl = _replyImageUrl; body.r2Key = _replyR2Key || null; _replyImageUrl = null; _replyR2Key = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
-    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
-    await loadThreadReplies(true);
+    const reply = await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     const tempEl = document.getElementById(tempId);
-    if (tempEl) tempEl.remove();
+    if (tempEl && reply && reply.id) {
+      reply.userAvatar = currentUser?.avatar || null;
+      tempEl.outerHTML = renderReplyHtml(reply);
+      const newEl = container?.querySelector('[data-rid="' + reply.id + '"]');
+      if (newEl) { _commentDataMap[reply.id] = { id: reply.id, userId: reply.userId, userName: reply.userName, message: reply.message||'', audio: reply.audio||null, isOwn: true, canDelete: true }; initBubbleEvents('thread-replies'); }
+    } else {
+      await loadThreadReplies(true);
+      const tempEl2 = document.getElementById(tempId);
+      if (tempEl2) tempEl2.remove();
+    }
     if (container) container.scrollTop = container.scrollHeight;
   } catch(e) {
     const tempEl = document.getElementById(tempId);
