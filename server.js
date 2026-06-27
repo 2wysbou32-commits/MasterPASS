@@ -2141,7 +2141,7 @@ app.post('/api/comments/:fileId', requireAuth, (req, res) => {
   if (user.role !== 'admin') {
     if (!db.adminUnreadDiscussions) db.adminUnreadDiscussions = 0;
     db.adminUnreadDiscussions++;
-    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + (message?.trim() ? ': ' + message.trim().substring(0, 60) : ' a envoyé un vocal'), '/', 'discussions').catch(()=>{});
+    sendPushToAll('💬 Nouvelle question — MasterPASS', user.name + (message?.trim() ? ': ' + message.trim().substring(0, 60) : (audio ? ' a envoyé un vocal' : ' a envoyé une image')), '/', 'discussions').catch(()=>{});
     if (!db.adminNotifications) db.adminNotifications = [];
     db.adminNotifications.unshift({
       id: db.nextId++,
