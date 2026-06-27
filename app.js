@@ -4189,13 +4189,17 @@ async function postReply2() {
   const message = input.value.trim();
   if ((!message && !_replyImageUrl2 && !_voiceBlob) || !_discussionFileId) { _sendingReply2 = false; return; }
   const btn = document.querySelector('button[onclick="postReply2()"]');
-  if (btn) { btn.disabled = true; btn.textContent = '...'; }
-  // Optimistic UI
+  // Optimistic UI — immédiat
   const tempId = 'temp-' + Date.now();
   const container = document.getElementById('thread-replies2');
   const _tempImgHtml2 = _replyImageLocalUrl2 ? '<div style="margin-top:6px"><img src="' + _replyImageLocalUrl2 + '" style="max-width:200px;max-height:180px;border-radius:8px;display:block"></div>' : '';
   const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '')) + _tempImgHtml2 + '</div></div>';
   if (container) { container.insertAdjacentHTML('beforeend', tempHtml); container.scrollTop = container.scrollHeight; }
+  input.value = ''; input.style.height = 'auto';
+  cancelReplyImage('2');
+  if (_voiceBlob) cancelVoicePreview('side');
+  cancelReply();
+  if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   try {
     if (_replyImageUploadPromise2) { await _replyImageUploadPromise2; _replyImageUploadPromise2 = null; }
     const body = { message };
@@ -4203,19 +4207,15 @@ async function postReply2() {
     if (_replyImageUrl2) { body.imageUrl = _replyImageUrl2; body.r2Key = _replyR2Key2 || null; _replyImageUrl2 = null; _replyR2Key2 = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
-    input.value = ''; input.style.height = 'auto';
-    cancelReplyImage('2');
-    if (_voiceBlob) cancelVoicePreview('side');
-    cancelReply();
+    await loadThreadRepliesInline(true);
     const tempEl = document.getElementById(tempId);
     if (tempEl) tempEl.remove();
-    await loadThreadRepliesInline(true);
     if (container) container.scrollTop = container.scrollHeight;
   } catch(e) {
     const tempEl = document.getElementById(tempId);
     if (tempEl) tempEl.innerHTML = '<div style="max-width:75%;background:#b71c1c;color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px">' + (message || '🖼️') + '<div style="font-size:11px;margin-top:4px;opacity:0.85">⚠️ Non envoyé · <span style="text-decoration:underline;cursor:pointer" onclick="this.closest(\'[id^=temp-]\').remove();postReply2()">Réessayer</span></div></div>';
   }
-  finally { _sendingReply2 = false; if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
+  finally { _sendingReply2 = false; }
 }
 async function toggleResolve2() {
   try {
@@ -4923,13 +4923,17 @@ async function postReply() {
   const message = input.value.trim();
   if ((!message && !_replyImageUrl && !_voiceBlob) || !_discussionFileId) { _sendingReply = false; return; }
   const btn = document.querySelector('#thread-detail-view button[onclick="postReply()"]');
-  if (btn) { btn.disabled = true; btn.textContent = '...'; }
-  // Optimistic UI
+  // Optimistic UI — immédiat
   const tempId = 'temp-' + Date.now();
   const container = document.getElementById('thread-replies');
   const _tempImgHtml = _replyImageLocalUrl ? '<div style="margin-top:6px"><img src="' + _replyImageLocalUrl + '" style="max-width:200px;max-height:180px;border-radius:8px;display:block"></div>' : '';
   const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '')) + _tempImgHtml + '</div></div>';
   if (container) { container.insertAdjacentHTML('beforeend', tempHtml); container.scrollTop = container.scrollHeight; }
+  input.value = ''; input.style.height = 'auto';
+  cancelReplyImage('');
+  if (_voiceBlob) cancelVoicePreview('main');
+  cancelReply();
+  if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   try {
     if (_replyImageUploadPromise) { await _replyImageUploadPromise; _replyImageUploadPromise = null; }
     const body = { message };
@@ -4937,19 +4941,15 @@ async function postReply() {
     if (_replyImageUrl) { body.imageUrl = _replyImageUrl; body.r2Key = _replyR2Key || null; _replyImageUrl = null; _replyR2Key = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
-    input.value = ''; input.style.height = 'auto';
-    cancelReplyImage('');
-    if (_voiceBlob) cancelVoicePreview('main');
-    cancelReply();
+    await loadThreadReplies(true);
     const tempEl = document.getElementById(tempId);
     if (tempEl) tempEl.remove();
-    await loadThreadReplies(true);
     if (container) container.scrollTop = container.scrollHeight;
   } catch(e) {
     const tempEl = document.getElementById(tempId);
     if (tempEl) tempEl.innerHTML = '<div style="max-width:75%;background:#b71c1c;color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px">' + (message || '🖼️') + '<div style="font-size:11px;margin-top:4px;opacity:0.85">⚠️ Non envoyé · <span style="text-decoration:underline;cursor:pointer" onclick="this.closest(\'[id^=temp-]\').remove();postReply()">Réessayer</span></div></div>';
   }
-  finally { _sendingReply = false; if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; } }
+  finally { _sendingReply = false; }
 }
 
 async function deleteReply(replyId, skipConfirm) {
