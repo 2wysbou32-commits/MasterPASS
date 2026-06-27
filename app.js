@@ -4187,16 +4187,18 @@ async function postReply2() {
   _sendingReply2 = true;
   const input = document.getElementById('reply-input2');
   const message = input.value.trim();
-  if ((!message && !_replyImageUrl2) || !_discussionFileId) { _sendingReply2 = false; return; }
+  if ((!message && !_replyImageUrl2 && !_voiceBlob) || !_discussionFileId) { _sendingReply2 = false; return; }
   const btn = document.querySelector('button[onclick="postReply2()"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const body = { message };
+    if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
     if (_replyImageUrl2) { body.imageUrl = _replyImageUrl2; body.r2Key = _replyR2Key2 || null; _replyImageUrl2 = null; _replyR2Key2 = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
     cancelReplyImage('2');
+    if (_voiceBlob) cancelVoicePreview('side');
     cancelReply();
     await loadThreadRepliesInline(true);
     const _c = document.getElementById('thread-replies2');
@@ -4902,16 +4904,18 @@ async function postReply() {
   _sendingReply = true;
   const input = document.getElementById('reply-input');
   const message = input.value.trim();
-  if ((!message && !_replyImageUrl) || !_discussionFileId) { _sendingReply = false; return; }
+  if ((!message && !_replyImageUrl && !_voiceBlob) || !_discussionFileId) { _sendingReply = false; return; }
   const btn = document.querySelector('#thread-detail-view button[onclick="postReply()"]');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
     const body = { message };
+    if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
     if (_replyImageUrl) { body.imageUrl = _replyImageUrl; body.r2Key = _replyR2Key || null; _replyImageUrl = null; _replyR2Key = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     input.value = ''; input.style.height = 'auto';
     cancelReplyImage('');
+    if (_voiceBlob) cancelVoicePreview('main');
     cancelReply();
     await loadThreadReplies(true);
     const _cm = document.getElementById('thread-replies');
