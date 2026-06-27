@@ -478,7 +478,7 @@ function getSignedVideoUrl(r2Key, useLegacy) {
   const now = new Date();
   const amzDate = now.toISOString().replace(/[:-]/g, '').replace(/\.\.\d{3}/, '').slice(0, 15) + 'Z';
   const dateStamp = amzDate.slice(0, 8);
-  const expires = 7200;
+  const expires = 31536000;
   const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
 
   const encodedPath = useLegacy
@@ -1933,7 +1933,7 @@ app.get('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
 // POST a reply to a thread
 app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   console.log('[reply] body keys:', Object.keys(req.body), 'replyToName:', req.body.replyToName);
-  const { message, audio, audioDuration, replyToId, replyToName, replyToPreview, imageUrl } = req.body;
+  const { message, audio, audioDuration, replyToId, replyToName, replyToPreview, imageUrl, r2Key } = req.body;
   if (!message?.trim() && !audio && !imageUrl) return res.status(400).json({ error: 'Message vide' });
   const db = loadDB();
   const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
@@ -1951,7 +1951,8 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
     replyToName: replyToName || null,
     replyToPreview: replyToPreview || null,
     createdAt: new Date().toISOString(),
-    imageUrl: imageUrl || null
+    imageUrl: imageUrl || null,
+    r2Key: r2Key || null
   };
   if (!thread.replies) thread.replies = [];
   thread.replies.push(reply);
@@ -2029,7 +2030,7 @@ app.post('/api/threads/:fileId/:threadId/replies/:replyId/react', requireAuth, (
 });
 
 // DELETE a reply
-app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req, res) => {
+app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, async (req, res) => {
   const db = loadDB();
   const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
   if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
@@ -2038,6 +2039,7 @@ app.delete('/api/threads/:fileId/:threadId/replies/:replyId', requireAuth, (req,
   if (!reply) return res.status(404).json({ error: 'Réponse introuvable' });
   if (reply.userId !== req.session.userId && user?.role !== 'admin')
     return res.status(403).json({ error: 'Accès refusé' });
+  if (r2Enabled && reply.r2Key) await deleteFromR2(reply.r2Key).catch(() => {});
   thread.replies = thread.replies.filter(r => r.id !== parseInt(req.params.replyId));
   saveDB(db);
   res.json({ ok: true });
