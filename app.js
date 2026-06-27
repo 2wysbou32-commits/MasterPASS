@@ -4952,8 +4952,21 @@ async function uploadReplyImage(input, previewId) {
   input.value = '';
   const uploadPromise = (async () => {
     try {
+      const resizedBlob = await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 1200;
+          let w = img.width, h = img.height;
+          if (w > MAX || h > MAX) { if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; } }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob(resolve, 'image/jpeg', 0.85);
+        };
+        img.src = localUrl;
+      });
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('image', resizedBlob, file.name.replace(/\.[^.]+$/, '.jpg'));
       const data = await api('POST', '/threads/upload-image', fd);
       if (data.error) { toast(data.error, 'error'); cancelReplyImage(isInline?'2':''); return; }
       if (data.url) {
