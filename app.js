@@ -4250,15 +4250,10 @@ async function postReply2() {
     if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
     if (_replyImageUrl2) { body.imageUrl = _replyImageUrl2; body.r2Key = _replyR2Key2 || null; _replyImageUrl2 = null; _replyR2Key2 = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
-    const reply = await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
+    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
+    await loadThreadRepliesInline(true);
     const tempEl = document.getElementById(tempId);
     if (tempEl) tempEl.remove();
-    if (reply && reply.id) {
-      reply.userAvatar = currentUser?.avatar || null;
-      if (container) container.insertAdjacentHTML('beforeend', renderReplyHtml(reply));
-      _commentDataMap[reply.id] = { id: reply.id, userId: reply.userId, userName: reply.userName, message: reply.message||'', audio: reply.audio||null, isOwn: true, canDelete: true };
-      initBubbleEvents('thread-replies2');
-    }
     if (container) container.scrollTop = container.scrollHeight;
   } catch(e) {
     const tempEl = document.getElementById(tempId);
@@ -5003,15 +4998,9 @@ async function postReply() {
     if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
     if (_replyImageUrl) { body.imageUrl = _replyImageUrl; body.r2Key = _replyR2Key || null; _replyImageUrl = null; _replyR2Key = null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
-    const reply = await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
+    await loadThreadReplies(true);
     const tempEl = document.getElementById(tempId);
     if (tempEl) tempEl.remove();
-    if (reply && reply.id) {
-      reply.userAvatar = currentUser?.avatar || null;
-      if (container) container.insertAdjacentHTML('beforeend', renderReplyHtml(reply));
-      _commentDataMap[reply.id] = { id: reply.id, userId: reply.userId, userName: reply.userName, message: reply.message||'', audio: reply.audio||null, isOwn: true, canDelete: true };
-      initBubbleEvents('thread-replies');
-    }
     if (container) container.scrollTop = container.scrollHeight;
   } catch(e) {
     const tempEl = document.getElementById(tempId);
