@@ -4559,7 +4559,11 @@ async function openDiscussion(fileId, fileName) {
   const bc = document.getElementById('breadcrumb'); if(bc) bc.innerHTML = `<span style="font-size:13px;color:var(--teal);font-weight:600">💬 ${fileName}</span>`;
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='none';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='none';
-  const hdr = document.getElementById('threads-list-header'); if(hdr) hdr.style.top='0'; const hdr2 = document.getElementById('thread-detail-header'); if(hdr2) hdr2.style.top='0';
+  const isMobile = window.innerWidth < 768;
+  const hdr = document.getElementById('threads-list-header');
+  if(hdr) { hdr.style.top='0'; if(isMobile){ hdr.style.position='fixed'; hdr.style.left='0'; hdr.style.right='0'; hdr.style.zIndex='50'; } }
+  const hdr2 = document.getElementById('thread-detail-header');
+  if(hdr2) { hdr2.style.top='0'; if(isMobile){ hdr2.style.position='fixed'; hdr2.style.left='0'; hdr2.style.right='0'; hdr2.style.margin='0'; hdr2.style.padding='10px 20px 14px'; hdr2.style.zIndex='50'; } }
   document.getElementById('discussion-filename').textContent = '💬 ' + fileName;
   // Mark as seen
   saveLastSeen(fileId);
@@ -4578,7 +4582,10 @@ function closeDiscussion() {
   const bc = document.getElementById('breadcrumb'); if(bc) { updateBreadcrumb && updateBreadcrumb(); }
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='flex';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='block';
-  const hdr = document.getElementById('threads-list-header'); if(hdr) hdr.style.top=''; const hdr2 = document.getElementById('thread-detail-header'); if(hdr2) hdr2.style.top='';
+  const hdr = document.getElementById('threads-list-header');
+  if(hdr) { hdr.style.position=''; hdr.style.top=''; hdr.style.left=''; hdr.style.right=''; }
+  const hdr2 = document.getElementById('thread-detail-header');
+  if(hdr2) { hdr2.style.position=''; hdr2.style.top=''; hdr2.style.left=''; hdr2.style.right=''; hdr2.style.margin=''; hdr2.style.padding=''; }
   const viewFiles = document.getElementById('view-files');
   if (viewFiles) viewFiles.style.display = 'block';
   _discussionFileId = null;
