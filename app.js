@@ -3628,14 +3628,6 @@ async function goToThread(fileId, fileName, threadId) {
   document.getElementById('disc-inline-view').style.display = 'block';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='none';
   const isMobile2 = window.innerWidth < 768;
-  if(isMobile2) {
-    const inlineHdr = document.getElementById('inline-thread-header');
-    if(inlineHdr) { inlineHdr.style.position='fixed'; inlineHdr.style.top='0'; inlineHdr.style.left='0'; inlineHdr.style.right='0'; inlineHdr.style.margin='0'; inlineHdr.style.padding='10px 20px 14px'; inlineHdr.style.zIndex='50'; }
-    const listHdr = document.querySelector('#threads-list-view2 > div:first-child');
-    if(listHdr) { listHdr.style.position='fixed'; listHdr.style.top='0'; listHdr.style.left='0'; listHdr.style.right='0'; listHdr.style.zIndex='50'; listHdr.style.background='var(--glass)'; listHdr.style.padding='10px 20px'; listHdr.style.backdropFilter='blur(24px)'; }
-    const view2 = document.getElementById('threads-list-view2'); if(view2) view2.style.paddingTop='130px';
-    const view3 = document.getElementById('thread-detail-view2'); if(view3) view3.style.paddingTop='80px';
-  }
   var discControls = document.getElementById('disc-controls-bar');
   if (discControls) discControls.style.display = 'none';
   var discFilters = document.getElementById('disc-filters-bar');
@@ -3666,12 +3658,6 @@ function closeInlineDiscussion() {
   stopDiscussionRefresh();
   window.scrollTo({top: 0, behavior: 'instant'});
   document.getElementById('disc-inline-view').style.display = 'none';
-  const inlineHdr = document.getElementById('inline-thread-header');
-  if(inlineHdr) { inlineHdr.style.position=''; inlineHdr.style.top=''; inlineHdr.style.left=''; inlineHdr.style.right=''; inlineHdr.style.margin=''; inlineHdr.style.padding=''; }
-  const listHdr2 = document.querySelector('#threads-list-view2 > div:first-child');
-  if(listHdr2) { listHdr2.style.position=''; listHdr2.style.top=''; listHdr2.style.left=''; listHdr2.style.right=''; listHdr2.style.background=''; listHdr2.style.padding=''; listHdr2.style.backdropFilter=''; }
-  const view2 = document.getElementById('threads-list-view2'); if(view2) view2.style.paddingTop='';
-  const view3 = document.getElementById('thread-detail-view2'); if(view3) view3.style.paddingTop='';
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='flex';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='block';
   document.getElementById('thread-detail-view2').style.display = 'none';
@@ -3761,11 +3747,6 @@ async function openThreadInline(threadId) {
   document.getElementById('thread-detail-view2').style.display = 'block';
   const discControls = document.getElementById('disc-controls-bar'); if(discControls) discControls.style.display='none'; const discFilters = document.getElementById('disc-filters-bar'); if(discFilters) discFilters.style.display='none';
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='none';
-  if(window.innerWidth < 768) {
-    const inlineHdr = document.getElementById('inline-thread-header');
-    if(inlineHdr) { inlineHdr.style.position='fixed'; inlineHdr.style.top='0'; inlineHdr.style.left='0'; inlineHdr.style.right='0'; inlineHdr.style.margin='0'; inlineHdr.style.padding='10px 20px 14px'; inlineHdr.style.zIndex='50'; }
-    const view3 = document.getElementById('thread-detail-view2'); if(view3) view3.style.paddingTop='80px';
-  }
   const resolveBtn2 = document.getElementById('resolve-btn2');
   if (resolveBtn2) resolveBtn2.style.display = currentUser?.role === 'admin' ? 'inline-block' : 'none';
   updateMuteBtn2();
