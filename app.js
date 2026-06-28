@@ -3006,6 +3006,7 @@ function updateSidebarAvatar() {
 // ── MENU CONTEXTUEL MESSAGES ─────────────────────────────────────────────────
 let _ctxComment = null; // { id, userId, userName, message, isOwn, canDelete }
 let _longPressTimer = null;
+let _wasLongPress = false;
 
 // Map to store comment data by id
 var _commentDataMap = {};
@@ -3047,7 +3048,9 @@ function msgLongPressStart(e, commentId) {
     clientX: e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : window.innerWidth/2),
     clientY: e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : window.innerHeight/2)
   };
+  _wasLongPress = false;
   _longPressTimer = setTimeout(function() {
+    _wasLongPress = true;
     if (navigator.vibrate) navigator.vibrate(50);
     showMsgContextMenu(captured, commentId);
   }, 500);
@@ -3823,7 +3826,7 @@ async function loadThreadRepliesInline(silent) {
           .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); });
       }
       if (r.imageUrl) {
-        msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick=\"openImageLightbox(this.src)\"></div>';
+       msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick=\"if(!_wasLongPress)openImageLightbox(this.src);_wasLongPress=false;\"></div>';
       }
      var canDelete = currentUser && (currentUser.role === 'admin' || String(r.userId) === String(currentUser.id));
       var reactHtml = '';
@@ -4796,7 +4799,7 @@ async function loadThreadReplies(silent) {
       row += '<div>';
       row += '<div data-cid="'+r.id+'" class="msg-bubble" style="background:'+bubbleBg+';color:'+bubbleColor+';border-radius:'+(isMine?'18px 18px 4px 18px':'18px 18px 18px 4px')+';padding:10px 14px;font-size:14px;line-height:1.5;border:'+bubbleBorder+';border-left:'+(isAdmin&&!isMine?'3px solid var(--teal)':bubbleBorder)+'">';
       if (r.imageUrl) {
-        msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick=\"openImageLightbox(this.src)\"></div>';
+        msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick=\"if(!_wasLongPress)openImageLightbox(this.src);_wasLongPress=false;\"></div>';
       }
       row += msgHtml + '</div></div></div>';
       if (isMine) row += '<div style="font-size:10px;color:var(--text3);margin-top:3px;text-align:right">'+date+'</div>';
