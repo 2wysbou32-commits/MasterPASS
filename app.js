@@ -4225,7 +4225,7 @@ function renderReplyHtml(r) {
       .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); });
   }
   if (r.imageUrl) {
-    msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="openImageLightbox(this.src)"></div>';
+   msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="if(!_wasLongPress)openImageLightbox(this.src);_wasLongPress=false;"></div>';
   }
   var row = '<div data-rid="' + r.id + '" style="width:100%;display:flex;flex-direction:column;margin-bottom:10px;align-items:' + (isMine?'flex-end':'flex-start') + '">';
   if (!isMine) row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:42px"><span style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + '">' + (r.userName||'') + (isAdmin?' 👨‍🏫':'') + '</span><span style="font-size:10px;color:var(--text3)">' + date + '</span></div>';
