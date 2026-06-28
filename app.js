@@ -4997,15 +4997,15 @@ async function postReply() {
   if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   try {
     if (_replyImageUploadPromise) { await _replyImageUploadPromise; _replyImageUploadPromise = null; }
-    cancelReplyImage('');
-if (_replyImageUploadPromise) { await _replyImageUploadPromise; _replyImageUploadPromise = null; }
     const _pendingImageUrl = _replyImageUrl; const _pendingR2Key = _replyR2Key;
+    const _pendingVoiceBlob = _voiceBlob; const _voiceSecondsCopy = _voiceSeconds;
     cancelReplyImage('');
     if (!message && !_pendingImageUrl && !_pendingVoiceBlob) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply = false; return; }
     const body = { message };
-    if (_pendingVoiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_pendingVoiceBlob); }); }
+    if (_pendingVoiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSecondsCopy; resolve(); }; r.readAsDataURL(_pendingVoiceBlob); }); }
     if (_pendingImageUrl) { body.imageUrl = _pendingImageUrl; body.r2Key = _pendingR2Key || null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
+    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     await loadThreadReplies(true);
     const tempEl = document.getElementById(tempId);
     if (tempEl) tempEl.remove();
