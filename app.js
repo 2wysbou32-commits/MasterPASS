@@ -4578,7 +4578,7 @@ function closeDiscussion() {
   const bc = document.getElementById('breadcrumb'); if(bc) { updateBreadcrumb && updateBreadcrumb(); }
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='flex';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='block';
-  const hdr = document.getElementById('threads-list-header'); if(hdr) hdr.style.top='88px'; const hdr2 = document.getElementById('thread-detail-header'); if(hdr2) hdr2.style.top='88px';
+  const hdr = document.getElementById('threads-list-header'); if(hdr) hdr.style.top=''; const hdr2 = document.getElementById('thread-detail-header'); if(hdr2) hdr2.style.top='';
   const viewFiles = document.getElementById('view-files');
   if (viewFiles) viewFiles.style.display = 'block';
   _discussionFileId = null;
