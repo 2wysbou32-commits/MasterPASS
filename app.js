@@ -4564,6 +4564,9 @@ async function openDiscussion(fileId, fileName) {
   if(hdr) { hdr.style.top='0'; if(isMobile){ hdr.style.position='fixed'; hdr.style.left='0'; hdr.style.right='0'; hdr.style.zIndex='50'; } }
   const hdr2 = document.getElementById('thread-detail-header');
   if(hdr2) { hdr2.style.top='0'; if(isMobile){ hdr2.style.position='fixed'; hdr2.style.left='0'; hdr2.style.right='0'; hdr2.style.margin='0'; hdr2.style.padding='10px 20px 14px'; hdr2.style.zIndex='50'; } }
+  const threadsList = document.getElementById('threads-list-view');
+  const threadDetail = document.getElementById('thread-detail-view');
+  if(isMobile) { if(threadsList) threadsList.style.paddingTop='80px'; if(threadDetail) threadDetail.style.paddingTop='80px'; }
   document.getElementById('discussion-filename').textContent = '💬 ' + fileName;
   // Mark as seen
   saveLastSeen(fileId);
@@ -4586,6 +4589,9 @@ function closeDiscussion() {
   if(hdr) { hdr.style.position=''; hdr.style.top=''; hdr.style.left=''; hdr.style.right=''; }
   const hdr2 = document.getElementById('thread-detail-header');
   if(hdr2) { hdr2.style.position=''; hdr2.style.top=''; hdr2.style.left=''; hdr2.style.right=''; hdr2.style.margin=''; hdr2.style.padding=''; }
+  const threadsList = document.getElementById('threads-list-view');
+  const threadDetail = document.getElementById('thread-detail-view');
+  if(isMobile) { if(threadsList) threadsList.style.paddingTop='80px'; if(threadDetail) threadDetail.style.paddingTop='80px'; }
   const viewFiles = document.getElementById('view-files');
   if (viewFiles) viewFiles.style.display = 'block';
   _discussionFileId = null;
