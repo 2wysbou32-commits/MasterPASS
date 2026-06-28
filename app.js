@@ -4230,7 +4230,8 @@ async function postReply2() {
   _sendingReply2 = true;
   const input = document.getElementById('reply-input2');
   const message = input.value.trim();
-  if ((!message && !_replyImageUrl2 && !_voiceBlob) || !_discussionFileId) { _sendingReply2 = false; return; }
+  console.log('GUARD:', {message, _replyImageUrl2, _replyImageUploadPromise2, _voiceBlob: !!_voiceBlob, _discussionFileId});
+  if ((!message && !_replyImageUrl2 && !_replyImageUploadPromise2 && !_voiceBlob) || !_discussionFileId) { _sendingReply2 = false; return; }
   const btn = document.querySelector('button[onclick="postReply2()"]');
   // Optimistic UI — immédiat
   const tempId = 'temp-' + Date.now();
