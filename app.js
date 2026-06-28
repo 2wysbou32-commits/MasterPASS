@@ -4240,6 +4240,8 @@ async function postReply2() {
   const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '')) + _tempImgHtml2 + '</div></div>';
   if (container) { container.insertAdjacentHTML('beforeend', tempHtml); container.scrollTop = container.scrollHeight; }
   input.value = ''; input.style.height = 'auto';
+  const _pendingVoiceBlob2 = _voiceBlob;
+  const _voiceSecondsCopy2 = _voiceSeconds;
   if (_voiceBlob) cancelVoicePreview('side');
   cancelReply();
   if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
@@ -4249,7 +4251,7 @@ async function postReply2() {
     cancelReplyImage('2');
     if (!message && !_pendingImageUrl2 && !_pendingVoiceBlob2) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply2 = false; return; }
     const body = { message };
-    if (_pendingVoiceBlob2) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_pendingVoiceBlob2); }); }
+    if (_pendingVoiceBlob2) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSecondsCopy2; resolve(); }; r.readAsDataURL(_pendingVoiceBlob2); }); }
     if (_pendingImageUrl2) { body.imageUrl = _pendingImageUrl2; body.r2Key = _pendingR2Key2 || null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
