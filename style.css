@@ -1479,6 +1479,23 @@ input[type="file"]{display:none;}
   .content-area { padding: 12px !important; }
 }
 
+#panel-discussions-center {
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+    position: relative;
+  }
+  #disc-inline-view {
+    min-height: 100%;
+  }
+  #thread-detail-view2 {
+    display: flex;
+    flex-direction: column;
+  }
+  #thread-replies2 {
+    flex: 1;
+    overflow-y: auto;
+  }
+
 @media (max-width: 400px) {
   .folders-grid { grid-template-columns: 1fr !important; }
   .stats-row { grid-template-columns: 1fr 1fr; gap: 8px; }
