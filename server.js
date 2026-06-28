@@ -1992,7 +1992,7 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
       const u2 = db.users.find(function(u){return u.name.toLowerCase()===n.toLowerCase();});
       return u2 ? String(u2.id) : null;
     }).filter(Boolean) : [];
-    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message||'Vocal').substring(0,60), '/', 'discussions', thread.id, user.id, mentionedIds).catch(()=>{});
+    sendPushToAll('💬 Réponse — ' + thread.title.substring(0,40), user.name + ': ' + (message ? message.substring(0,60) : imageUrl ? '🖼️ Image' : audio ? '🎤 Vocal' : '…'), '/', 'discussions', thread.id, user.id, mentionedIds).catch(()=>{});
     // Notifier les personnes @mentionnées directement
     if (message) {
       const mentionMatches = message.match(/@\[([^\]]+)\]/g) || [];
