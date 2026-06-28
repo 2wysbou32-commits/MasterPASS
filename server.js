@@ -1852,15 +1852,31 @@ app.post('/api/threads/upload-image', requireAuth, (req, res) => {
       if (!['.jpg','.jpeg','.png','.gif','.webp'].includes(ext))
         return res.status(400).json({ error: 'Format non supporté' });
       if (file.size > 10 * 1024 * 1024) return res.status(400).json({ error: 'Image trop lourde (max 10 Mo)' });
-      const r2Key = `discussion-images/${Date.now()}${ext}`;
-      await uploadToR2(r2Key, file.buffer, file.mimetype);
-      const url = `/api/threads/image/${r2Key}`;
-      res.json({ url, r2Key });
+      if (r2Enabled) {
+        const r2Key = `discussion-images/${Date.now()}${ext}`;
+        await uploadToR2(r2Key, file.buffer, file.mimetype);
+        const url = `/api/threads/image/${r2Key}`;
+        res.json({ url, r2Key });
+      } else {
+        const filename = `disc-${Date.now()}${ext}`;
+        const dest = path.join(UPLOADS_DIR, filename);
+        require('fs').writeFileSync(dest, file.buffer);
+        const url = `/api/threads/image-local/${filename}`;
+        res.json({ url, r2Key: null });
+      }
     } catch(e) {
       console.error('[upload-image]', e.message);
       res.status(500).json({ error: e.message });
     }
   });
+});
+
+app.get('/api/threads/image-local/:filename', requireAuth, (req, res) => {
+  const filename = req.params.filename;
+  if (!filename || !filename.startsWith('disc-')) return res.status(404).end();
+  const filePath = path.join(UPLOADS_DIR, filename);
+  if (!fs.existsSync(filePath)) return res.status(404).end();
+  res.sendFile(filePath);
 });
 
 app.get('/api/threads/image/*', requireAuth, async (req, res) => {
