@@ -3633,7 +3633,7 @@ async function goToThread(fileId, fileName, threadId) {
     if(inlineHdr) { inlineHdr.style.position='fixed'; inlineHdr.style.top='0'; inlineHdr.style.left='0'; inlineHdr.style.right='0'; inlineHdr.style.margin='0'; inlineHdr.style.padding='10px 20px 14px'; inlineHdr.style.zIndex='50'; }
     const listHdr = document.querySelector('#threads-list-view2 > div:first-child');
     if(listHdr) { listHdr.style.position='fixed'; listHdr.style.top='0'; listHdr.style.left='0'; listHdr.style.right='0'; listHdr.style.zIndex='50'; listHdr.style.background='var(--glass)'; listHdr.style.padding='10px 20px'; listHdr.style.backdropFilter='blur(24px)'; }
-    const view2 = document.getElementById('threads-list-view2'); if(view2) view2.style.paddingTop='80px';
+    const view2 = document.getElementById('threads-list-view2'); if(view2) view2.style.paddingTop='130px';
     const view3 = document.getElementById('thread-detail-view2'); if(view3) view3.style.paddingTop='80px';
   }
   var discControls = document.getElementById('disc-controls-bar');
