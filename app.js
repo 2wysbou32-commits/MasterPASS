@@ -3171,6 +3171,7 @@ async function ctxDelete() {
     .catch(function(e) { toast(e.message, 'error'); });
 }
 
+let _reactionPause = false;
 async function reactMsg(emoji, commentId) {
   closeMsgContextMenu();
   var cid = commentId || (_ctxComment && _ctxComment.id);
@@ -3187,6 +3188,8 @@ async function reactMsg(emoji, commentId) {
         html += '<button onclick="reactMsg(' + JSON.stringify(em) + ',' + cid + ')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid ' + (iReacted ? 'var(--teal)' : 'var(--border)') + ';background:' + (iReacted ? 'rgba(0,151,167,0.1)' : 'transparent') + ';cursor:pointer;font-size:12px">' + em + ' ' + users.length + '</button>';
       });
       reactionZone.innerHTML = html;
+      _reactionPause = true;
+      setTimeout(function() { _reactionPause = false; }, 10000);
     } else {
       var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
       if (isInline) await loadThreadRepliesInline(true); else await loadThreadReplies(true);
@@ -4527,6 +4530,7 @@ let _discussionRefreshTimer = null;
 function startDiscussionRefresh() {
   stopDiscussionRefresh();
   _discussionRefreshTimer = setInterval(async function() {
+    if (_reactionPause) return;
     var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
     if (_currentThreadId) {
       if (isInline) await loadThreadRepliesInline(true);
