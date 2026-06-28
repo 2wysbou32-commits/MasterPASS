@@ -4963,6 +4963,7 @@ async function uploadReplyImage(input, previewId) {
       const data = await api('POST', '/threads/upload-image', fd);
       if (data.error) { toast(data.error, 'error'); cancelReplyImage(isInline?'2':''); return; }
       if (data.url) {
+        console.log('IMAGE URL SET:', data.url, 'isInline:', isInline);
         if (isInline) { _replyImageUrl2 = data.url; _replyR2Key2 = data.r2Key || null; }
         else { _replyImageUrl = data.url; _replyR2Key = data.r2Key || null; }
         const img = preview?.querySelector('img');
