@@ -4244,11 +4244,12 @@ async function postReply2() {
   if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   try {
     if (_replyImageUploadPromise2) { await _replyImageUploadPromise2; _replyImageUploadPromise2 = null; }
+    const _pendingImageUrl2 = _replyImageUrl2; const _pendingR2Key2 = _replyR2Key2;
     cancelReplyImage('2');
-    if (!message && !_replyImageUrl2 && !_voiceBlob) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply2 = false; return; }
+    if (!message && !_pendingImageUrl2 && !_pendingVoiceBlob2) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply2 = false; return; }
     const body = { message };
-    if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
-    if (_replyImageUrl2) { body.imageUrl = _replyImageUrl2; body.r2Key = _replyR2Key2 || null; _replyImageUrl2 = null; _replyR2Key2 = null; }
+    if (_pendingVoiceBlob2) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_pendingVoiceBlob2); }); }
+    if (_pendingImageUrl2) { body.imageUrl = _pendingImageUrl2; body.r2Key = _pendingR2Key2 || null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies', body);
     await loadThreadRepliesInline(true);
@@ -4993,10 +4994,13 @@ async function postReply() {
   try {
     if (_replyImageUploadPromise) { await _replyImageUploadPromise; _replyImageUploadPromise = null; }
     cancelReplyImage('');
-    if (!message && !_replyImageUrl && !_voiceBlob) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply = false; return; }
+if (_replyImageUploadPromise) { await _replyImageUploadPromise; _replyImageUploadPromise = null; }
+    const _pendingImageUrl = _replyImageUrl; const _pendingR2Key = _replyR2Key;
+    cancelReplyImage('');
+    if (!message && !_pendingImageUrl && !_pendingVoiceBlob) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply = false; return; }
     const body = { message };
-    if (_voiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_voiceBlob); }); }
-    if (_replyImageUrl) { body.imageUrl = _replyImageUrl; body.r2Key = _replyR2Key || null; _replyImageUrl = null; _replyR2Key = null; }
+    if (_pendingVoiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = async () => { body.audio = r.result; body.audioDuration = _voiceSeconds; resolve(); }; r.readAsDataURL(_pendingVoiceBlob); }); }
+    if (_pendingImageUrl) { body.imageUrl = _pendingImageUrl; body.r2Key = _pendingR2Key || null; }
     if (_replyTo) { body.replyToId = _replyTo.id; body.replyToName = _replyTo.userName; body.replyToPreview = _replyTo.msgPreview; }
     await loadThreadReplies(true);
     const tempEl = document.getElementById(tempId);
