@@ -3844,16 +3844,16 @@ async function loadThreadRepliesInline(silent) {
        msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick=\"if(!_wasLongPress)openImageLightbox(this.src);_wasLongPress=false;\"></div>';
       }
      var canDelete = currentUser && (currentUser.role === 'admin' || String(r.userId) === String(currentUser.id));
-      var reactHtml = '';
+      var reactHtml = '<div data-reactions-id="' + r.id + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
       if (r.reactions && Object.keys(r.reactions).length) {
-        reactHtml += '<div data-reactions-id="' + r.id + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
         Object.entries(r.reactions).forEach(function(entry) {
           var em = entry[0], users = entry[1];
           if (!users || !users.length) return;
           var iReacted = users.indexOf(currentUser ? currentUser.id : -1) !== -1;
           reactHtml += '<button onclick="reactMsg(' + JSON.stringify(em) + ',' + r.id + ')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid ' + (iReacted ? 'var(--teal)' : 'var(--border)') + ';background:' + (iReacted ? 'rgba(0,151,167,0.1)' : 'transparent') + ';cursor:pointer;font-size:12px">' + em + ' ' + users.length + '</button>';
         });
-        reactHtml += '</div>';
+      }
+      reactHtml += '</div>';
       }
       var row = '<div style="width:100%;display:flex;flex-direction:column;margin-bottom:10px;align-items:' + (isMine?'flex-end':'flex-start') + '">';
       if (!isMine) row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:42px"><span style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + '">' + (r.userName||'') + (isAdmin?' 👨‍🏫':'') + '</span><span style="font-size:10px;color:var(--text3)">' + date + '</span></div>';
@@ -4792,17 +4792,16 @@ async function loadThreadReplies(silent) {
             .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
             .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); });
       var canDelete = currentUser?.role === 'admin' || isOwn;
-      var reactHtml = '';
+      var reactHtml = '<div data-reactions-id="' + r.id + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
       if (r.reactions && Object.keys(r.reactions).length) {
-        reactHtml += '<div data-reactions-id="' + r.id + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
         Object.entries(r.reactions).forEach(function(e) {
           var em=e[0], users=e[1];
           if (!users.length) return;
           var iReacted = users.indexOf(currentUser?currentUser.id:-1) !== -1;
           reactHtml += '<button onclick="reactMsg('+JSON.stringify(em)+','+r.id+')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid '+(iReacted?'var(--teal)':'var(--border)')+';background:'+(iReacted?'rgba(0,151,167,0.1)':'var(--surface,white)')+';cursor:pointer;font-size:12px">'+em+' '+users.length+'</button>';
         });
-        reactHtml += '</div>';
       }
+      reactHtml += '</div>';
       var row = '<div style="width:100%;display:flex;flex-direction:column;align-items:'+(isMine?'flex-end':'flex-start')+';margin-bottom:10px">';
       if (!isMine) {
         row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:40px">' +
