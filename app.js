@@ -3761,6 +3761,11 @@ async function openThreadInline(threadId) {
   document.getElementById('thread-detail-view2').style.display = 'block';
   const discControls = document.getElementById('disc-controls-bar'); if(discControls) discControls.style.display='none'; const discFilters = document.getElementById('disc-filters-bar'); if(discFilters) discFilters.style.display='none';
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='none';
+  if(window.innerWidth < 768) {
+    const inlineHdr = document.getElementById('inline-thread-header');
+    if(inlineHdr) { inlineHdr.style.position='fixed'; inlineHdr.style.top='0'; inlineHdr.style.left='0'; inlineHdr.style.right='0'; inlineHdr.style.margin='0'; inlineHdr.style.padding='10px 20px 14px'; inlineHdr.style.zIndex='50'; }
+    const view3 = document.getElementById('thread-detail-view2'); if(view3) view3.style.paddingTop='80px';
+  }
   const resolveBtn2 = document.getElementById('resolve-btn2');
   if (resolveBtn2) resolveBtn2.style.display = currentUser?.role === 'admin' ? 'inline-block' : 'none';
   updateMuteBtn2();
