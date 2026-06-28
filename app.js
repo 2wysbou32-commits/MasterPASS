@@ -3176,9 +3176,21 @@ async function reactMsg(emoji, commentId) {
   var cid = commentId || (_ctxComment && _ctxComment.id);
   if (!cid || !_discussionFileId || !_currentThreadId) return;
   try {
-    await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid + '/react', { emoji });
-    var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
-    if (isInline) await loadThreadRepliesInline(true); else await loadThreadReplies(true);
+    const data = await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid + '/react', { emoji });
+    var reactionZone = document.querySelector('[data-reactions-id="' + cid + '"]');
+    if (reactionZone && data.reactions) {
+      var html = '';
+      Object.entries(data.reactions).forEach(function(entry) {
+        var em = entry[0], users = entry[1];
+        if (!users.length) return;
+        var iReacted = users.indexOf(currentUser ? currentUser.id : -1) !== -1;
+        html += '<button onclick="reactMsg(' + JSON.stringify(em) + ',' + cid + ')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid ' + (iReacted ? 'var(--teal)' : 'var(--border)') + ';background:' + (iReacted ? 'rgba(0,151,167,0.1)' : 'transparent') + ';cursor:pointer;font-size:12px">' + em + ' ' + users.length + '</button>';
+      });
+      reactionZone.innerHTML = html;
+    } else {
+      var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
+      if (isInline) await loadThreadRepliesInline(true); else await loadThreadReplies(true);
+    }
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -3831,7 +3843,7 @@ async function loadThreadRepliesInline(silent) {
      var canDelete = currentUser && (currentUser.role === 'admin' || String(r.userId) === String(currentUser.id));
       var reactHtml = '';
       if (r.reactions && Object.keys(r.reactions).length) {
-        reactHtml += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+        reactHtml += '<div data-reactions-id="' + r.id + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
         Object.entries(r.reactions).forEach(function(entry) {
           var em = entry[0], users = entry[1];
           if (!users || !users.length) return;
@@ -4778,7 +4790,7 @@ async function loadThreadReplies(silent) {
       var canDelete = currentUser?.role === 'admin' || isOwn;
       var reactHtml = '';
       if (r.reactions && Object.keys(r.reactions).length) {
-        reactHtml += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+        reactHtml += '<div data-reactions-id="' + r.id + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
         Object.entries(r.reactions).forEach(function(e) {
           var em=e[0], users=e[1];
           if (!users.length) return;
