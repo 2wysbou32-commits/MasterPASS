@@ -3854,7 +3854,6 @@ async function loadThreadRepliesInline(silent) {
         });
       }
       reactHtml += '</div>';
-      }
       var row = '<div style="width:100%;display:flex;flex-direction:column;margin-bottom:10px;align-items:' + (isMine?'flex-end':'flex-start') + '">';
       if (!isMine) row += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-left:42px"><span style="font-size:11px;font-weight:700;color:' + (isAdmin?'var(--teal-dark)':'var(--text2)') + '">' + (r.userName||'') + (isAdmin?' 👨‍🏫':'') + '</span><span style="font-size:10px;color:var(--text3)">' + date + '</span></div>';
       row += '<div style="display:flex;align-items:flex-end;gap:8px;max-width:78%;margin:' + (isMine?'0 8px 0 auto':'0 auto 0 8px') + '">';
