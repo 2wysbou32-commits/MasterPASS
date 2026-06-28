@@ -4992,13 +4992,13 @@ async function postReply() {
   const tempHtml = '<div id="' + tempId + '" style="display:flex;justify-content:flex-end;margin:4px 0;padding:0 12px"><div style="max-width:75%;background:var(--teal-dark);color:white;border-radius:16px 16px 4px 16px;padding:10px 14px;opacity:0.6;font-size:14px">' + (message || (_voiceBlob ? '🎤 Vocal...' : '')) + _tempImgHtml + '</div></div>';
   if (container) { container.insertAdjacentHTML('beforeend', tempHtml); container.scrollTop = container.scrollHeight; }
   input.value = ''; input.style.height = 'auto';
+  const _pendingVoiceBlob = _voiceBlob; const _voiceSecondsCopy = _voiceSeconds;
   if (_voiceBlob) cancelVoicePreview('main');
   cancelReply();
   if (btn) { btn.disabled = false; btn.textContent = 'Répondre'; }
   try {
     if (_replyImageUploadPromise) { await _replyImageUploadPromise; _replyImageUploadPromise = null; }
     const _pendingImageUrl = _replyImageUrl; const _pendingR2Key = _replyR2Key;
-    const _pendingVoiceBlob = _voiceBlob; const _voiceSecondsCopy = _voiceSeconds;
     cancelReplyImage('');
     if (!message && !_pendingImageUrl && !_pendingVoiceBlob) { const t = document.getElementById(tempId); if (t) t.remove(); _sendingReply = false; return; }
     const body = { message };
