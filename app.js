@@ -3869,7 +3869,7 @@ async function loadThreadRepliesInline(silent) {
       return row;
     }).join('');
     if (!silent || wasAtBottom) {
-      container.scrollTop = container.scrollHeight; if (!silent) window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
+      container.scrollTop = container.scrollHeight; if (!silent) { const panel = document.getElementById('panel-discussions-center'); if(panel) panel.scrollTop = panel.scrollHeight; }
     } else {
       container.scrollTop = prevScrollTop + (container.scrollHeight - prevScrollHeight);
     }
