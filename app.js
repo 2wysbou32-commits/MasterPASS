@@ -4591,7 +4591,7 @@ function closeDiscussion() {
   if(hdr2) { hdr2.style.position=''; hdr2.style.top=''; hdr2.style.left=''; hdr2.style.right=''; hdr2.style.margin=''; hdr2.style.padding=''; }
   const threadsList = document.getElementById('threads-list-view');
   const threadDetail = document.getElementById('thread-detail-view');
-  if(isMobile) { if(threadsList) threadsList.style.paddingTop='80px'; if(threadDetail) threadDetail.style.paddingTop='80px'; }
+  if(threadsList) threadsList.style.paddingTop=''; if(threadDetail) threadDetail.style.paddingTop='';
   const viewFiles = document.getElementById('view-files');
   if (viewFiles) viewFiles.style.display = 'block';
   _discussionFileId = null;
