@@ -3814,16 +3814,20 @@ function backToThreads2() {
       var inlineView = document.getElementById('disc-inline-view');
       var threadDetail2 = document.getElementById('thread-detail-view2');
       var threadDetail = document.getElementById('thread-detail-view');
-      if (inlineView && inlineView.style.display !== 'none') {
-        if (threadDetail2 && threadDetail2.style.display !== 'none') {
+      var discussionPanel = document.getElementById('discussion-panel');
+      if (threadDetail && threadDetail.style.display !== 'none' && _currentThreadId) {
+        // Dans un fil vue fichier → retour à la liste
+        backToThreads();
+      } else if (inlineView && inlineView.style.display !== 'none') {
+        if (threadDetail2 && threadDetail2.style.display !== 'none' && _currentThreadId) {
           // Dans un fil sidebar → retour à la liste des fils
-          backToThreadsList2 ? backToThreadsList2() : backToThreads2();
+          var btn = document.querySelector('#thread-detail-view2 [onclick*="backToThreads"]');
+          if(btn) btn.click(); else { _currentThreadId = null; document.getElementById('threads-list-view2').style.display='block'; threadDetail2.style.display='none'; loadThreadsInline(true); }
         } else {
-          // Dans la liste des fils sidebar → fermer la discussion
+          // Dans la liste des fils sidebar → fermer
           closeInlineDiscussion();
         }
-      } else if (threadDetail && threadDetail.style.display !== 'none') {
-        // Dans un fil vue fichier → retour à la liste
+      } else if (discussionPanel && discussionPanel.style.display !== 'none' && _currentThreadId) {
         backToThreads();
       }
     }
