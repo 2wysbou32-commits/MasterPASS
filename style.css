@@ -1537,7 +1537,6 @@ input[type="file"]{display:none;}
     overflow-x: hidden;
     position: relative;
     scrollbar-width: none;
-    background: var(--surface);
   }
   #disc-inline-view {
     min-height: 100%;
