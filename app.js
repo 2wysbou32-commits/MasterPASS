@@ -654,7 +654,7 @@ function checkAndShowTutorial() {
 }
 
 let _tutoStep = 0;
-let _tutoTotal = 8;
+let _tutoTotal = 9;
 
 function showTutoStep(n) {
   _tutoStep = n;
