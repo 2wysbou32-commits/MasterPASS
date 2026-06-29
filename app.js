@@ -5604,3 +5604,22 @@ async function unlockAllUsers() {
   toast('Date globale mise à jour — tous les comptes débloqués jusqu\'au ' + date);
   loadSecurityPanel();
 }
+
+var _focusMode = false;
+function toggleFocusMode() {
+  _focusMode = !_focusMode;
+  var label = document.getElementById('focus-mode-label');
+  var announcements = document.getElementById('nav-announcements');
+  var discussions = document.getElementById('nav-discussions-center');
+  if (_focusMode) {
+    if(label) label.textContent = 'Quitter focus';
+    if(announcements) announcements.style.display = 'none';
+    if(discussions) discussions.style.display = 'none';
+    document.body.classList.add('focus-mode');
+  } else {
+    if(label) label.textContent = 'Mode focus';
+    if(announcements) announcements.style.display = '';
+    if(discussions) discussions.style.display = '';
+    document.body.classList.remove('focus-mode');
+  }
+}
