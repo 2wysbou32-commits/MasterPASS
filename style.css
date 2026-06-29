@@ -1637,9 +1637,6 @@ input[type="file"]{display:none;}
   }
 }
 body.focus-mode .sidebar {
-  display: none;
-}
-body.focus-mode .main-content {
-  margin-left: 0 !important;
+  display: flex;
 }
 /* ── FIN STYLES ── */
