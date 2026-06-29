@@ -5612,16 +5612,19 @@ async function toggleFocusMode() {
   var label = document.getElementById('focus-mode-label');
   var announcements = document.getElementById('nav-announcements');
   var discussions = document.getElementById('nav-discussions-center');
+  var discCard = document.getElementById('dashboard-disc-card');
   if (_focusMode) {
     if(label) label.textContent = 'Quitter focus';
     if(announcements) announcements.style.display = 'none';
     if(discussions) discussions.style.display = 'none';
+    if(discCard) discCard.style.display = 'none';
     document.body.classList.add('focus-mode');
     await unsubscribePush();
   } else {
     if(label) label.textContent = 'Mode focus';
     if(announcements) announcements.style.display = '';
     if(discussions) discussions.style.display = '';
+    if(discCard) discCard.style.display = '';
     document.body.classList.remove('focus-mode');
     await subscribeToPush();
   }
