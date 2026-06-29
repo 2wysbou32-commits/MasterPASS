@@ -3526,9 +3526,9 @@ function renderThreadCard(t, isNew) {
   var date = new Date(t.lastActivity).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
   var div = document.createElement('div');
   div.className = 'disc-center-card';
-  div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:12px;border:1.5px solid ' + (isNew ? 'var(--teal)' : 'var(--border)') + ';background:' + (isNew ? 'rgba(0,151,167,0.04)' : 'var(--surface,white)') + ';margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s';
-  div.onmouseover = function() { this.style.boxShadow = '0 4px 12px var(--shadow)'; };
-  div.onmouseout = function() { this.style.boxShadow = ''; };
+  div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:12px;border:1.5px solid ' + (isNew ? 'var(--teal)' : 'var(--border)') + ';background:' + (isNew ? 'rgba(0,151,167,0.04)' : 'var(--surface,white)') + ';margin-bottom:8px;cursor:pointer;transition:all 0.22s';
+  div.onmouseover = function() { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 32px rgba(0,196,212,0.15)'; this.style.borderColor='rgba(0,196,212,0.4)'; };
+  div.onmouseout = function() { this.style.transform=''; this.style.boxShadow=''; this.style.borderColor= isNew ? 'var(--teal)' : 'var(--border)'; };
   div.setAttribute('data-fid', t.fileId);
   div.setAttribute('data-fname', encodeURIComponent(t.fileName));
   div.setAttribute('data-tid', t.threadId);
