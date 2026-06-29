@@ -5606,7 +5606,7 @@ async function unlockAllUsers() {
 }
 
 var _focusMode = false;
-function toggleFocusMode() {
+async function toggleFocusMode() {
   _focusMode = !_focusMode;
   var label = document.getElementById('focus-mode-label');
   var announcements = document.getElementById('nav-announcements');
@@ -5616,10 +5616,12 @@ function toggleFocusMode() {
     if(announcements) announcements.style.display = 'none';
     if(discussions) discussions.style.display = 'none';
     document.body.classList.add('focus-mode');
+    await unsubscribePush();
   } else {
     if(label) label.textContent = 'Mode focus';
     if(announcements) announcements.style.display = '';
     if(discussions) discussions.style.display = '';
     document.body.classList.remove('focus-mode');
+    await subscribeToPush();
   }
 }
