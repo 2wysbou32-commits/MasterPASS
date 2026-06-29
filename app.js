@@ -3156,8 +3156,10 @@ async function ctxEdit() {
   const bubble = document.querySelector('[data-rid="' + cid + '"] .msg-bubble') || document.querySelector('[data-cid="' + cid + '"].msg-bubble');
   const textEl = bubble ? bubble.querySelector('.msg-text') : null;
   if (textEl) textEl.textContent = newMsg.trim();
+  _reactionPause = true;
   api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid, { message: newMsg.trim() })
-    .catch(function(e) { toast(e.message, 'error'); if (textEl) textEl.textContent = _ctxComment.message; });
+    .then(function() { setTimeout(function() { _reactionPause = false; }, 2000); })
+    .catch(function(e) { toast(e.message, 'error'); if (textEl) textEl.textContent = _ctxComment.message; _reactionPause = false; });
 }
 
 async function ctxDelete() {
