@@ -3152,9 +3152,14 @@ async function ctxEdit() {
   if (!_ctxComment) return;
   const newMsg = await customPrompt('Modifier le message :', _ctxComment.message);
   if (!newMsg || newMsg.trim() === _ctxComment.message) return;
-  // Edit reply in thread
-  api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id, { message: newMsg.trim() })
+  const cid = _ctxComment.id;
+  api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid, { message: newMsg.trim() })
     .then(function() {
+      const bubble = document.querySelector('[data-rid="' + cid + '"] .msg-bubble');
+      if (bubble) {
+        const textEl = bubble.querySelector('.msg-text');
+        if (textEl) { textEl.textContent = newMsg.trim(); return; }
+      }
       var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
       if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true);
     })
@@ -3165,9 +3170,16 @@ async function ctxDelete() {
   closeMsgContextMenu();
   if (!_ctxComment) return;
   if (!await customConfirm('Supprimer ce message ?')) return;
-  var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
-  api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + _ctxComment.id)
-    .then(function() { if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true); })
+  const cid = _ctxComment.id;
+  api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid)
+    .then(function() {
+      const el = document.querySelector('[data-rid="' + cid + '"]');
+      if (el) el.remove();
+      else {
+        var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
+        if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true);
+      }
+    })
     .catch(function(e) { toast(e.message, 'error'); });
 }
 
@@ -3837,9 +3849,9 @@ async function loadThreadRepliesInline(silent) {
           '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
           '</div>';
       } else {
-        msgHtml = (r.message||'').split('\n').join('<br>')
+        msgHtml = '<span class="msg-text">' + (r.message||'').split('\n').join('<br>')
           .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
-          .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); });
+          .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); }) + '</span>';
       }
       if (r.imageUrl) {
        msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick=\"if(!_wasLongPress)openImageLightbox(this.src);_wasLongPress=false;\"></div>';
@@ -4195,7 +4207,8 @@ async function deleteReplyInline(replyId, skipConfirm) {
   if (!skipConfirm && !await customConfirm('Supprimer cette réponse ?')) return;
   try {
     await api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + replyId);
-    await loadThreadRepliesInline(true);
+    const el = document.querySelector('[data-rid="' + replyId + '"]');
+    if (el) el.remove(); else await loadThreadRepliesInline(true);
   } catch(e) { toast(e.message, 'error'); }
 }
 
@@ -4223,9 +4236,9 @@ function renderReplyHtml(r) {
       '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
       '</div>';
   } else {
-    msgHtml = (r.message||'').split('\n').join('<br>')
+    msgHtml = '<span class="msg-text">' + (r.message||'').split('\n').join('<br>')
       .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
-      .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); });
+      .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); }) + '</span>';
   }
   if (r.imageUrl) {
    msgHtml += '<div style="margin-top:6px"><img src="' + r.imageUrl + '" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer" onclick="if(!_wasLongPress)openImageLightbox(this.src);_wasLongPress=false;"></div>';
@@ -4801,9 +4814,9 @@ async function loadThreadReplies(silent) {
                 '<div style="display:flex;justify-content:space-between;font-size:10px;color:'+(isMine?'rgba(255,255,255,0.7)':'var(--text3)')+'"><span id="'+tId+'">0:00</span><span>🎤 '+durStr+'</span></div>'+
               '</div>';
           })()
-        : r.message.split('\n').join('<br>')
+        : '<span class="msg-text">' + r.message.split('\n').join('<br>')
             .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
-            .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); });
+            .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); }) + '</span>';
       var canDelete = currentUser?.role === 'admin' || isOwn;
       var reactHtml = '<div data-reactions-id="' + r.id + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
       if (r.reactions && Object.keys(r.reactions).length) {
