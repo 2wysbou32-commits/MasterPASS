@@ -1534,9 +1534,10 @@ input[type="file"]{display:none;}
 #panel-discussions-center {
     height: calc(100vh - 60px);
     overflow-y: auto;
-    overflow-x: visible;
+    overflow-x: hidden;
     position: relative;
     scrollbar-width: none;
+    background: var(--surface);
   }
   #disc-inline-view {
     min-height: 100%;
