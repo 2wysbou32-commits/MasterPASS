@@ -5626,6 +5626,6 @@ async function toggleFocusMode() {
     if(discussions) discussions.style.display = '';
     if(discCard) discCard.style.display = '';
     document.body.classList.remove('focus-mode');
-    await subscribeToPush();
+    await initPushNotifications();
   }
 }
