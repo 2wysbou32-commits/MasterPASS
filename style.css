@@ -1535,10 +1535,7 @@ input[type="file"]{display:none;}
     height: calc(100vh - 60px);
     overflow-y: auto;
     overflow-x: hidden;
-    position: fixed;
-    top: 60px;
-    left: 260px;
-    right: 0;
+    position: relative;
     scrollbar-width: none;
   }
   #disc-inline-view {
