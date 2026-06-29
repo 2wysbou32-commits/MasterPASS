@@ -3153,7 +3153,7 @@ async function ctxEdit() {
   const newMsg = await customPrompt('Modifier le message :', _ctxComment.message);
   if (!newMsg || newMsg.trim() === _ctxComment.message) return;
   const cid = _ctxComment.id;
-  const bubble = document.querySelector('[data-rid="' + cid + '"] .msg-bubble');
+  const bubble = document.querySelector('[data-rid="' + cid + '"] .msg-bubble') || document.querySelector('[data-cid="' + cid + '"].msg-bubble');
   const textEl = bubble ? bubble.querySelector('.msg-text') : null;
   if (textEl) textEl.textContent = newMsg.trim();
   api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid, { message: newMsg.trim() })
@@ -3165,7 +3165,7 @@ async function ctxDelete() {
   if (!_ctxComment) return;
   if (!await customConfirm('Supprimer ce message ?')) return;
   const cid = _ctxComment.id;
-  const el = document.querySelector('[data-rid="' + cid + '"]');
+  const el = document.querySelector('[data-rid="' + cid + '"]') || document.querySelector('[data-cid="' + cid + '"]')?.closest('[style*="flex-direction:column"]');
   if (el) el.remove();
   api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid)
     .catch(function(e) { toast(e.message, 'error'); if (el) loadThreadRepliesInline(true); });
@@ -3176,23 +3176,35 @@ async function reactMsg(emoji, commentId) {
   closeMsgContextMenu();
   var cid = commentId || (_ctxComment && _ctxComment.id);
   if (!cid || !_discussionFileId || !_currentThreadId) return;
+  // Optimistic update
+  var reactionZone = document.querySelector('[data-reactions-id="' + cid + '"]');
+  if (reactionZone) {
+    var existing = reactionZone.querySelector('button[data-em="' + emoji + '"]');
+    if (existing) {
+      var count = parseInt(existing.querySelector('span')?.textContent || '1');
+      existing.querySelector('span').textContent = count + 1;
+    } else {
+      var btn = document.createElement('button');
+      btn.setAttribute('data-em', emoji);
+      btn.setAttribute('onclick', 'reactMsg(' + JSON.stringify(emoji) + ',' + cid + ')');
+      btn.style.cssText = 'display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid var(--teal);background:rgba(0,151,167,0.1);cursor:pointer;font-size:12px';
+      btn.innerHTML = emoji + ' <span>1</span>';
+      reactionZone.appendChild(btn);
+    }
+    _reactionPause = true;
+    setTimeout(function() { _reactionPause = false; }, 10000);
+  }
   try {
     const data = await api('POST', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid + '/react', { emoji });
-    var reactionZone = document.querySelector('[data-reactions-id="' + cid + '"]');
     if (reactionZone && data.reactions) {
       var html = '';
       Object.entries(data.reactions).forEach(function(entry) {
         var em = entry[0], users = entry[1];
         if (!users.length) return;
         var iReacted = users.indexOf(currentUser ? currentUser.id : -1) !== -1;
-        html += '<button onclick="reactMsg(' + JSON.stringify(em) + ',' + cid + ')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid ' + (iReacted ? 'var(--teal)' : 'var(--border)') + ';background:' + (iReacted ? 'rgba(0,151,167,0.1)' : 'transparent') + ';cursor:pointer;font-size:12px">' + em + ' ' + users.length + '</button>';
+        html += '<button data-em="' + em + '" onclick="reactMsg(' + JSON.stringify(em) + ',' + cid + ')" style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;border:1.5px solid ' + (iReacted ? 'var(--teal)' : 'var(--border)') + ';background:' + (iReacted ? 'rgba(0,151,167,0.1)' : 'transparent') + ';cursor:pointer;font-size:12px">' + em + ' <span>' + users.length + '</span></button>';
       });
       reactionZone.innerHTML = html;
-      _reactionPause = true;
-      setTimeout(function() { _reactionPause = false; }, 10000);
-    } else {
-      var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
-      if (isInline) await loadThreadRepliesInline(true); else await loadThreadReplies(true);
     }
   } catch(e) { toast(e.message, 'error'); }
 }
