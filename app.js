@@ -3639,10 +3639,6 @@ async function goToThread(fileId, fileName, threadId) {
   document.getElementById('disc-center-list').style.display = 'none';
   document.getElementById('disc-inline-view').style.display = 'block';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='none';
-  const mc = document.querySelector('.main-content'); if(mc) mc.style.padding='0';
-  const panel = document.getElementById('panel-discussions-center');
-  const app = document.getElementById('app');
-  if(panel && app) { panel._originalParent = panel.parentElement; app.appendChild(panel); panel.style.position='fixed'; panel.style.top='60px'; panel.style.left='var(--sidebar-width,260px)'; panel.style.right='0'; panel.style.zIndex='100'; }
   const isMobile2 = window.innerWidth < 768;
   var discControls = document.getElementById('disc-controls-bar');
   if (discControls) discControls.style.display = 'none';
@@ -3674,9 +3670,6 @@ function closeInlineDiscussion() {
   stopDiscussionRefresh();
   window.scrollTo({top: 0, behavior: 'instant'});
   document.getElementById('disc-inline-view').style.display = 'none';
-  const mc = document.querySelector('.main-content'); if(mc) mc.style.padding='';
-  const panel = document.getElementById('panel-discussions-center');
-  if(panel && panel._originalParent) { panel._originalParent.appendChild(panel); panel.style.position=''; panel.style.top=''; panel.style.left=''; panel.style.right=''; panel.style.zIndex=''; }
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='flex';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='block';
   document.getElementById('thread-detail-view2').style.display = 'none';
