@@ -3153,17 +3153,11 @@ async function ctxEdit() {
   const newMsg = await customPrompt('Modifier le message :', _ctxComment.message);
   if (!newMsg || newMsg.trim() === _ctxComment.message) return;
   const cid = _ctxComment.id;
+  const bubble = document.querySelector('[data-rid="' + cid + '"] .msg-bubble');
+  const textEl = bubble ? bubble.querySelector('.msg-text') : null;
+  if (textEl) textEl.textContent = newMsg.trim();
   api('PATCH', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid, { message: newMsg.trim() })
-    .then(function() {
-      const bubble = document.querySelector('[data-rid="' + cid + '"] .msg-bubble');
-      if (bubble) {
-        const textEl = bubble.querySelector('.msg-text');
-        if (textEl) { textEl.textContent = newMsg.trim(); return; }
-      }
-      var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
-      if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true);
-    })
-    .catch(e => toast(e.message, 'error'));
+    .catch(function(e) { toast(e.message, 'error'); if (textEl) textEl.textContent = _ctxComment.message; });
 }
 
 async function ctxDelete() {
@@ -3171,16 +3165,10 @@ async function ctxDelete() {
   if (!_ctxComment) return;
   if (!await customConfirm('Supprimer ce message ?')) return;
   const cid = _ctxComment.id;
+  const el = document.querySelector('[data-rid="' + cid + '"]');
+  if (el) el.remove();
   api('DELETE', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies/' + cid)
-    .then(function() {
-      const el = document.querySelector('[data-rid="' + cid + '"]');
-      if (el) el.remove();
-      else {
-        var isInline = document.getElementById('disc-inline-view')?.style.display !== 'none' && (document.getElementById('disc-inline-view')?.offsetWidth || 0) > 0;
-        if (isInline) loadThreadRepliesInline(true); else loadThreadReplies(true);
-      }
-    })
-    .catch(function(e) { toast(e.message, 'error'); });
+    .catch(function(e) { toast(e.message, 'error'); if (el) loadThreadRepliesInline(true); });
 }
 
 let _reactionPause = false;
