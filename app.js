@@ -3790,6 +3790,47 @@ function backToThreads2() {
   closeInlineDiscussion();
 }
 
+// Swipe mobile pour revenir en arrière
+(function() {
+  var _swipeStartX = 0;
+  var _swipeStartY = 0;
+  var _swipeActive = false;
+
+  document.addEventListener('touchstart', function(e) {
+    if (window.innerWidth >= 768) return;
+    var touch = e.touches[0];
+    _swipeStartX = touch.clientX;
+    _swipeStartY = touch.clientY;
+    _swipeActive = _swipeStartX < 40; // bord gauche uniquement
+  }, { passive: true });
+
+  document.addEventListener('touchend', function(e) {
+    if (!_swipeActive || window.innerWidth >= 768) return;
+    var touch = e.changedTouches[0];
+    var dx = touch.clientX - _swipeStartX;
+    var dy = Math.abs(touch.clientY - _swipeStartY);
+    if (dx > 80 && dy < 60) {
+      // Swipe vers la droite détecté
+      var inlineView = document.getElementById('disc-inline-view');
+      var threadDetail2 = document.getElementById('thread-detail-view2');
+      var threadDetail = document.getElementById('thread-detail-view');
+      if (inlineView && inlineView.style.display !== 'none') {
+        if (threadDetail2 && threadDetail2.style.display !== 'none') {
+          // Dans un fil sidebar → retour à la liste des fils
+          backToThreadsList2 ? backToThreadsList2() : backToThreads2();
+        } else {
+          // Dans la liste des fils sidebar → fermer la discussion
+          closeInlineDiscussion();
+        }
+      } else if (threadDetail && threadDetail.style.display !== 'none') {
+        // Dans un fil vue fichier → retour à la liste
+        backToThreads();
+      }
+    }
+    _swipeActive = false;
+  }, { passive: true });
+})();
+
 async function loadThreadRepliesInline(silent) {
   if (!currentUser) {
     try { currentUser = await api('GET', '/me'); } catch(e) {}
