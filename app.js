@@ -4605,6 +4605,7 @@ function stopDiscussionRefresh() {
 }
 
 async function openDiscussion(fileId, fileName) {
+  if (_focusMode) return;
   const filesList = document.getElementById('files-list-body');
   if (filesList) saveNavState('lastFileScroll', { folderId: currentFolder?.id, top: filesList.scrollTop });
   saveNavState('lastDiscussion', { fileId, fileName });
