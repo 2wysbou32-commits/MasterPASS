@@ -264,6 +264,8 @@ function setupApp() {
   $('nav-codes').style.display=isAdmin?'flex':'none';
   $('nav-security').style.display=isAdmin?'flex':'none';
   $('nav-settings').style.display='flex';
+  const focusBtn = document.getElementById('focus-mode-btn');
+  if(focusBtn) focusBtn.style.display = isAnyAdmin ? 'none' : 'flex';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   $('nav-revision').style.display=isSubAdmin?'none':'flex';
   $('nav-files').style.display=isSubAdmin?'none':'flex';
