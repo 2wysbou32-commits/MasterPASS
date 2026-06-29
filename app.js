@@ -3527,8 +3527,6 @@ function renderThreadCard(t, isNew) {
   var div = document.createElement('div');
   div.className = 'disc-center-card';
   div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:12px;border:1.5px solid ' + (isNew ? 'var(--teal)' : 'var(--border)') + ';background:' + (isNew ? 'rgba(0,151,167,0.04)' : 'var(--surface,white)') + ';margin-bottom:8px;cursor:pointer;transition:all 0.22s';
-  div.onmouseover = function() { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 32px rgba(0,196,212,0.15)'; this.style.borderColor='rgba(0,196,212,0.4)'; };
-  div.onmouseout = function() { this.style.transform=''; this.style.boxShadow=''; this.style.borderColor= isNew ? 'var(--teal)' : 'var(--border)'; };
   div.setAttribute('data-fid', t.fileId);
   div.setAttribute('data-fname', encodeURIComponent(t.fileName));
   div.setAttribute('data-tid', t.threadId);
@@ -3709,7 +3707,7 @@ async function loadThreadsInline(silent) {
 
     list.innerHTML = threads.map(function(t) {
       var date = new Date(t.lastReplyAt||t.createdAt).toLocaleString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-      return '<div data-thread-id="' + t.id + '" onclick="handleThreadCardClick(event,' + t.id + ')" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 8px 32px rgba(0,196,212,0.15)\';this.style.borderColor=\'rgba(0,196,212,0.4)\'" onmouseout="this.style.transform=\'\';this.style.boxShadow=\'\';this.style.borderColor=\'' + (t.resolved?'rgba(46,125,50,0.3)':'var(--border)') + '\'" style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;background:var(--surface,white);border-radius:14px;border:1.5px solid ' + (t.resolved?'rgba(46,125,50,0.3)':'var(--border)') + ';margin-bottom:10px;cursor:pointer;transition:all 0.22s" class="thread-card">' +
+      return '<div data-thread-id="' + t.id + '" onclick="handleThreadCardClick(event,' + t.id + ')" style="display:flex;align-items:flex-start;gap:14px;padding:16px 20px;background:var(--surface,white);border-radius:14px;border:1.5px solid ' + (t.resolved?'rgba(46,125,50,0.3)':'var(--border)') + ';margin-bottom:10px;cursor:pointer" class="thread-card">' +
         '<div style="flex:1">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">' +
             (t.resolved?'<span style="background:#2E7D32;color:white;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700">✓ Résolu</span>':'<span style="background:rgba(0,151,167,0.1);color:var(--teal-dark);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700">💬 Ouvert</span>') +
