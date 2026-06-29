@@ -1636,4 +1636,10 @@ input[type="file"]{display:none;}
     margin-top: 16px;
   }
 }
+body.focus-mode .sidebar {
+  display: none;
+}
+body.focus-mode .main-content {
+  margin-left: 0 !important;
+}
 /* ── FIN STYLES ── */
