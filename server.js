@@ -783,10 +783,15 @@ app.get('/api/revision/seances/:id/schemas', requireAuth, (req, res) => {
   if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
   const user = db.users.find(u => u.id === req.session.userId);
   const progress = (user && user.revisionProgress) || {};
-  res.json((seance.schemas||[]).map(sc => ({
-    id: sc.id, titre: sc.titre,
-    derniereRevision: progress[sc.id] || null
-  })));
+  res.json((seance.schemas||[]).map(sc => {
+    const p = progress[sc.id];
+    const isObj = p && typeof p === 'object';
+    return {
+      id: sc.id, titre: sc.titre,
+      derniereRevision: isObj ? p.lastReview : (p || null),
+      nextReview: isObj ? p.nextReview : null
+    };
+  }));
 });
 
 app.post('/api/revision/seances/:id/schemas', requireSuperAdmin, upload.single('image'), async (req, res) => {
@@ -847,9 +852,86 @@ app.post('/api/revision/seances/:id/schemas/:schemaId/vu', requireAuth, (req, re
   const user = db.users.find(u => u.id === req.session.userId);
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
   if (!user.revisionProgress) user.revisionProgress = {};
-  user.revisionProgress[req.params.schemaId] = new Date().toISOString();
+  const existing = user.revisionProgress[req.params.schemaId];
+  // Garde l'objet SM-2 existant s'il existe, sinon simple marqueur de date (rétrocompatibilité)
+  if (existing && typeof existing === 'object') {
+    existing.lastSeen = new Date().toISOString();
+  } else {
+    user.revisionProgress[req.params.schemaId] = new Date().toISOString();
+  }
   saveDB(db);
   res.json({ ok: true });
+});
+
+// Notation de difficulté après les 3 modes - algorithme SM-2 simplifié
+app.post('/api/revision/seances/:id/schemas/:schemaId/note', requireAuth, (req, res) => {
+  const { difficulty } = req.body; // 'difficile' | 'moyen' | 'facile'
+  if (!['difficile', 'moyen', 'facile'].includes(difficulty)) {
+    return res.status(400).json({ error: 'Difficulté invalide' });
+  }
+  const db = loadDB();
+  const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
+  if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
+  const schema = (seance.schemas||[]).find(sc => sc.id === parseInt(req.params.schemaId));
+  if (!schema) return res.status(404).json({ error: 'Schéma introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (!user.revisionProgress) user.revisionProgress = {};
+
+  const prev = user.revisionProgress[req.params.schemaId];
+  let easeFactor = (prev && typeof prev === 'object' && prev.easeFactor) ? prev.easeFactor : 2.5;
+  let interval = (prev && typeof prev === 'object' && prev.interval) ? prev.interval : 0;
+  let repetitions = (prev && typeof prev === 'object' && prev.repetitions) ? prev.repetitions : 0;
+
+  const qualityMap = { difficile: 2, moyen: 3, facile: 5 };
+  const quality = qualityMap[difficulty];
+
+  if (quality < 3) {
+    repetitions = 0;
+    interval = 1;
+  } else {
+    repetitions += 1;
+    if (repetitions === 1) interval = 1;
+    else if (repetitions === 2) interval = 6;
+    else interval = Math.round(interval * easeFactor);
+    easeFactor = Math.max(1.3, easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+  }
+
+  const now = new Date();
+  const nextReview = new Date(now.getTime() + interval * 24 * 60 * 60 * 1000);
+
+  user.revisionProgress[req.params.schemaId] = {
+    lastReview: now.toISOString(),
+    nextReview: nextReview.toISOString(),
+    easeFactor, interval, repetitions, difficulty
+  };
+  saveDB(db);
+  res.json({ ok: true, nextReview: nextReview.toISOString(), interval });
+});
+
+// Liste des schémas à revoir aujourd'hui ou en retard
+app.get('/api/revision/due', requireAuth, (req, res) => {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  const progress = user.revisionProgress || {};
+  const now = new Date();
+  const due = [];
+  for (const seance of (db.seances || [])) {
+    for (const sc of (seance.schemas || [])) {
+      const p = progress[sc.id];
+      if (p && typeof p === 'object' && p.nextReview) {
+        if (new Date(p.nextReview) <= now) {
+          due.push({
+            id: sc.id, titre: sc.titre, seanceId: seance.id, seanceTitre: seance.titre,
+            dossierId: seance.dossierId, nextReview: p.nextReview
+          });
+        }
+      }
+    }
+  }
+  due.sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
+  res.json(due);
 });
 
 app.get('/api/revision/seances/:id/schemas/:schemaId/image', requireAuth, async (req, res) => {
