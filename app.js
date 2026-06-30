@@ -1053,6 +1053,9 @@ async function ouvrirSeance(id) {
 async function ouvrirSchema(seanceId, schemaId) {
   var list = document.getElementById('revision-list');
   if (!list) return;
+  _revCurrentSeanceId = seanceId;
+  _revCurrentSchemaId = schemaId;
+  _revNotedThisSession = false;
   list.innerHTML = '<div class="dashboard-empty">Chargement...</div>';
   try {
     const schema = await api('GET', '/revision/seances/' + seanceId + '/schemas/' + schemaId);
@@ -1168,7 +1171,48 @@ function revUpdateBadges() {
   if (b3) {
     b3.style.display = (s3 && s3.style.display === 'block') ? 'flex' : 'none';
   }
+  var allDone = b1 && b2 && b3 && b1.style.display === 'flex' && b2.style.display === 'flex' && b3.style.display === 'flex';
+  if (allDone && !_revNotedThisSession) {
+    _revNotedThisSession = true;
+    setTimeout(revShowDifficultyPopup, 400);
+  }
 }
+
+var _revCurrentSeanceId = null;
+var _revCurrentSchemaId = null;
+var _revNotedThisSession = false;
+
+function revShowDifficultyPopup() {
+  var existing = document.getElementById('rev-difficulty-popup');
+  if (existing) existing.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'rev-difficulty-popup';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px';
+  overlay.innerHTML =
+    '<div style="background:var(--surface,#fff);border-radius:20px;padding:28px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3)">' +
+      '<div style="font-size:40px;margin-bottom:12px">🎉</div>' +
+      '<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:6px">Bravo !</div>' +
+      '<div style="font-size:14px;color:var(--text2);margin-bottom:22px">Tu as fini de réviser ce schéma sous les 3 modes. Comment l\'as-tu retenu ?</div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button onclick="revNoteDifficulty(\'difficile\')" style="flex:1;padding:14px 8px;border-radius:14px;border:1.5px solid rgba(239,83,80,0.3);background:rgba(239,83,80,0.08);cursor:pointer;font-weight:700;font-size:13px;color:#ef5350">🔴 Difficile</button>' +
+        '<button onclick="revNoteDifficulty(\'moyen\')" style="flex:1;padding:14px 8px;border-radius:14px;border:1.5px solid rgba(251,192,45,0.35);background:rgba(251,192,45,0.1);cursor:pointer;font-weight:700;font-size:13px;color:#b8860b">🟡 Moyen</button>' +
+        '<button onclick="revNoteDifficulty(\'facile\')" style="flex:1;padding:14px 8px;border-radius:14px;border:1.5px solid rgba(46,125,50,0.3);background:rgba(46,125,50,0.08);cursor:pointer;font-weight:700;font-size:13px;color:#2E7D32">🟢 Facile</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+}
+
+async function revNoteDifficulty(difficulty) {
+  var popup = document.getElementById('rev-difficulty-popup');
+  if (popup) popup.remove();
+  if (!_revCurrentSeanceId || !_revCurrentSchemaId) return;
+  try {
+    await api('POST', '/revision/seances/' + _revCurrentSeanceId + '/schemas/' + _revCurrentSchemaId + '/note', { difficulty: difficulty });
+    toast('Révision enregistrée !', 'success');
+    revRefreshDueBadge();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 function revShowTab(n) {
   for (var i = 1; i <= 3; i++) {
     var panel = document.getElementById('rev-panel-' + i);
