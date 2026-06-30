@@ -1086,13 +1086,17 @@
       </div>
 <!-- REVISION PANEL -->
       <div class="panel" id="panel-revision" style="display:none">
-        <div class="section-header" style="margin-bottom:24px;margin-top:20px">
-          <div>
-            <div style="font-size:13px;color:var(--text2);font-weight:500">Choisis une séance pour réviser ses schémas</div>
-          </div>
-        </div>
-        <div id="revision-list"></div>
-      </div>
+  <div class="section-header" style="margin-bottom:24px;margin-top:20px">
+    <div>
+      <div style="font-size:13px;color:var(--text2);font-weight:500">Choisis une séance pour réviser ses schémas</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:18px">
+    <button id="rev-tab-dossiers-btn" onclick="revSwitchTab('dossiers')" style="padding:9px 16px;border-radius:10px;border:1.5px solid var(--teal,#0097A7);background:rgba(0,151,167,0.1);color:var(--teal-dark,#006064);font-weight:700;font-size:13px;cursor:pointer">Tous les dossiers</button>
+    <button id="rev-tab-due-btn" onclick="revSwitchTab('due')" style="position:relative;padding:9px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,#fff);color:var(--text2);font-weight:700;font-size:13px;cursor:pointer">🔁 À revoir <span id="rev-due-count" style="display:none"></span></button>
+  </div>
+  <div id="revision-list"></div>
+</div>
       <!-- CODES PANEL -->
       <div class="panel" id="panel-security" style="display:none">
         <div style="margin-bottom:24px;margin-top:20px">
