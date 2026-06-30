@@ -864,6 +864,80 @@ async function loadRevision() {
     list.innerHTML = '<div class="dashboard-empty">Erreur de chargement</div>';
   }
 }
+
+var _revActiveTab = 'dossiers';
+
+function revSwitchTab(tab) {
+  _revActiveTab = tab;
+  var btnDossiers = document.getElementById('rev-tab-dossiers-btn');
+  var btnDue = document.getElementById('rev-tab-due-btn');
+  if (tab === 'dossiers') {
+    btnDossiers.style.border = '1.5px solid var(--teal,#0097A7)';
+    btnDossiers.style.background = 'rgba(0,151,167,0.1)';
+    btnDossiers.style.color = 'var(--teal-dark,#006064)';
+    btnDue.style.border = '1.5px solid var(--border)';
+    btnDue.style.background = 'var(--surface,#fff)';
+    btnDue.style.color = 'var(--text2)';
+    loadRevision();
+  } else {
+    btnDue.style.border = '1.5px solid var(--teal,#0097A7)';
+    btnDue.style.background = 'rgba(0,151,167,0.1)';
+    btnDue.style.color = 'var(--teal-dark,#006064)';
+    btnDossiers.style.border = '1.5px solid var(--border)';
+    btnDossiers.style.background = 'var(--surface,#fff)';
+    btnDossiers.style.color = 'var(--text2)';
+    loadRevisionDue();
+  }
+}
+
+async function loadRevisionDue() {
+  var list = document.getElementById('revision-list');
+  if (!list) return;
+  list.innerHTML = '<div class="dashboard-empty">Chargement...</div>';
+  try {
+    const due = await api('GET', '/revision/due');
+    if (!due.length) {
+      list.innerHTML = '<div class="dashboard-empty">🎉 Rien à revoir pour le moment, tu es à jour !</div>';
+      return;
+    }
+    _revisionSchemaQueue = due;
+    var html = '<button class="btn-action" onclick="ouvrirSchema(' + due[0].seanceId + ',' + due[0].id + ')" style="margin-bottom:16px;background:var(--teal,#0097A7);color:#fff;border:none">▶ Tout réviser (' + due.length + ')</button>';
+    html += due.map(function(sc) {
+      var overdue = new Date(sc.nextReview) < new Date(Date.now() - 24*60*60*1000);
+      return '<div class="schema-card" onclick="ouvrirSchema(' + sc.seanceId + ',' + sc.id + ')" style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-radius:20px;border:1.5px solid ' + (overdue ? 'rgba(239,83,80,0.3)' : 'rgba(139,92,246,0.2)') + ';margin-bottom:14px;cursor:pointer;background:' + (overdue ? 'rgba(239,83,80,0.06)' : 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(59,130,246,0.08))') + ';backdrop-filter:blur(20px)">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:15px;font-weight:700;color:var(--text)">' + sc.titre + '</div>' +
+          '<div style="font-size:11px;color:var(--text2);margin-top:4px">' + sc.seanceTitre + '</div>' +
+          '<div style="font-size:11px;color:' + (overdue ? '#ef5350' : '#8B5CF6') + ';margin-top:4px;font-weight:600">' + (overdue ? '⏰ En retard' : 'À revoir aujourd\'hui') + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    list.innerHTML = html;
+  } catch(e) {
+    list.innerHTML = '<div class="dashboard-empty">Erreur de chargement</div>';
+  }
+}
+
+async function revRefreshDueBadge() {
+  try {
+    const due = await api('GET', '/revision/due');
+    var navBadge = document.getElementById('nav-revision-badge');
+    var tabBadge = document.getElementById('rev-due-count');
+    if (navBadge) {
+      if (due.length) { navBadge.textContent = due.length; navBadge.style.display = 'flex'; }
+      else { navBadge.style.display = 'none'; }
+    }
+    if (tabBadge) {
+      if (due.length) { tabBadge.textContent = '(' + due.length + ')'; tabBadge.style.display = 'inline'; }
+      else { tabBadge.style.display = 'none'; }
+    }
+    var dashCount = document.getElementById('dashboard-due-count');
+    var dashCard = document.getElementById('dashboard-due-card');
+    if (dashCount) dashCount.textContent = due.length;
+    if (dashCard) dashCard.style.display = due.length ? 'block' : 'none';
+  } catch(e) {}
+}
+
 async function creerDossier() {
   var titre = await customPrompt('Nom du dossier (ex: Anatomie, Pr Dupont, S1...)');
   if (!titre || !titre.trim()) return;
