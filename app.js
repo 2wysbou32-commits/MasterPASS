@@ -311,6 +311,7 @@ function setupApp() {
   // Vérifier la session toutes les 30 secondes (anti-partage de compte)
   startSessionPolling();
   updateAdminDiscBadge();
+  revRefreshDueBadge();
   // Activer les notifications push (tous les rôles)
   setTimeout(initPushNotifications, 2000);
   // Fermer le menu @mention si on clique ailleurs
