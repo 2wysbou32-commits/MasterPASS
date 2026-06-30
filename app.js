@@ -1106,11 +1106,15 @@ async function ouvrirSeance(id) {
       html += '<button class="btn-action" onclick="ouvrirSchema(' + id + ',' + schemas[0].id + ')" style="margin-bottom:12px;background:var(--teal,#0097A7);color:#fff;border:none">▶ Tout réviser</button>';
       html += schemas.map(function(sc) {
         var date = revFormatDate(sc.derniereRevision);
+        var nextDate = sc.nextReview ? revFormatDate(sc.nextReview) : null;
+        var isOverdue = sc.nextReview && new Date(sc.nextReview) < new Date(Date.now() - 24*60*60*1000);
+        var nextLabel = nextDate ? ('<div style="font-size:11px;color:' + (isOverdue ? '#ef5350' : '#2E7D32') + ';margin-top:2px;font-weight:600">' + (isOverdue ? '⏰ En retard, à revoir' : '📅 Prochaine révision le ' + nextDate) + '</div>') : '';
         return '<div class="schema-card" data-id="' + sc.id + '" style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-radius:20px;border:1.5px solid rgba(139,92,246,0.2);margin-bottom:14px;cursor:pointer;background:linear-gradient(135deg,rgba(139,92,246,0.12),rgba(59,130,246,0.08));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 4px 24px rgba(139,92,246,0.1);transition:all 0.22s" onmouseover="this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 8px 32px rgba(139,92,246,0.2)\'" onmouseout="this.style.transform=\'translateY(0)\';this.style.boxShadow=\'0 4px 24px rgba(139,92,246,0.1)\'">' +
   '<img src="/api/revision/seances/' + id + '/schemas/' + sc.id + '/image" style="width:52px;height:52px;object-fit:cover;border-radius:12px;border:2px solid rgba(139,92,246,0.25);flex-shrink:0">' +
   '<div style="flex:1;min-width:0">' +
     '<div style="font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.2px">' + sc.titre + '</div>' +
     '<div style="font-size:11px;color:#8B5CF6;margin-top:4px;font-weight:600">' + (date ? 'Dernière révision le ' + date : 'Pas encore révisé') + '</div>' +
+    nextLabel +
   '</div>' +
   (isAdmin ? revActionButtons(sc.id) : '') +
 '</div>';
