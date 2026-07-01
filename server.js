@@ -102,18 +102,44 @@ async function runDailyReviewReminder() {
 async function runWeeklySummary() {
   const db = loadDB();
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const weekKey = new Date().toISOString().split('T')[0];
+  if (!db.weeklySummaries) db.weeklySummaries = {};
+
   for (const user of db.users) {
     if (user.role !== 'student') continue;
     if (user.notifPrefs && user.notifPrefs.revision === false) continue;
+
     const progress = user.revisionProgress || {};
-    let revisedThisWeek = 0;
-    Object.values(progress).forEach(p => {
-      if (p && typeof p === 'object' && p.lastReview && new Date(p.lastReview) >= weekAgo) revisedThisWeek++;
-    });
-    if (revisedThisWeek > 0) {
-      await sendPushToUser(user.id, 'Résumé de ta semaine 📊', `${revisedThisWeek} schéma${revisedThisWeek>1?'s':''} révisé${revisedThisWeek>1?'s':''} cette semaine`, '/revision');
+    const schemasRevised = [];
+
+    for (const seance of (db.seances || [])) {
+      for (const sc of (seance.schemas || [])) {
+        const p = progress[sc.id];
+        if (p && typeof p === 'object' && p.lastReview && new Date(p.lastReview) >= weekAgo) {
+          schemasRevised.push({
+            titre: sc.titre,
+            seanceTitre: seance.titre,
+            difficulty: p.difficulty || null,
+            lastReview: p.lastReview
+          });
+        }
+      }
+    }
+
+    db.weeklySummaries[user.id] = {
+      weekKey,
+      schemasRevised,
+      generatedAt: new Date().toISOString()
+    };
+
+    if (schemasRevised.length > 0) {
+      await sendPushToUser(user.id, 'Résumé de ta semaine 📊', 'Ton résumé de la semaine est disponible !', '/');
+    } else {
+      await sendPushToUser(user.id, 'Résumé de ta semaine 📊', 'Tu n\'as pas révisé cette semaine — c\'est le moment de s\'y remettre 💪', '/');
     }
   }
+
+  saveDB(db);
   console.log('[CRON] Résumé hebdomadaire envoyé');
 }
 
@@ -1019,6 +1045,14 @@ app.get('/api/revision/due', requireAuth, (req, res) => {
   }
   due.sort((a, b) => new Date(a.nextReview) - new Date(b.nextReview));
   res.json(due);
+});
+
+// Résumé hebdomadaire de l'étudiant connecté
+app.get('/api/weekly-summary', requireAuth, (req, res) => {
+  const db = loadDB();
+  const summaries = db.weeklySummaries || {};
+  const summary = summaries[req.session.userId] || null;
+  res.json(summary);
 });
 
 app.get('/api/revision/seances/:id/schemas/:schemaId/image', requireAuth, async (req, res) => {
