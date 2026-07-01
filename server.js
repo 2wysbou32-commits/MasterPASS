@@ -659,6 +659,13 @@ app.patch('/api/me/notif-prefs', requireAuth, (req, res) => {
   saveDB(db);
   res.json({ notifPrefs: user.notifPrefs });
 });
+
+app.get('/api/admin/test-cron', requireSuperAdmin, async (req, res) => {
+  await runDailyReviewReminder();
+  await runWeeklySummary();
+  res.json({ ok: true, message: 'Crons exécutés' });
+});
+
 app.post('/api/threads/:fileId/:threadId/mute', requireAuth, (req, res) => {
   const db = loadDB();
   const user = db.users.find(u => u.id === req.session.userId);
