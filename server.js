@@ -51,6 +51,91 @@ async function sendPushToAll(title, body, url = '/', category = null, threadId =
   }));
 }
 
+// ── Envoi push ciblé à un seul utilisateur ────────────────────────────────────
+async function sendPushToUser(userId, title, body, url = '/') {
+  if (!webpush) return;
+  const db = loadDB();
+  const subs = (db.pushSubscriptions || []).filter(s => String(s.userId) === String(userId));
+  const payload = JSON.stringify({ title, body, url });
+  await Promise.allSettled(subs.map(async (sub) => {
+    try {
+      await webpush.sendNotification(sub.subscription, payload);
+    } catch(e) {
+      if (e.statusCode === 410) {
+        const db2 = loadDB();
+        db2.pushSubscriptions = (db2.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== sub.subscription.endpoint);
+        saveDB(db2);
+      }
+    }
+  }));
+}
+
+// ── Calcule le nombre de schémas à revoir pour un user ────────────────────────
+function countDueSchemas(user, db) {
+  const progress = user.revisionProgress || {};
+  const now = new Date();
+  let count = 0;
+  for (const seance of (db.seances || [])) {
+    for (const sc of (seance.schemas || [])) {
+      const p = progress[sc.id];
+      if (p && typeof p === 'object' && p.nextReview && new Date(p.nextReview) <= now) count++;
+    }
+  }
+  return count;
+}
+
+// ── Cron : rappel quotidien de révision (8h00) ────────────────────────────────
+async function runDailyReviewReminder() {
+  const db = loadDB();
+  for (const user of db.users) {
+    if (user.role !== 'student') continue;
+    if (user.notifPrefs && user.notifPrefs.revision === false) continue;
+    const due = countDueSchemas(user, db);
+    if (due > 0) {
+      await sendPushToUser(user.id, 'Révision du jour 🔁', `Tu as ${due} schéma${due>1?'s':''} à revoir aujourd'hui`, '/revision');
+    }
+  }
+  console.log('[CRON] Rappel de révision quotidien envoyé');
+}
+
+// ── Cron : résumé hebdomadaire (dimanche 17h) ─────────────────────────────────
+async function runWeeklySummary() {
+  const db = loadDB();
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  for (const user of db.users) {
+    if (user.role !== 'student') continue;
+    if (user.notifPrefs && user.notifPrefs.revision === false) continue;
+    const progress = user.revisionProgress || {};
+    let revisedThisWeek = 0;
+    Object.values(progress).forEach(p => {
+      if (p && typeof p === 'object' && p.lastReview && new Date(p.lastReview) >= weekAgo) revisedThisWeek++;
+    });
+    if (revisedThisWeek > 0) {
+      await sendPushToUser(user.id, 'Résumé de ta semaine 📊', `${revisedThisWeek} schéma${revisedThisWeek>1?'s':''} révisé${revisedThisWeek>1?'s':''} cette semaine`, '/revision');
+    }
+  }
+  console.log('[CRON] Résumé hebdomadaire envoyé');
+}
+
+// ── Scheduler simple (sans dépendance externe) ────────────────────────────────
+let _lastDailyRun = null;
+let _lastWeeklyRun = null;
+function startCronScheduler() {
+  setInterval(() => {
+    const now = new Date();
+    const dateKey = now.toISOString().split('T')[0];
+    if (now.getHours() === 8 && now.getMinutes() === 0 && _lastDailyRun !== dateKey) {
+      _lastDailyRun = dateKey;
+      runDailyReviewReminder().catch(e => console.error('[CRON] Erreur rappel quotidien:', e.message));
+    }
+    if (now.getDay() === 0 && now.getHours() === 17 && now.getMinutes() === 0 && _lastWeeklyRun !== dateKey) {
+      _lastWeeklyRun = dateKey;
+      runWeeklySummary().catch(e => console.error('[CRON] Erreur résumé hebdo:', e.message));
+    }
+  }, 60 * 1000);
+  console.log('✅ Scheduler cron démarré (rappel 8h, résumé dimanche 17h)');
+}
+
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3000';
 
 // ── Cloudflare R2 config ──────────────────────────────────────────────────────
@@ -556,18 +641,16 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', requireAuth, (req, res) => {
   const user = loadDB().users.find(u => u.id === req.session.userId);
   if (!user) return res.status(401).json({ error: 'Session invalide' });
-  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null, notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true }, mutedThreads: user.mutedThreads || [] });
-});
-
-app.patch('/api/me/notif-prefs', requireAuth, (req, res) => {
-  const { announcements, discussions, files } = req.body;
+  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null, notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true, revision: true }, mutedThreads: user.mutedThreads || [] });
+  const { announcements, discussions, files, revision } = req.body;
   const db = loadDB();
   const user = db.users.find(u => u.id === req.session.userId);
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
   user.notifPrefs = {
     announcements: announcements !== false,
     discussions: discussions !== false,
-    files: files !== false
+    files: files !== false,
+    revision: revision !== false
   };
   saveDB(db);
   res.json({ notifPrefs: user.notifPrefs });
@@ -2547,6 +2630,7 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n✅  MasterPASS → http://0.0.0.0:${PORT}`);
+  startCronScheduler();
   // Migrate old comments to threads (once at startup)
   try {
     const db = loadDB();
