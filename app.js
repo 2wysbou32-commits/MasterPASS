@@ -345,6 +345,7 @@ if(titleWrap) titleWrap.style.display = 'none';
   if(topbar) topbar.style.display = 'flex';
   $('topbar-title').textContent = 'Accueil';
   loadDashboard();
+  loadWeeklySummary();
 }
 
 async function loadDashboard() {
@@ -482,6 +483,59 @@ async function loadDashboard() {
       </div>`).join('') : '<div class="dashboard-empty">Aucune discussion</div>';
   }
 }
+
+async function loadWeeklySummary() {
+  if (currentUser?.role !== 'student') return;
+  try {
+    const summary = await api('GET', '/weekly-summary');
+    const card = document.getElementById('dashboard-weekly-summary-card');
+    if (!card) return;
+    if (!summary) { card.style.display = 'none'; return; }
+    // Afficher seulement si le résumé date de moins de 7 jours
+    const age = Date.now() - new Date(summary.generatedAt).getTime();
+    if (age > 7 * 24 * 60 * 60 * 1000) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    card.onclick = () => openWeeklySummaryModal(summary);
+  } catch(e) {}
+}
+
+function openWeeklySummaryModal(summary) {
+  const existing = document.getElementById('weekly-summary-modal');
+  if (existing) existing.remove();
+
+  const diffLabel = { facile: '🟢 Facile', moyen: '🟡 Moyen', difficile: '🔴 Difficile' };
+  const rows = summary.schemasRevised.length ? summary.schemasRevised.map(s => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);margin-bottom:8px">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${s.titre}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${s.seanceTitre}</div>
+      </div>
+      <span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,0.08)">${diffLabel[s.difficulty] || '—'}</span>
+    </div>`).join('') :
+    '<div style="text-align:center;color:var(--text3);padding:24px 0;font-size:14px">😴 Aucun schéma révisé cette semaine</div>';
+
+  const weekStr = new Date(summary.generatedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const overlay = document.createElement('div');
+  overlay.id = 'weekly-summary-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,30,35,0.7);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:var(--surface,#1a2332);border:1px solid rgba(0,196,212,0.2);border-radius:24px;padding:32px 28px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.4)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--text)">📊 Résumé de la semaine</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px">Généré le ${weekStr}</div>
+        </div>
+        <button onclick="document.getElementById('weekly-summary-modal').remove()" style="width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">${summary.schemasRevised.length} schéma${summary.schemasRevised.length !== 1 ? 's' : ''} révisé${summary.schemasRevised.length !== 1 ? 's' : ''}</div>
+      ${rows}
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+
 async function updateAdminDiscBadge() {
   if (currentUser?.role !== 'admin' && currentUser?.role !== 'subadmin') return;
   try {
