@@ -71,26 +71,31 @@ async function api(method,path,body){
     $('app').style.display='none';
     $('auth-page').style.display='flex';
     $('login-input').value='';$('password-input').value='';
-    // Afficher une alerte modale percutante
-    let modal = document.getElementById('expired-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'expired-modal';
-      modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
-      modal.innerHTML = `<div style="background:white;border-radius:20px;padding:36px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.3)">
-        <div style="font-size:52px;margin-bottom:12px">🔐</div>
-        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:#C62828;margin-bottom:10px">Session expirée</div>
-        <p style="color:#546E7A;font-size:13.5px;line-height:1.65;margin-bottom:24px">
-          Une connexion depuis un autre appareil a été détectée sur ton compte.<br><br>
-          <strong style="color:#C62828">Le partage de compte est strictement interdit</strong> selon les conditions d'utilisation de MasterPASS. En cas de récidive, l'accès à la plateforme sera définitivement supprimé.
-        </p>
-        <button onclick="document.getElementById('expired-modal').remove()" style="width:100%;padding:13px;background:linear-gradient(135deg,#0097A7,#006064);color:white;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">
-          Compris — me reconnecter
-        </button>
-      </div>`;
-      document.body.appendChild(modal);
+    if(data.error==='SESSION_EXPIRED'){
+      // Double connexion détectée — message d'avertissement
+      let modal = document.getElementById('expired-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'expired-modal';
+        modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
+        modal.innerHTML = `<div style="background:white;border-radius:20px;padding:36px;max-width:400px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.3)">
+          <div style="font-size:52px;margin-bottom:12px">🔐</div>
+          <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;font-weight:800;color:#C62828;margin-bottom:10px">Session expirée</div>
+          <p style="color:#546E7A;font-size:13.5px;line-height:1.65;margin-bottom:24px">
+            Une connexion depuis un autre appareil a été détectée sur ton compte.<br><br>
+            <strong style="color:#C62828">Le partage de compte est strictement interdit</strong> selon les conditions d'utilisation de MasterPASS. En cas de récidive, l'accès à la plateforme sera définitivement supprimé.
+          </p>
+          <button onclick="document.getElementById('expired-modal').remove()" style="width:100%;padding:13px;background:linear-gradient(135deg,#0097A7,#006064);color:white;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">
+            Compris — me reconnecter
+          </button>
+        </div>`;
+        document.body.appendChild(modal);
+      }
+      modal.style.display = 'flex';
+    } else {
+      // Session expirée normalement par inactivité — reconnexion silencieuse
+      toast('Session expirée, reconnecte-toi', 'error');
     }
-    modal.style.display = 'flex';
     throw new Error('Session expirée');
   }
   if(r.status===403 && data.error==='ACCOUNT_EXPIRED'){
