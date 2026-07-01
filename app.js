@@ -345,7 +345,6 @@ if(titleWrap) titleWrap.style.display = 'none';
   if(topbar) topbar.style.display = 'flex';
   $('topbar-title').textContent = 'Accueil';
   loadDashboard();
-  loadWeeklySummary();
 }
 
 async function loadDashboard() {
@@ -482,6 +481,7 @@ async function loadDashboard() {
         <div style="font-size:11px;color:var(--text3)">📄 ${t.fileName||''} · ${t.replyCount||0} rép.</div>
       </div>`).join('') : '<div class="dashboard-empty">Aucune discussion</div>';
   }
+  if (currentUser?.role === 'student') loadWeeklySummary();
 }
 
 async function loadWeeklySummary() {
