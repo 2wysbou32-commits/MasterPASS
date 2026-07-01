@@ -660,7 +660,7 @@ app.patch('/api/me/notif-prefs', requireAuth, (req, res) => {
   res.json({ notifPrefs: user.notifPrefs });
 });
 
-app.get('/api/admin/test-cron', requireSuperAdmin, async (req, res) => {
+app.get('/api/admin/test-cron', requireAuth, async (req, res) => {
   await runDailyReviewReminder();
   await runWeeklySummary();
   res.json({ ok: true, message: 'Crons exécutés' });
