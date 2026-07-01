@@ -388,6 +388,17 @@
                 <div id="db-discussions"><div class="dashboard-empty">Chargement...</div></div>
                 <div style="margin-top:10px;text-align:right"><a onclick="showPanel('discussions-center')" style="font-size:12px;color:var(--teal);cursor:pointer;font-weight:600">Voir tout →</a></div>
               </div>
+              <!-- Résumé hebdomadaire -->
+              <div class="dashboard-card" id="dashboard-weekly-summary-card" style="display:none;cursor:pointer">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <span style="font-size:28px">📊</span>
+                  <div>
+                    <div style="font-size:14px;font-weight:700;color:var(--text)">Résumé de la semaine disponible</div>
+                    <div style="font-size:12px;color:var(--text3);margin-top:2px">Clique pour voir tes schémas révisés</div>
+                  </div>
+                  <span style="margin-left:auto;font-size:20px;color:var(--teal)">›</span>
+                </div>
+              </div>
               <!-- À réviser aujourd'hui -->
               <div class="dashboard-card" id="dashboard-due-card" style="display:none;cursor:pointer" onclick="showPanel('revision');setTimeout(function(){revSwitchTab('due')},100)">
                 <div class="dashboard-card-title">🔁 À réviser aujourd'hui</div>
