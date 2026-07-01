@@ -638,10 +638,14 @@ app.post('/api/logout', (req, res) => {
   }
   req.session.destroy(() => res.json({ ok: true }));
 });
+
 app.get('/api/me', requireAuth, (req, res) => {
   const user = loadDB().users.find(u => u.id === req.session.userId);
   if (!user) return res.status(401).json({ error: 'Session invalide' });
   res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null, notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true, revision: true }, mutedThreads: user.mutedThreads || [] });
+});
+
+app.patch('/api/me/notif-prefs', requireAuth, (req, res) => {
   const { announcements, discussions, files, revision } = req.body;
   const db = loadDB();
   const user = db.users.find(u => u.id === req.session.userId);
@@ -655,7 +659,6 @@ app.get('/api/me', requireAuth, (req, res) => {
   saveDB(db);
   res.json({ notifPrefs: user.notifPrefs });
 });
-
 app.post('/api/threads/:fileId/:threadId/mute', requireAuth, (req, res) => {
   const db = loadDB();
   const user = db.users.find(u => u.id === req.session.userId);
