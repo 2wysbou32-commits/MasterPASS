@@ -1047,12 +1047,6 @@ app.get('/api/revision/due', requireAuth, (req, res) => {
   res.json(due);
 });
 
-app.get('/api/admin/test-cron', requireAuth, async (req, res) => {
-  await runDailyReviewReminder();
-  await runWeeklySummary();
-  res.json({ ok: true });
-});
-
 // Résumé hebdomadaire de l'étudiant connecté
 app.get('/api/weekly-summary', requireAuth, (req, res) => {
   const db = loadDB();
