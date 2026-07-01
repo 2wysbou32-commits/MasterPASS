@@ -660,20 +660,6 @@ app.patch('/api/me/notif-prefs', requireAuth, (req, res) => {
   res.json({ notifPrefs: user.notifPrefs });
 });
 
-app.get('/api/admin/test-cron', requireAuth, async (req, res) => {
-  const db = loadDB();
-  const subs = db.pushSubscriptions || [];
-  const users = db.users.filter(u => u.role === 'student');
-  const details = users.map(u => ({
-    name: u.name,
-    hasSub: subs.some(s => String(s.userId) === String(u.id)),
-    dueCount: countDueSchemas(u, db)
-  }));
-  await runDailyReviewReminder();
-  await runWeeklySummary();
-  res.json({ ok: true, details });
-});
-
 app.post('/api/threads/:fileId/:threadId/mute', requireAuth, (req, res) => {
   const db = loadDB();
   const user = db.users.find(u => u.id === req.session.userId);
