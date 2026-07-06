@@ -482,6 +482,7 @@ async function loadDashboard() {
       </div>`).join('') : '<div class="dashboard-empty">Aucune discussion</div>';
   }
   if (currentUser?.role === 'student') loadWeeklySummary();
+  if (currentUser?.role === 'student') loadDailySchema();
 }
 
 async function loadWeeklySummary() {
@@ -496,6 +497,41 @@ async function loadWeeklySummary() {
     if (age > 7 * 24 * 60 * 60 * 1000) { card.style.display = 'none'; return; }
     card.style.display = 'block';
     card.onclick = () => openWeeklySummaryModal(summary);
+  } catch(e) {}
+}
+
+async function loadDailySchema() {
+  if (currentUser?.role !== 'student') return;
+  try {
+    const data = await api('GET', '/daily-schema');
+    const card = document.getElementById('dashboard-daily-schema-card');
+    if (!card) return;
+    if (!data || data.date !== new Date().toISOString().split('T')[0]) {
+      card.style.display = 'none'; return;
+    }
+    if (data.done) {
+      card.style.display = 'block';
+      card.onclick = null;
+      card.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:28px">✅</span>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Schéma du jour</div>
+            <div style="font-size:14px;font-weight:700;color:var(--text)">Déjà fait aujourd'hui !</div>
+          </div>
+        </div>`;
+      return;
+    }
+    card.style.display = 'block';
+    const titleEl = card.querySelector('#daily-schema-titre');
+    const seanceEl = card.querySelector('#daily-schema-seance');
+    if (titleEl) titleEl.textContent = data.schema.titre;
+    if (seanceEl) seanceEl.textContent = data.schema.seanceTitre;
+    card.onclick = () => {
+      _isDailySchema = true;
+      showPanel('revision');
+      setTimeout(() => ouvrirSchema(data.schema.seanceId, data.schema.id), 300);
+    };
   } catch(e) {}
 }
 
@@ -1318,6 +1354,7 @@ function revUpdateBadges() {
 
 var _revCurrentSeanceId = null;
 var _revCurrentSchemaId = null;
+var _isDailySchema = false;
 var _revNotedThisSession = false;
 
 function revShowDifficultyPopup() {
@@ -1346,9 +1383,41 @@ async function revNoteDifficulty(difficulty) {
   if (!_revCurrentSeanceId || !_revCurrentSchemaId) return;
   try {
     await api('POST', '/revision/seances/' + _revCurrentSeanceId + '/schemas/' + _revCurrentSchemaId + '/note', { difficulty: difficulty });
-    toast('Révision enregistrée !', 'success');
+    if (_isDailySchema) {
+      _isDailySchema = false;
+      // Marquer comme fait côté serveur
+      await api('POST', '/daily-schema/done', { difficulty });
+      // Message selon la note
+      const msg = difficulty === 'facile'
+        ? '🎉 Bravo ! Tu maîtrises bien ce schéma !'
+        : difficulty === 'moyen'
+        ? '👍 Bien joué ! Continue à réviser pour le maîtriser !'
+        : '💪 Ne lâche pas ! La répétition est la clé du succès !';
+      showDailySchemaResult(msg);
+      // Mettre à jour la card accueil
+      loadDailySchema();
+    } else {
+      toast('Révision enregistrée !', 'success');
+    }
     revRefreshDueBadge();
   } catch(e) { toast(e.message, 'error'); }
+}
+
+function showDailySchemaResult(msg) {
+  const existing = document.getElementById('daily-schema-result-modal');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'daily-schema-result-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,30,35,0.7);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:var(--surface,#1a2332);border:1px solid rgba(0,196,212,0.2);border-radius:24px;padding:36px 28px;max-width:360px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,0.4)">
+      <div style="font-size:48px;margin-bottom:16px">🎲</div>
+      <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:10px">Schéma du jour terminé !</div>
+      <div style="font-size:14px;color:var(--text2);margin-bottom:24px">${msg}</div>
+      <button onclick="document.getElementById('daily-schema-result-modal').remove()" style="padding:12px 28px;border-radius:14px;border:none;background:var(--teal,#0097A7);color:#fff;font-size:14px;font-weight:700;cursor:pointer">Super !</button>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 function revShowTab(n) {
