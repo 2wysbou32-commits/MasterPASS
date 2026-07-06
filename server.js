@@ -143,6 +143,27 @@ async function runWeeklySummary() {
   console.log('[CRON] Résumé hebdomadaire envoyé');
 }
 
+async function assignDailySchema() {
+  const db = loadDB();
+  if (!db.dailySchema) db.dailySchema = {};
+  const today = new Date().toISOString().split('T')[0];
+  const allSchemas = [];
+  for (const seance of (db.seances || [])) {
+    for (const sc of (seance.schemas || [])) {
+      allSchemas.push({ id: sc.id, titre: sc.titre, seanceTitre: seance.titre, seanceId: seance.id });
+    }
+  }
+  if (!allSchemas.length) return;
+  for (const user of db.users) {
+    if (user.role !== 'student') continue;
+    const random = allSchemas[Math.floor(Math.random() * allSchemas.length)];
+    db.dailySchema[user.id] = { schema: random, date: today, done: false };
+    await sendPushToUser(user.id, 'Schéma du jour 🎲', `Aujourd'hui : "${random.titre}" — vas-y !`, '/');
+  }
+  saveDB(db);
+  console.log('[CRON] Schéma du jour assigné');
+}
+
 // ── Scheduler simple (sans dépendance externe) ────────────────────────────────
 let _lastDailyRun = null;
 let _lastWeeklyRun = null;
@@ -156,7 +177,8 @@ function startCronScheduler() {
     }
     if (now.getDay() === 0 && now.getHours() === 17 && now.getMinutes() === 0 && _lastWeeklyRun !== dateKey) {
       _lastWeeklyRun = dateKey;
-      runWeeklySummary().catch(e => console.error('[CRON] Erreur résumé hebdo:', e.message));
+      runDailyReviewReminder().catch(e => console.error('[CRON] Erreur rappel quotidien:', e.message));
+      assignDailySchema().catch(e => console.error('[CRON] Erreur schéma du jour:', e.message));
     }
   }, 60 * 1000);
   console.log('✅ Scheduler cron démarré (rappel 8h, résumé dimanche 17h)');
@@ -1053,6 +1075,22 @@ app.get('/api/weekly-summary', requireAuth, (req, res) => {
   const summaries = db.weeklySummaries || {};
   const summary = summaries[req.session.userId] || null;
   res.json(summary);
+});
+
+// Schéma du jour
+app.get('/api/daily-schema', requireAuth, (req, res) => {
+  const db = loadDB();
+  const entry = (db.dailySchema || {})[req.session.userId] || null;
+  res.json(entry);
+});
+
+app.post('/api/daily-schema/done', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.dailySchema) db.dailySchema = {};
+  const entry = db.dailySchema[req.session.userId];
+  if (entry) { entry.done = true; entry.difficulty = req.body.difficulty || null; }
+  saveDB(db);
+  res.json({ ok: true });
 });
 
 app.get('/api/revision/seances/:id/schemas/:schemaId/image', requireAuth, async (req, res) => {
