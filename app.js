@@ -269,6 +269,8 @@ function setupApp() {
   $('nav-codes').style.display=isAdmin?'flex':'none';
   $('nav-security').style.display=isAdmin?'flex':'none';
   $('nav-settings').style.display='flex';
+  $('nav-support').style.display=isAnyAdmin?'none':'flex';
+  $('nav-messages').style.display=isAnyAdmin?'flex':'none';
   const focusBtn = document.getElementById('focus-mode-btn');
   if(focusBtn) focusBtn.style.display = isAnyAdmin ? 'none' : 'flex';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -306,6 +308,7 @@ function setupApp() {
   if(annAdminActions) annAdminActions.style.display = isAnyAdmin ? 'flex' : 'none';
   checkAndShowTutorial();
   updateAnnouncementsBadge();
+  updateTicketsBadge();
   // Load discussions center badge
   api('GET', '/threads/all').then(function(threads) {
     _allThreads = threads;
@@ -622,6 +625,8 @@ function showPanel(name){
   if(name==='revision'){$('topbar-title').textContent='Révision';loadRevision();}
   if(name==='discussions-center'){$('topbar-title').textContent='Discussions';loadDiscussionsCenter();const dc=document.getElementById('disc-controls-bar');if(dc)dc.style.display='flex';const df=document.getElementById('disc-filters-bar');if(df)df.style.display='flex';}
   if(name==='announcements'){$('topbar-title').textContent='Annonces';loadAnnouncements();}
+  if(name==='support'){$('topbar-title').textContent='Support';loadSupportPanel();}
+  if(name==='messages'){$('topbar-title').textContent='Messages';loadMessagesPanel();}
   if(name==='users'){
   $('topbar-title').textContent='Gestion des comptes';
   loadUsers();
@@ -3126,6 +3131,204 @@ async function updateAnnouncementsBadge() {
       badge.style.display = 'none';
     }
   } catch(e) {}
+}
+
+// ── TICKETS DE SUPPORT ───────────────────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function updateTicketsBadge() {
+  try {
+    const isAnyAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
+    if (isAnyAdmin) {
+      const { tickets } = await api('GET', '/tickets');
+      const unread = tickets.filter(t => t.unreadForAdmin).length;
+      const badge = $('messages-badge');
+      if (badge) { badge.textContent = unread > 9 ? '9+' : unread; badge.style.display = unread > 0 ? 'inline-block' : 'none'; }
+    } else {
+      const { tickets } = await api('GET', '/tickets/mine');
+      const unread = tickets.filter(t => t.unreadForStudent).length;
+      const badge = $('support-badge');
+      if (badge) { badge.textContent = unread > 9 ? '9+' : unread; badge.style.display = unread > 0 ? 'inline-block' : 'none'; }
+    }
+  } catch(e) {}
+}
+
+let _currentTicketId = null;
+
+async function loadSupportPanel() {
+  $('support-list-view').style.display = 'block';
+  $('support-detail-view').style.display = 'none';
+  const list = $('support-tickets-list');
+  list.innerHTML = '<div style="color:var(--text3);padding:20px">Chargement...</div>';
+  try {
+    const { tickets } = await api('GET', '/tickets/mine');
+    renderSupportTicketList(tickets);
+    updateTicketsBadge();
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
+  }
+}
+
+function renderSupportTicketList(tickets) {
+  const list = $('support-tickets-list');
+  if (!tickets.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">Aucun ticket pour l\'instant. Clique sur "Nouveau ticket" si tu as une question.</div>';
+    return;
+  }
+  list.innerHTML = tickets.map(t => {
+    const last = t.messages[t.messages.length - 1];
+    const statusColor = t.status === 'open' ? 'var(--teal-dark)' : 'var(--text3)';
+    const statusLabel = t.status === 'open' ? 'Ouvert' : 'Fermé';
+    return '<div onclick="openSupportTicket(' + t.id + ')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface,white);border:1.5px solid var(--border);border-radius:14px;margin-bottom:10px;cursor:pointer">' +
+      (t.unreadForStudent ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0"></span>' : '<span style="width:8px;flex-shrink:0"></span>') +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(t.subject) + '</div>' +
+        '<div style="font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(last.text) + '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:' + statusColor + ';flex-shrink:0">' + statusLabel + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function showNewTicketForm() { $('new-ticket-form').style.display = 'block'; }
+function hideNewTicketForm() {
+  $('new-ticket-form').style.display = 'none';
+  $('ticket-subject').value = '';
+  $('ticket-message').value = '';
+}
+
+async function submitNewTicket() {
+  const subject = $('ticket-subject').value.trim();
+  const message = $('ticket-message').value.trim();
+  if (!subject || !message) return alert('Merci de remplir le sujet et le message.');
+  try {
+    await api('POST', '/tickets', { subject, message });
+    hideNewTicketForm();
+    loadSupportPanel();
+  } catch(e) { alert('Erreur: ' + e.message); }
+}
+
+async function openSupportTicket(id) {
+  _currentTicketId = id;
+  $('support-list-view').style.display = 'none';
+  $('support-detail-view').style.display = 'block';
+  try {
+    const { ticket } = await api('GET', '/tickets/' + id);
+    $('support-detail-subject').textContent = ticket.subject;
+    $('support-detail-status').textContent = ticket.status === 'open' ? 'Ouvert' : 'Fermé — ce ticket est clos';
+    renderTicketThread('support-thread', ticket, currentUser.id);
+    $('support-reply-box').style.display = ticket.status === 'open' ? 'flex' : 'none';
+    updateTicketsBadge();
+  } catch(e) { alert('Erreur: ' + e.message); }
+}
+
+function backToSupportList() {
+  $('support-detail-view').style.display = 'none';
+  loadSupportPanel();
+}
+
+async function sendSupportReply() {
+  const input = $('support-reply-input');
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    await api('POST', '/tickets/' + _currentTicketId + '/reply', { text });
+    input.value = '';
+    openSupportTicket(_currentTicketId);
+  } catch(e) { alert('Erreur: ' + e.message); }
+}
+
+async function loadMessagesPanel() {
+  $('messages-list-view').style.display = 'block';
+  $('messages-detail-view').style.display = 'none';
+  const list = $('messages-tickets-list');
+  list.innerHTML = '<div style="color:var(--text3);padding:20px">Chargement...</div>';
+  try {
+    const { tickets } = await api('GET', '/tickets');
+    renderMessagesTicketList(tickets);
+    updateTicketsBadge();
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--danger);padding:20px">Erreur: ' + e.message + '</div>';
+  }
+}
+
+function renderMessagesTicketList(tickets) {
+  const list = $('messages-tickets-list');
+  if (!tickets.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">Aucun ticket pour l\'instant.</div>';
+    return;
+  }
+  list.innerHTML = tickets.map(t => {
+    const last = t.messages[t.messages.length - 1];
+    const statusColor = t.status === 'open' ? 'var(--teal-dark)' : 'var(--text3)';
+    const statusLabel = t.status === 'open' ? 'Ouvert' : 'Fermé';
+    return '<div onclick="openMessageTicket(' + t.id + ')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface,white);border:1.5px solid var(--border);border-radius:14px;margin-bottom:10px;cursor:pointer">' +
+      (t.unreadForAdmin ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0"></span>' : '<span style="width:8px;flex-shrink:0"></span>') +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:700;font-size:14px;color:var(--text)">' + escapeHtml(t.studentName) + ' — ' + escapeHtml(t.subject) + '</div>' +
+        '<div style="font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(last.text) + '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:' + statusColor + ';flex-shrink:0">' + statusLabel + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function openMessageTicket(id) {
+  _currentTicketId = id;
+  $('messages-list-view').style.display = 'none';
+  $('messages-detail-view').style.display = 'block';
+  try {
+    const { ticket } = await api('GET', '/tickets/' + id);
+    $('messages-detail-subject').textContent = ticket.subject;
+    $('messages-detail-meta').textContent = ticket.studentName + ' · ' + (ticket.status === 'open' ? 'Ouvert' : 'Fermé');
+    renderTicketThread('messages-thread', ticket, currentUser.id);
+    $('messages-reply-box').style.display = ticket.status === 'open' ? 'flex' : 'none';
+    $('messages-close-btn').style.display = ticket.status === 'open' ? 'inline-block' : 'none';
+    updateTicketsBadge();
+  } catch(e) { alert('Erreur: ' + e.message); }
+}
+
+function backToMessagesList() {
+  $('messages-detail-view').style.display = 'none';
+  loadMessagesPanel();
+}
+
+async function sendMessageReply() {
+  const input = $('messages-reply-input');
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    await api('POST', '/tickets/' + _currentTicketId + '/reply', { text });
+    input.value = '';
+    openMessageTicket(_currentTicketId);
+  } catch(e) { alert('Erreur: ' + e.message); }
+}
+
+async function closeMessageTicket() {
+  if (!confirm('Marquer ce ticket comme résolu ?')) return;
+  try {
+    await api('POST', '/tickets/' + _currentTicketId + '/close');
+    openMessageTicket(_currentTicketId);
+  } catch(e) { alert('Erreur: ' + e.message); }
+}
+
+function renderTicketThread(containerId, ticket, myUserId) {
+  const container = $(containerId);
+  container.innerHTML = ticket.messages.map(m => {
+    const isMine = String(m.authorId) === String(myUserId);
+    const align = isMine ? 'flex-end' : 'flex-start';
+    const bg = isMine ? 'linear-gradient(135deg,var(--teal),var(--teal-dark))' : 'var(--surface,white)';
+    const color = isMine ? 'white' : 'var(--text)';
+    const border = isMine ? 'none' : '1.5px solid var(--border)';
+    const time = new Date(m.createdAt).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    return '<div style="display:flex;flex-direction:column;align-items:' + align + '">' +
+      '<div style="max-width:75%;background:' + bg + ';color:' + color + ';border:' + border + ';border-radius:16px;padding:10px 14px;font-size:14px;white-space:pre-wrap;word-break:break-word">' + escapeHtml(m.text) + '</div>' +
+      '<div style="font-size:11px;color:var(--text3);margin-top:2px;padding:0 4px">' + escapeHtml(m.authorName) + ' · ' + time + '</div>' +
+    '</div>';
+  }).join('');
+  container.scrollTop = container.scrollHeight;
 }
 
 function showNewAnnouncementForm() {
