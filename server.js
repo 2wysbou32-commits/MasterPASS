@@ -177,8 +177,7 @@ function startCronScheduler() {
     }
     if (now.getDay() === 0 && now.getHours() === 17 && now.getMinutes() === 0 && _lastWeeklyRun !== dateKey) {
       _lastWeeklyRun = dateKey;
-      runDailyReviewReminder().catch(e => console.error('[CRON] Erreur rappel quotidien:', e.message));
-      assignDailySchema().catch(e => console.error('[CRON] Erreur schéma du jour:', e.message));
+      runWeeklySummary().catch(e => console.error('[CRON] Erreur résumé hebdomadaire:', e.message));
     }
   }, 60 * 1000);
   console.log('✅ Scheduler cron démarré (rappel 8h, résumé dimanche 17h)');
@@ -297,6 +296,7 @@ function initDB() {
     inviteCodes: [],
     announcements: [],
     connectionLogs: [],
+    tickets: [],
     settings: { defaultExpiresAt: null },
   };
   saveDB(db); return db;
@@ -1850,6 +1850,135 @@ app.post('/api/push/unsubscribe', requireAuth, (req, res) => {
   db.pushSubscriptions = (db.pushSubscriptions||[]).filter(s => s.subscription.endpoint !== endpoint);
   saveDB(db);
   res.json({ ok: true });
+});
+
+// ── TICKETS DE SUPPORT ───────────────────────────────────────────────────────
+// Un ticket = conversation privée étudiant <-> admin/subadmin
+
+// Étudiant : liste de MES tickets
+app.get('/api/tickets/mine', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.tickets) db.tickets = [];
+  const mine = db.tickets
+    .filter(t => String(t.studentId) === String(req.session.userId))
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  res.json({ tickets: mine });
+});
+
+// Étudiant : ouvrir un nouveau ticket
+app.post('/api/tickets', requireAuth, (req, res) => {
+  const { subject, message } = req.body;
+  if (!subject || !subject.trim() || !message || !message.trim()) {
+    return res.status(400).json({ error: 'Sujet et message requis' });
+  }
+  const db = loadDB();
+  if (!db.tickets) db.tickets = [];
+  const user = db.users.find(u => u.id === req.session.userId);
+  const now = new Date().toISOString();
+  const ticket = {
+    id: db.nextId++,
+    studentId: user.id,
+    studentName: user.name,
+    subject: subject.trim(),
+    status: 'open',
+    messages: [{
+      id: 1,
+      authorId: user.id,
+      authorName: user.name,
+      authorRole: user.role,
+      text: message.trim(),
+      createdAt: now,
+    }],
+    unreadForAdmin: true,
+    unreadForStudent: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+  db.tickets.push(ticket);
+  saveDB(db);
+  // Notifier tous les admins/subadmins
+  const admins = db.users.filter(u => u.role === 'admin' || u.role === 'subadmin');
+  admins.forEach(a => sendPushToUser(a.id, 'Nouveau ticket 🎫', `${user.name} : ${subject.trim()}`, '/'));
+  res.json({ ticket });
+});
+
+// Admin/Subadmin : liste de TOUS les tickets
+app.get('/api/tickets', requireAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.tickets) db.tickets = [];
+  const all = [...db.tickets].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  res.json({ tickets: all });
+});
+
+// Voir le détail d'un ticket (étudiant propriétaire OU admin/subadmin)
+app.get('/api/tickets/:id', requireAuth, (req, res) => {
+  const db = loadDB();
+  if (!db.tickets) db.tickets = [];
+  const ticket = db.tickets.find(t => t.id === parseInt(req.params.id));
+  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const isOwner = String(ticket.studentId) === String(req.session.userId);
+  const isAdmin = user.role === 'admin' || user.role === 'subadmin';
+  if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
+  // Marquer comme lu selon qui consulte
+  if (isAdmin) ticket.unreadForAdmin = false; else ticket.unreadForStudent = false;
+  saveDB(db);
+  res.json({ ticket });
+});
+
+// Répondre à un ticket (étudiant propriétaire OU admin/subadmin)
+app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
+  const { text } = req.body;
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  if (!db.tickets) db.tickets = [];
+  const ticket = db.tickets.find(t => t.id === parseInt(req.params.id));
+  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const isOwner = String(ticket.studentId) === String(req.session.userId);
+  const isAdmin = user.role === 'admin' || user.role === 'subadmin';
+  if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
+  if (ticket.status === 'closed') return res.status(400).json({ error: 'Ce ticket est fermé' });
+
+  const now = new Date().toISOString();
+  ticket.messages.push({
+    id: ticket.messages.length + 1,
+    authorId: user.id,
+    authorName: user.name,
+    authorRole: user.role,
+    text: text.trim(),
+    createdAt: now,
+  });
+  ticket.updatedAt = now;
+  if (isAdmin) {
+    ticket.unreadForStudent = true;
+    ticket.unreadForAdmin = false;
+  } else {
+    ticket.unreadForAdmin = true;
+    ticket.unreadForStudent = false;
+  }
+  saveDB(db);
+
+  if (isAdmin) {
+    sendPushToUser(ticket.studentId, 'Réponse à ton ticket 🎫', text.trim().slice(0, 80), '/');
+  } else {
+    const admins = db.users.filter(u => u.role === 'admin' || u.role === 'subadmin');
+    admins.forEach(a => sendPushToUser(a.id, 'Nouveau message — ticket', `${user.name} : ${text.trim().slice(0, 60)}`, '/'));
+  }
+  res.json({ ticket });
+});
+
+// Admin/Subadmin : fermer un ticket
+app.post('/api/tickets/:id/close', requireAdmin, (req, res) => {
+  const db = loadDB();
+  if (!db.tickets) db.tickets = [];
+  const ticket = db.tickets.find(t => t.id === parseInt(req.params.id));
+  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+  ticket.status = 'closed';
+  ticket.updatedAt = new Date().toISOString();
+  saveDB(db);
+  sendPushToUser(ticket.studentId, 'Ticket fermé', `Ton ticket "${ticket.subject}" a été résolu`, '/');
+  res.json({ ticket });
 });
 
 // ── AVATAR ───────────────────────────────────────────────────────────────────
