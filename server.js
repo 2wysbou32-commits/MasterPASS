@@ -1093,6 +1093,11 @@ app.post('/api/daily-schema/done', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/admin/test-daily', requireAuth, async (req, res) => {
+  await assignDailySchema();
+  res.json({ ok: true });
+});
+
 app.get('/api/revision/seances/:id/schemas/:schemaId/image', requireAuth, async (req, res) => {
   const db = loadDB();
   const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
