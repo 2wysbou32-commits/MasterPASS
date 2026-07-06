@@ -1867,8 +1867,8 @@ app.get('/api/tickets/mine', requireAuth, (req, res) => {
 
 // Étudiant : ouvrir un nouveau ticket
 app.post('/api/tickets', requireAuth, (req, res) => {
-  const { subject, message, image } = req.body;
-  if (!subject || !subject.trim() || (!message || !message.trim()) && !image) {
+  const { subject, message, image, audio, audioDuration } = req.body;
+  if (!subject || !subject.trim() || ((!message || !message.trim()) && !image && !audio)) {
     return res.status(400).json({ error: 'Sujet et message requis' });
   }
   const db = loadDB();
@@ -1888,6 +1888,8 @@ app.post('/api/tickets', requireAuth, (req, res) => {
       authorRole: user.role,
       text: (message || '').trim(),
       image: image || null,
+      audio: audio || null,
+      audioDuration: audioDuration || null,
       createdAt: now,
     }],
     unreadForAdmin: true,
@@ -1929,8 +1931,8 @@ app.get('/api/tickets/:id', requireAuth, (req, res) => {
 
 // Répondre à un ticket (étudiant propriétaire OU admin/subadmin)
 app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
-  const { text, image } = req.body;
-  if ((!text || !text.trim()) && !image) return res.status(400).json({ error: 'Message vide' });
+  const { text, image, audio, audioDuration } = req.body;
+  if ((!text || !text.trim()) && !image && !audio) return res.status(400).json({ error: 'Message vide' });
   const db = loadDB();
   if (!db.tickets) db.tickets = [];
   const ticket = db.tickets.find(t => t.id === parseInt(req.params.id));
@@ -1949,6 +1951,8 @@ app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
     authorRole: user.role,
     text: (text || '').trim(),
     image: image || null,
+    audio: audio || null,
+    audioDuration: audioDuration || null,
     createdAt: now,
   });
   ticket.updatedAt = now;
@@ -1962,10 +1966,11 @@ app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
   saveDB(db);
 
   if (isAdmin) {
-    sendPushToUser(ticket.studentId, 'Réponse à ton ticket 🎫', text.trim().slice(0, 80), '/');
+    const preview = (text && text.trim()) ? text.trim().slice(0, 80) : (audio ? '🎤 Message vocal' : (image ? '📷 Image' : ''));
+    sendPushToUser(ticket.studentId, 'Réponse à ton ticket 🎫', preview, '/');
   } else {
     const admins = db.users.filter(u => u.role === 'admin' || u.role === 'subadmin');
-    admins.forEach(a => sendPushToUser(a.id, 'Nouveau message — ticket', `${user.name} : ${text.trim().slice(0, 60)}`, '/'));
+    admins.forEach(a => sendPushToUser(a.id, 'Nouveau message — ticket', `${user.name} : ${preview}`, '/'));
   }
   res.json({ ticket });
 });
