@@ -1335,12 +1335,18 @@ function revUpdateBadges() {
   if (s1 && b1) {
     var pins = s1.querySelectorAll('[data-rev-pin]');
     var revealed = s1.querySelectorAll('[data-rev-pin][data-revealed="true"]');
-    b1.style.display = (pins.length && revealed.length === pins.length) ? 'flex' : 'none';
+    var done1 = pins.length && revealed.length === pins.length;
+    var wasHidden1 = b1.style.display === 'none';
+    b1.style.display = done1 ? 'flex' : 'none';
+    if (done1 && wasHidden1) setTimeout(() => revShowTab(2), 800);
   }
   if (s2 && b2) {
     var hotspots = s2.querySelectorAll('[data-rev-hotspot]');
     var filled = s2.querySelectorAll('[data-rev-hotspot][data-filled="true"]');
-    b2.style.display = (hotspots.length && filled.length === hotspots.length) ? 'flex' : 'none';
+    var done2 = hotspots.length && filled.length === hotspots.length;
+    var wasHidden2 = b2.style.display === 'none';
+    b2.style.display = done2 ? 'flex' : 'none';
+    if (done2 && wasHidden2) setTimeout(() => revShowTab(3), 800);
   }
   if (b3) {
     b3.style.display = (s3 && s3.style.display === 'block') ? 'flex' : 'none';
