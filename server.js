@@ -1867,8 +1867,8 @@ app.get('/api/tickets/mine', requireAuth, (req, res) => {
 
 // Étudiant : ouvrir un nouveau ticket
 app.post('/api/tickets', requireAuth, (req, res) => {
-  const { subject, message } = req.body;
-  if (!subject || !subject.trim() || !message || !message.trim()) {
+  const { subject, message, image } = req.body;
+  if (!subject || !subject.trim() || (!message || !message.trim()) && !image) {
     return res.status(400).json({ error: 'Sujet et message requis' });
   }
   const db = loadDB();
@@ -1886,7 +1886,8 @@ app.post('/api/tickets', requireAuth, (req, res) => {
       authorId: user.id,
       authorName: user.name,
       authorRole: user.role,
-      text: message.trim(),
+      text: (message || '').trim(),
+      image: image || null,
       createdAt: now,
     }],
     unreadForAdmin: true,
@@ -1928,8 +1929,8 @@ app.get('/api/tickets/:id', requireAuth, (req, res) => {
 
 // Répondre à un ticket (étudiant propriétaire OU admin/subadmin)
 app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
-  const { text } = req.body;
-  if (!text || !text.trim()) return res.status(400).json({ error: 'Message vide' });
+  const { text, image } = req.body;
+  if ((!text || !text.trim()) && !image) return res.status(400).json({ error: 'Message vide' });
   const db = loadDB();
   if (!db.tickets) db.tickets = [];
   const ticket = db.tickets.find(t => t.id === parseInt(req.params.id));
@@ -1946,7 +1947,8 @@ app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
     authorId: user.id,
     authorName: user.name,
     authorRole: user.role,
-    text: text.trim(),
+    text: (text || '').trim(),
+    image: image || null,
     createdAt: now,
   });
   ticket.updatedAt = now;
