@@ -3156,6 +3156,7 @@ async function updateTicketsBadge() {
 }
 
 let _currentTicketId = null;
+let _ticketImages = { newTicket: null, support: null, messages: null };
 
 async function loadSupportPanel() {
   $('support-list-view').style.display = 'block';
@@ -3197,14 +3198,16 @@ function hideNewTicketForm() {
   $('new-ticket-form').style.display = 'none';
   $('ticket-subject').value = '';
   $('ticket-message').value = '';
+  clearTicketImage('newTicket', 'ticket-image-preview');
 }
 
 async function submitNewTicket() {
   const subject = $('ticket-subject').value.trim();
   const message = $('ticket-message').value.trim();
-  if (!subject || !message) return alert('Merci de remplir le sujet et le message.');
+  const image = _ticketImages.newTicket;
+  if (!subject || (!message && !image)) return alert('Merci de remplir le sujet et le message (ou joindre une image).');
   try {
-    await api('POST', '/tickets', { subject, message });
+    await api('POST', '/tickets', { subject, message, image });
     hideNewTicketForm();
     loadSupportPanel();
   } catch(e) { alert('Erreur: ' + e.message); }
@@ -3232,10 +3235,12 @@ function backToSupportList() {
 async function sendSupportReply() {
   const input = $('support-reply-input');
   const text = input.value.trim();
-  if (!text) return;
+  const image = _ticketImages.support;
+  if (!text && !image) return;
   try {
-    await api('POST', '/tickets/' + _currentTicketId + '/reply', { text });
+    await api('POST', '/tickets/' + _currentTicketId + '/reply', { text, image });
     input.value = '';
+    clearTicketImage('support', 'support-reply-image-preview');
     openSupportTicket(_currentTicketId);
   } catch(e) { alert('Erreur: ' + e.message); }
 }
@@ -3298,10 +3303,12 @@ function backToMessagesList() {
 async function sendMessageReply() {
   const input = $('messages-reply-input');
   const text = input.value.trim();
-  if (!text) return;
+  const image = _ticketImages.messages;
+  if (!text && !image) return;
   try {
-    await api('POST', '/tickets/' + _currentTicketId + '/reply', { text });
+    await api('POST', '/tickets/' + _currentTicketId + '/reply', { text, image });
     input.value = '';
+    clearTicketImage('messages', 'messages-reply-image-preview');
     openMessageTicket(_currentTicketId);
   } catch(e) { alert('Erreur: ' + e.message); }
 }
@@ -3323,12 +3330,53 @@ function renderTicketThread(containerId, ticket, myUserId) {
     const color = isMine ? 'white' : 'var(--text)';
     const border = isMine ? 'none' : '1.5px solid var(--border)';
     const time = new Date(m.createdAt).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    const imageHtml = m.image ? '<img src="' + m.image + '" style="max-width:100%;max-height:280px;border-radius:12px;display:block;cursor:pointer;margin-bottom:' + (m.text ? '6px' : '0') + '" onclick="window.open(\'' + m.image + '\',\'_blank\')">' : '';
+    const textHtml = m.text ? escapeHtml(m.text) : '';
     return '<div style="display:flex;flex-direction:column;align-items:' + align + '">' +
-      '<div style="max-width:75%;background:' + bg + ';color:' + color + ';border:' + border + ';border-radius:16px;padding:10px 14px;font-size:14px;white-space:pre-wrap;word-break:break-word">' + escapeHtml(m.text) + '</div>' +
+      '<div style="max-width:75%;background:' + bg + ';color:' + color + ';border:' + border + ';border-radius:16px;padding:10px 14px;font-size:14px;white-space:pre-wrap;word-break:break-word">' + imageHtml + textHtml + '</div>' +
       '<div style="font-size:11px;color:var(--text3);margin-top:2px;padding:0 4px">' + escapeHtml(m.authorName) + ' · ' + time + '</div>' +
     '</div>';
   }).join('');
   container.scrollTop = container.scrollHeight;
+}
+
+async function handleTicketImageSelect(input, context, previewId) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { alert('Image trop lourde (max 10 Mo)'); input.value = ''; return; }
+  const localUrl = URL.createObjectURL(file);
+  const preview = document.getElementById(previewId);
+  preview.style.display = 'block';
+  preview.innerHTML = '<div style="position:relative;display:inline-block"><img src="' + localUrl + '" style="max-height:100px;border-radius:8px;max-width:100%;opacity:0.5"><button type="button" onclick="clearTicketImage(\'' + context + '\',\'' + previewId + '\')" style="position:absolute;top:-6px;right:-6px;background:#ef5350;color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0">×</button></div>';
+  input.value = '';
+  try {
+    const resizedBlob = await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) { if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(resolve, 'image/jpeg', 0.85);
+      };
+      img.src = localUrl;
+    });
+    const fd = new FormData();
+    fd.append('image', resizedBlob, file.name.replace(/\.[^.]+$/, '.jpg'));
+    const data = await api('POST', '/threads/upload-image', fd);
+    if (data.error) { alert(data.error); clearTicketImage(context, previewId); return; }
+    _ticketImages[context] = data.url;
+    const img = preview.querySelector('img');
+    if (img) { img.src = data.url; img.style.opacity = '1'; }
+  } catch(e) { alert(e.message || 'Erreur upload image'); clearTicketImage(context, previewId); }
+}
+
+function clearTicketImage(context, previewId) {
+  _ticketImages[context] = null;
+  const preview = document.getElementById(previewId);
+  if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
 }
 
 function showNewAnnouncementForm() {
