@@ -1165,7 +1165,21 @@
       </div>
       <input type="file" id="ticket-image-input" accept="image/*" style="display:none" onchange="handleTicketImageSelect(this,'newTicket','ticket-image-preview')">
       <div id="ticket-image-preview" style="display:none;margin-bottom:12px"></div>
+      <div id="voice-preview-newTicket" style="display:none;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--border);border-radius:12px;margin-bottom:12px;flex-wrap:wrap">
+        <button onclick="playVoicePreview('newTicket')" id="preview-play-btn-newTicket" style="width:30px;height:30px;border-radius:50%;background:var(--teal-dark);color:white;border:none;cursor:pointer;font-size:13px;flex-shrink:0">▶</button>
+        <canvas id="preview-waveform-newTicket" height="30" style="flex:1;max-width:160px;border-radius:4px"></canvas>
+        <span id="preview-duration-newTicket" style="font-size:11px;color:var(--text3);flex-shrink:0">0:00</span>
+        <button onclick="cancelVoicePreview('newTicket')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;flex-shrink:0">×</button>
+      </div>
       <div style="display:flex;gap:8px;align-items:center">
+        <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
+          <button id="record-lock-btn-newTicket" onclick="handleLockBtnClick('newTicket')" title="Verrouiller l'enregistrement" style="display:none;position:absolute;top:-36px;left:50%;transform:translateX(-50%);width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">🔓</button>
+          <button id="record-btn-newTicket"
+            onmousedown="handleVoiceMouseDown(event,'newTicket')"
+            ontouchstart="handleVoiceTouchStart(event,'newTicket')" ontouchmove="handleVoiceTouchMove(event,'newTicket'); event.preventDefault();" ontouchend="handleVoiceTouchEnd(event,'newTicket')" ontouchcancel="handleVoiceTouchEnd(event,'newTicket')"
+            class="btn-action" title="Maintenir pour enregistrer un vocal" style="padding:8px 12px;user-select:none;-webkit-user-select:none;touch-action:none">🎤</button>
+        </div>
+        <span id="record-timer-newTicket" style="display:none;font-size:12px;color:#ef5350;font-weight:700;white-space:nowrap">⏺ 0:00</span>
         <button type="button" onclick="document.getElementById('ticket-image-input').click()" class="btn-action" title="Joindre une image" style="padding:8px 12px">🖼️</button>
         <button class="btn-action primary-action" onclick="submitNewTicket()" style="flex:1">Envoyer</button>
         <button class="btn-action" onclick="hideNewTicketForm()">Annuler</button>
@@ -1187,9 +1201,23 @@
     </div>
     <div id="support-thread" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px"></div>
     <div id="support-reply-image-preview" style="display:none;margin-bottom:10px"></div>
+    <div id="voice-preview-support" style="display:none;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--border);border-radius:12px;margin-bottom:10px;flex-wrap:wrap">
+      <button onclick="playVoicePreview('support')" id="preview-play-btn-support" style="width:30px;height:30px;border-radius:50%;background:var(--teal-dark);color:white;border:none;cursor:pointer;font-size:13px;flex-shrink:0">▶</button>
+      <canvas id="preview-waveform-support" height="30" style="flex:1;max-width:160px;border-radius:4px"></canvas>
+      <span id="preview-duration-support" style="font-size:11px;color:var(--text3);flex-shrink:0">0:00</span>
+      <button onclick="cancelVoicePreview('support')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;flex-shrink:0">×</button>
+    </div>
     <div id="support-reply-box" style="display:flex;gap:10px;align-items:flex-end">
       <input type="file" id="support-reply-image-input" accept="image/*" style="display:none" onchange="handleTicketImageSelect(this,'support','support-reply-image-preview')">
       <button type="button" onclick="document.getElementById('support-reply-image-input').click()" class="btn-action" title="Joindre une image" style="padding:12px">🖼️</button>
+      <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
+        <button id="record-lock-btn-support" onclick="handleLockBtnClick('support')" title="Verrouiller l'enregistrement" style="display:none;position:absolute;top:-36px;left:50%;transform:translateX(-50%);width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">🔓</button>
+        <button id="record-btn-support"
+          onmousedown="handleVoiceMouseDown(event,'support')"
+          ontouchstart="handleVoiceTouchStart(event,'support')" ontouchmove="handleVoiceTouchMove(event,'support'); event.preventDefault();" ontouchend="handleVoiceTouchEnd(event,'support')" ontouchcancel="handleVoiceTouchEnd(event,'support')"
+          class="btn-action" title="Maintenir pour enregistrer un vocal" style="padding:12px;user-select:none;-webkit-user-select:none;touch-action:none">🎤</button>
+      </div>
+      <span id="record-timer-support" style="display:none;font-size:12px;color:#ef5350;font-weight:700;white-space:nowrap;align-self:center">⏺ 0:00</span>
       <textarea id="support-reply-input" placeholder="Écris ta réponse..." rows="2"
         style="flex:1;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);background:var(--surface,white);font-family:'Inter',sans-serif;resize:vertical;outline:none"
         onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendSupportReply();}"></textarea>
@@ -1221,9 +1249,23 @@
     </div>
     <div id="messages-thread" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px"></div>
     <div id="messages-reply-image-preview" style="display:none;margin-bottom:10px"></div>
+    <div id="voice-preview-messages" style="display:none;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--border);border-radius:12px;margin-bottom:10px;flex-wrap:wrap">
+      <button onclick="playVoicePreview('messages')" id="preview-play-btn-messages" style="width:30px;height:30px;border-radius:50%;background:var(--teal-dark);color:white;border:none;cursor:pointer;font-size:13px;flex-shrink:0">▶</button>
+      <canvas id="preview-waveform-messages" height="30" style="flex:1;max-width:160px;border-radius:4px"></canvas>
+      <span id="preview-duration-messages" style="font-size:11px;color:var(--text3);flex-shrink:0">0:00</span>
+      <button onclick="cancelVoicePreview('messages')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;flex-shrink:0">×</button>
+    </div>
     <div id="messages-reply-box" style="display:flex;gap:10px;align-items:flex-end">
       <input type="file" id="messages-reply-image-input" accept="image/*" style="display:none" onchange="handleTicketImageSelect(this,'messages','messages-reply-image-preview')">
       <button type="button" onclick="document.getElementById('messages-reply-image-input').click()" class="btn-action" title="Joindre une image" style="padding:12px">🖼️</button>
+      <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center">
+        <button id="record-lock-btn-messages" onclick="handleLockBtnClick('messages')" title="Verrouiller l'enregistrement" style="display:none;position:absolute;top:-36px;left:50%;transform:translateX(-50%);width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">🔓</button>
+        <button id="record-btn-messages"
+          onmousedown="handleVoiceMouseDown(event,'messages')"
+          ontouchstart="handleVoiceTouchStart(event,'messages')" ontouchmove="handleVoiceTouchMove(event,'messages'); event.preventDefault();" ontouchend="handleVoiceTouchEnd(event,'messages')" ontouchcancel="handleVoiceTouchEnd(event,'messages')"
+          class="btn-action" title="Maintenir pour enregistrer un vocal" style="padding:12px;user-select:none;-webkit-user-select:none;touch-action:none">🎤</button>
+      </div>
+      <span id="record-timer-messages" style="display:none;font-size:12px;color:#ef5350;font-weight:700;white-space:nowrap;align-self:center">⏺ 0:00</span>
       <textarea id="messages-reply-input" placeholder="Répondre à l'étudiant..." rows="2"
         style="flex:1;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);background:var(--surface,white);font-family:'Inter',sans-serif;resize:vertical;outline:none"
         onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendMessageReply();}"></textarea>
