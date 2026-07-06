@@ -3199,15 +3199,20 @@ function hideNewTicketForm() {
   $('ticket-subject').value = '';
   $('ticket-message').value = '';
   clearTicketImage('newTicket', 'ticket-image-preview');
+  cancelVoicePreview('newTicket');
 }
 
 async function submitNewTicket() {
   const subject = $('ticket-subject').value.trim();
   const message = $('ticket-message').value.trim();
   const image = _ticketImages.newTicket;
-  if (!subject || (!message && !image)) return alert('Merci de remplir le sujet et le message (ou joindre une image).');
+  const pendingVoiceBlob = (_voiceContext === 'newTicket') ? _voiceBlob : null;
+  const voiceSeconds = _voiceSeconds;
+  if (!subject || (!message && !image && !pendingVoiceBlob)) return alert('Merci de remplir le sujet et le message (ou joindre une image/un vocal).');
   try {
-    await api('POST', '/tickets', { subject, message, image });
+    const body = { subject, message, image };
+    if (pendingVoiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = () => { body.audio = r.result; body.audioDuration = voiceSeconds; resolve(); }; r.readAsDataURL(pendingVoiceBlob); }); }
+    await api('POST', '/tickets', body);
     hideNewTicketForm();
     loadSupportPanel();
   } catch(e) { alert('Erreur: ' + e.message); }
@@ -3236,11 +3241,16 @@ async function sendSupportReply() {
   const input = $('support-reply-input');
   const text = input.value.trim();
   const image = _ticketImages.support;
-  if (!text && !image) return;
+  const pendingVoiceBlob = (_voiceContext === 'support') ? _voiceBlob : null;
+  const voiceSeconds = _voiceSeconds;
+  if (!text && !image && !pendingVoiceBlob) return;
   try {
-    await api('POST', '/tickets/' + _currentTicketId + '/reply', { text, image });
+    const body = { text, image };
+    if (pendingVoiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = () => { body.audio = r.result; body.audioDuration = voiceSeconds; resolve(); }; r.readAsDataURL(pendingVoiceBlob); }); }
+    await api('POST', '/tickets/' + _currentTicketId + '/reply', body);
     input.value = '';
     clearTicketImage('support', 'support-reply-image-preview');
+    if (pendingVoiceBlob) cancelVoicePreview('support');
     openSupportTicket(_currentTicketId);
   } catch(e) { alert('Erreur: ' + e.message); }
 }
@@ -3331,13 +3341,31 @@ function renderTicketThread(containerId, ticket, myUserId) {
     const border = isMine ? 'none' : '1.5px solid var(--border)';
     const time = new Date(m.createdAt).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
     const imageHtml = m.image ? '<img src="' + m.image + '" style="max-width:100%;max-height:280px;border-radius:12px;display:block;cursor:pointer;margin-bottom:' + (m.text ? '6px' : '0') + '" onclick="window.open(\'' + m.image + '\',\'_blank\')">' : '';
+    let audioHtml = '';
+    if (m.audio) {
+      const durSec = m.audioDuration || 0;
+      const durStr = Math.floor(durSec/60) + ':' + (durSec%60<10?'0':'') + (durSec%60);
+      const aId = 'tk-a-' + containerId + '-' + m.id, bId = 'tk-b-' + containerId + '-' + m.id, barId = 'tk-c-' + containerId + '-' + m.id, tId = 'tk-t-' + containerId + '-' + m.id;
+      audioHtml = '<audio id="' + aId + '" src="' + m.audio + '" style="display:none"></audio>' +
+        '<div style="display:flex;align-items:center;gap:10px;padding:2px 0;min-width:160px;margin-bottom:' + (m.text ? '6px' : '0') + '">' +
+        '<button id="' + bId + '" onclick="toggleInlineAudio(\'' + aId + '\',\'' + bId + '\',\'' + barId + '\',\'' + tId + '\',event)" style="width:32px;height:32px;border-radius:50%;background:' + (isMine?'rgba(255,255,255,0.25)':'var(--teal-dark)') + ';color:white;border:none;cursor:pointer;font-size:14px;flex-shrink:0">▶</button>' +
+        '<canvas id="' + barId + '" data-mine="' + isMine + '" height="28" style="width:120px;height:28px;border-radius:3px;display:block"></canvas>' +
+        '<div style="display:flex;justify-content:space-between;gap:6px;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
+        '</div>';
+    }
     const textHtml = m.text ? escapeHtml(m.text) : '';
     return '<div style="display:flex;flex-direction:column;align-items:' + align + '">' +
-      '<div style="max-width:75%;background:' + bg + ';color:' + color + ';border:' + border + ';border-radius:16px;padding:10px 14px;font-size:14px;white-space:pre-wrap;word-break:break-word">' + imageHtml + textHtml + '</div>' +
+      '<div style="max-width:75%;background:' + bg + ';color:' + color + ';border:' + border + ';border-radius:16px;padding:10px 14px;font-size:14px;white-space:pre-wrap;word-break:break-word">' + imageHtml + audioHtml + textHtml + '</div>' +
       '<div style="font-size:11px;color:var(--text3);margin-top:2px;padding:0 4px">' + escapeHtml(m.authorName) + ' · ' + time + '</div>' +
     '</div>';
   }).join('');
   container.scrollTop = container.scrollHeight;
+  setTimeout(function() {
+    container.querySelectorAll('canvas[data-mine]').forEach(function(canvas) {
+      canvas.width = 120; canvas.height = 28;
+      redrawWaveformProgress(canvas, 0);
+    });
+  }, 50);
 }
 
 async function handleTicketImageSelect(input, context, previewId) {
@@ -5713,6 +5741,18 @@ let _voiceStarting = false;
 let _voicePendingStop = false;
 
 function getVoiceIds(ctx) {
+  if (ctx === 'support' || ctx === 'messages' || ctx === 'newTicket') {
+    return {
+      btn: 'record-btn-' + ctx,
+      label: 'record-label-' + ctx,
+      timer: 'record-timer-' + ctx,
+      lock: 'record-lock-btn-' + ctx,
+      preview: 'voice-preview-' + ctx,
+      playBtn: 'preview-play-btn-' + ctx,
+      canvas: 'preview-waveform-' + ctx,
+      duration: 'preview-duration-' + ctx,
+    };
+  }
   return {
     btn: ctx === 'main' ? 'record-btn' : 'record-btn2',
     label: ctx === 'main' ? 'record-label' : 'record-label2',
