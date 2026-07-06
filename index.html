@@ -1159,11 +1159,14 @@
         <label class="field-label">Sujet</label>
         <input type="text" class="field-input" id="ticket-subject" placeholder="Ex: Problème d'accès à un fichier" maxlength="120">
       </div>
-      <div class="field-group" style="margin-bottom:16px">
+      <div class="field-group" style="margin-bottom:12px">
         <label class="field-label">Message</label>
         <textarea class="field-input" id="ticket-message" placeholder="Décris ta question ou ton problème..." rows="4" style="resize:vertical"></textarea>
       </div>
-      <div style="display:flex;gap:8px">
+      <input type="file" id="ticket-image-input" accept="image/*" style="display:none" onchange="handleTicketImageSelect(this,'newTicket','ticket-image-preview')">
+      <div id="ticket-image-preview" style="display:none;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button type="button" onclick="document.getElementById('ticket-image-input').click()" class="btn-action" title="Joindre une image" style="padding:8px 12px">🖼️</button>
         <button class="btn-action primary-action" onclick="submitNewTicket()" style="flex:1">Envoyer</button>
         <button class="btn-action" onclick="hideNewTicketForm()">Annuler</button>
       </div>
@@ -1183,11 +1186,14 @@
       </div>
     </div>
     <div id="support-thread" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px"></div>
-    <div id="support-reply-box" style="display:flex;gap:10px">
+    <div id="support-reply-image-preview" style="display:none;margin-bottom:10px"></div>
+    <div id="support-reply-box" style="display:flex;gap:10px;align-items:flex-end">
+      <input type="file" id="support-reply-image-input" accept="image/*" style="display:none" onchange="handleTicketImageSelect(this,'support','support-reply-image-preview')">
+      <button type="button" onclick="document.getElementById('support-reply-image-input').click()" class="btn-action" title="Joindre une image" style="padding:12px">🖼️</button>
       <textarea id="support-reply-input" placeholder="Écris ta réponse..." rows="2"
         style="flex:1;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);background:var(--surface,white);font-family:'Inter',sans-serif;resize:vertical;outline:none"
         onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendSupportReply();}"></textarea>
-      <button class="btn-action primary-action" onclick="sendSupportReply()" style="align-self:flex-end">Envoyer</button>
+      <button class="btn-action primary-action" onclick="sendSupportReply()">Envoyer</button>
     </div>
   </div>
 </div>
@@ -1214,11 +1220,14 @@
       <button onclick="closeMessageTicket()" id="messages-close-btn" style="padding:8px 16px;border-radius:10px;border:1.5px solid #2E7D32;background:#2E7D32;color:white;cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">✓ Marquer résolu</button>
     </div>
     <div id="messages-thread" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px"></div>
-    <div id="messages-reply-box" style="display:flex;gap:10px">
+    <div id="messages-reply-image-preview" style="display:none;margin-bottom:10px"></div>
+    <div id="messages-reply-box" style="display:flex;gap:10px;align-items:flex-end">
+      <input type="file" id="messages-reply-image-input" accept="image/*" style="display:none" onchange="handleTicketImageSelect(this,'messages','messages-reply-image-preview')">
+      <button type="button" onclick="document.getElementById('messages-reply-image-input').click()" class="btn-action" title="Joindre une image" style="padding:12px">🖼️</button>
       <textarea id="messages-reply-input" placeholder="Répondre à l'étudiant..." rows="2"
         style="flex:1;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);background:var(--surface,white);font-family:'Inter',sans-serif;resize:vertical;outline:none"
         onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendMessageReply();}"></textarea>
-      <button class="btn-action primary-action" onclick="sendMessageReply()" style="align-self:flex-end">Envoyer</button>
+      <button class="btn-action primary-action" onclick="sendMessageReply()">Envoyer</button>
     </div>
   </div>
 </div>
