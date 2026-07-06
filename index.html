@@ -1143,6 +1143,85 @@
   </div>
   <div id="revision-list"></div>
 </div>
+
+<!-- SUPPORT PANEL (étudiant) -->
+<div class="panel" id="panel-support" style="display:none">
+  <div id="support-list-view">
+    <div class="section-header" style="margin-bottom:24px;margin-top:20px">
+      <div><div style="font-size:13px;color:var(--text2);font-weight:500">Pose une question, un membre de l'équipe te répond ici</div></div>
+      <button class="btn-action primary-action" onclick="showNewTicketForm()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        Nouveau ticket
+      </button>
+    </div>
+    <div id="new-ticket-form" style="display:none;background:var(--surface,white);border:1.5px solid var(--teal);border-radius:16px;padding:20px;margin-bottom:20px">
+      <div class="field-group" style="margin-bottom:12px">
+        <label class="field-label">Sujet</label>
+        <input type="text" class="field-input" id="ticket-subject" placeholder="Ex: Problème d'accès à un fichier" maxlength="120">
+      </div>
+      <div class="field-group" style="margin-bottom:16px">
+        <label class="field-label">Message</label>
+        <textarea class="field-input" id="ticket-message" placeholder="Décris ta question ou ton problème..." rows="4" style="resize:vertical"></textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-action primary-action" onclick="submitNewTicket()" style="flex:1">Envoyer</button>
+        <button class="btn-action" onclick="hideNewTicketForm()">Annuler</button>
+      </div>
+    </div>
+    <div id="support-tickets-list"></div>
+  </div>
+
+  <div id="support-detail-view" style="display:none">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border)">
+      <button onclick="backToSupportList()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        Retour
+      </button>
+      <div style="flex:1">
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;color:var(--text)" id="support-detail-subject"></div>
+        <div style="font-size:12px;color:var(--text3)" id="support-detail-status"></div>
+      </div>
+    </div>
+    <div id="support-thread" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px"></div>
+    <div id="support-reply-box" style="display:flex;gap:10px">
+      <textarea id="support-reply-input" placeholder="Écris ta réponse..." rows="2"
+        style="flex:1;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);background:var(--surface,white);font-family:'Inter',sans-serif;resize:vertical;outline:none"
+        onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendSupportReply();}"></textarea>
+      <button class="btn-action primary-action" onclick="sendSupportReply()" style="align-self:flex-end">Envoyer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MESSAGES PANEL (admin/subadmin) -->
+<div class="panel" id="panel-messages" style="display:none">
+  <div id="messages-list-view">
+    <div class="section-header" style="margin-bottom:24px;margin-top:20px">
+      <div><div style="font-size:13px;color:var(--text2);font-weight:500">Tickets de support envoyés par les étudiants</div></div>
+    </div>
+    <div id="messages-tickets-list"></div>
+  </div>
+
+  <div id="messages-detail-view" style="display:none">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border)">
+      <button onclick="backToMessagesList()" style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface,white);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;font-family:'Inter',sans-serif">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        Retour
+      </button>
+      <div style="flex:1">
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;color:var(--text)" id="messages-detail-subject"></div>
+        <div style="font-size:12px;color:var(--text3)" id="messages-detail-meta"></div>
+      </div>
+      <button onclick="closeMessageTicket()" id="messages-close-btn" style="padding:8px 16px;border-radius:10px;border:1.5px solid #2E7D32;background:#2E7D32;color:white;cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">✓ Marquer résolu</button>
+    </div>
+    <div id="messages-thread" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px"></div>
+    <div id="messages-reply-box" style="display:flex;gap:10px">
+      <textarea id="messages-reply-input" placeholder="Répondre à l'étudiant..." rows="2"
+        style="flex:1;padding:12px 16px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);background:var(--surface,white);font-family:'Inter',sans-serif;resize:vertical;outline:none"
+        onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();sendMessageReply();}"></textarea>
+      <button class="btn-action primary-action" onclick="sendMessageReply()" style="align-self:flex-end">Envoyer</button>
+    </div>
+  </div>
+</div>
       <!-- CODES PANEL -->
       <div class="panel" id="panel-security" style="display:none">
         <div style="margin-bottom:24px;margin-top:20px">
