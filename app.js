@@ -3182,7 +3182,7 @@ function renderSupportTicketList(tickets) {
     const last = t.messages[t.messages.length - 1];
     const statusColor = t.status === 'open' ? 'var(--teal-dark)' : 'var(--text3)';
     const statusLabel = t.status === 'open' ? 'Ouvert' : 'Fermé';
-    return '<div onclick="openSupportTicket(' + t.id + ')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface,white);border:1.5px solid var(--border);border-radius:14px;margin-bottom:10px;cursor:pointer">' +
+    return '<div onclick="openSupportTicket(' + t.id + ')" class="ticket-card" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface,white);border:1.5px solid var(--border);border-radius:14px;margin-bottom:10px;cursor:pointer">' +
       (t.unreadForStudent ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0"></span>' : '<span style="width:8px;flex-shrink:0"></span>') +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(t.subject) + '</div>' +
@@ -3279,7 +3279,7 @@ function renderMessagesTicketList(tickets) {
     const last = t.messages[t.messages.length - 1];
     const statusColor = t.status === 'open' ? 'var(--teal-dark)' : 'var(--text3)';
     const statusLabel = t.status === 'open' ? 'Ouvert' : 'Fermé';
-    return '<div onclick="openMessageTicket(' + t.id + ')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface,white);border:1.5px solid var(--border);border-radius:14px;margin-bottom:10px;cursor:pointer">' +
+    return '<div onclick="openMessageTicket(' + t.id + ')" class="ticket-card" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface,white);border:1.5px solid var(--border);border-radius:14px;margin-bottom:10px;cursor:pointer">' +
       (t.unreadForAdmin ? '<span style="width:8px;height:8px;border-radius:50%;background:#ef5350;flex-shrink:0"></span>' : '<span style="width:8px;flex-shrink:0"></span>') +
       '<div style="flex:1;min-width:0">' +
         '<div style="font-weight:700;font-size:14px;color:var(--text)">' + escapeHtml(t.studentName) + ' — ' + escapeHtml(t.subject) + '</div>' +
