@@ -3314,11 +3314,16 @@ async function sendMessageReply() {
   const input = $('messages-reply-input');
   const text = input.value.trim();
   const image = _ticketImages.messages;
-  if (!text && !image) return;
+  const pendingVoiceBlob = (_voiceContext === 'messages') ? _voiceBlob : null;
+  const voiceSeconds = _voiceSeconds;
+  if (!text && !image && !pendingVoiceBlob) return;
   try {
-    await api('POST', '/tickets/' + _currentTicketId + '/reply', { text, image });
+    const body = { text, image };
+    if (pendingVoiceBlob) { await new Promise(resolve => { const r = new FileReader(); r.onload = () => { body.audio = r.result; body.audioDuration = voiceSeconds; resolve(); }; r.readAsDataURL(pendingVoiceBlob); }); }
+    await api('POST', '/tickets/' + _currentTicketId + '/reply', body);
     input.value = '';
     clearTicketImage('messages', 'messages-reply-image-preview');
+    if (pendingVoiceBlob) cancelVoicePreview('messages');
     openMessageTicket(_currentTicketId);
   } catch(e) { alert('Erreur: ' + e.message); }
 }
