@@ -692,7 +692,7 @@ app.post('/api/demo-login', (req, res) => {
   if (!demoUser) {
     demoUser = {
       id: db.nextId++,
-      name: 'Auditeur (démo)',
+      name: 'Démo',
       login: '_demo_test_',
       password: bcrypt.hashSync(Math.random().toString(36), 10),
       role: 'student',
