@@ -3875,14 +3875,13 @@ async function buildMoveDestinations(currentFolderId, currentSubId) {
 
       // Clic sur le dossier : déplacer ici OU ouvrir/fermer les sous-dossiers
       folderBtn.onclick = function() {
-        if (isCurrent) return;
         if (hasSubs) {
-          // Toggle sous-dossiers
+          // Toggle sous-dossiers (toujours possible, même si c'est le dossier actuel)
           const isOpen = subsContainer.style.display !== 'none';
           subsContainer.style.display = isOpen ? 'none' : 'block';
           arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
-        } else {
-          // Pas de sous-dossiers → déplacer directement
+        } else if (!isCurrent) {
+          // Pas de sous-dossiers et ce n'est pas l'emplacement actuel → déplacer directement
           doMoveFile(String(folder.id), '');
         }
       };
