@@ -1454,6 +1454,7 @@ app.delete('/api/folders/:parentId/subfolders/:subId/files/:fileId', requireAdmi
   if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
   if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
   sub.files = sub.files.filter(f => f.id !== parseInt(req.params.fileId));
+  if (db.threads) delete db.threads[String(req.params.fileId)];
   saveDB(db);
   res.json({ ok: true });
 });
@@ -1675,6 +1676,7 @@ app.delete('/api/folders/:folderId/files/:fileId', requireAdmin, async (req, res
   if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
   else if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) fs.unlinkSync(p); }
   folder.files = folder.files.filter(f => f.id !== parseInt(req.params.fileId));
+  if (db.threads) delete db.threads[String(req.params.fileId)];
   saveDB(db); res.json({ ok: true });
 });
 
@@ -2265,7 +2267,16 @@ app.get('/api/threads/all', requireAuth, (req, res) => {
       });
     });
   });
-
+  
+// Nettoyage des fils orphelins (fichier supprimé sans que ses discussions le soient)
+  let cleaned = false;
+  Object.keys(threads).forEach(fileId => {
+    if (!fileMap[String(fileId)]) {
+      delete threads[fileId];
+      cleaned = true;
+    }
+  });
+  if (cleaned) saveDB(db);
   const result = [];
   const keys = Object.keys(threads);
   keys.forEach(fileId => {
