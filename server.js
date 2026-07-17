@@ -680,6 +680,34 @@ dbLog.connectionLogs = dbLog.connectionLogs.filter(l => (l.at || l.date) > seven
   console.log('[SESSION] Session active enregistrée pour userId:', user.id);
   res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', registeredAt: user.registeredAt || '', notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true, revision: true }, mutedThreads: user.mutedThreads || [] });
 });
+
+app.post('/api/demo-login', (req, res) => {
+  const db = loadDB();
+  let demoUser = db.users.find(u => u.isDemo);
+  if (!demoUser) {
+    demoUser = {
+      id: db.nextId++,
+      name: 'Auditeur (démo)',
+      login: '_demo_test_',
+      password: bcrypt.hashSync(Math.random().toString(36), 10),
+      role: 'student',
+      isDemo: true,
+      registeredAt: new Date().toISOString(),
+      notifPrefs: { announcements: true, discussions: true, files: true, revision: true },
+      mutedThreads: [],
+      revisionProgress: {},
+    };
+    db.users.push(demoUser);
+  }
+  db.tickets = (db.tickets || []).filter(t => t.studentId !== demoUser.id);
+  demoUser.revisionProgress = {};
+  demoUser.mutedThreads = [];
+  saveDB(db);
+  req.session.userId = demoUser.id;
+  req.session.save(() => setActiveSession(demoUser.id, req.sessionID));
+  res.json({ id: demoUser.id, name: demoUser.name, login: demoUser.login, role: demoUser.role, email: '', registeredAt: demoUser.registeredAt, notifPrefs: demoUser.notifPrefs, mutedThreads: demoUser.mutedThreads, isDemo: true });
+});
+
 app.post('/api/logout', (req, res) => {
   if (req.session.userId && getActiveSessions()[req.session.userId] === req.sessionID) {
     deleteActiveSession(req.session.userId);
@@ -2279,6 +2307,7 @@ app.post('/api/threads/:fileId', requireAuth, (req, res) => {
   if (!db.threads) db.threads = {};
   if (!db.threads[req.params.fileId]) db.threads[req.params.fileId] = [];
   const user = db.users.find(u => u.id === req.session.userId);
+  if (user.isDemo) return res.status(403).json({ error: 'Fonctionnalité désactivée en mode démo' });
   const thread = {
     id: db.nextId++,
     fileId: req.params.fileId,
@@ -2349,6 +2378,7 @@ app.post('/api/threads/:fileId/:threadId/replies', requireAuth, (req, res) => {
   const thread = (db.threads?.[req.params.fileId] || []).find(t => t.id === parseInt(req.params.threadId));
   if (!thread) return res.status(404).json({ error: 'Fil introuvable' });
   const user = db.users.find(u => u.id === req.session.userId);
+  if (user.isDemo) return res.status(403).json({ error: 'Fonctionnalité désactivée en mode démo' });
   const reply = {
     id: db.nextId++,
     userId: user.id,
