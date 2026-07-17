@@ -700,7 +700,7 @@ async function loadStats(){
 // ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
 function renderSubfolders(subs, parentId, parentName) {
   if (!subs || !subs.length) return '';
-  return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">' +
+  return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:24px;margin-bottom:16px">' +
     subs.map(function(sub) {
       return '<div onclick="openSubfolder(' + sub.id + ',\'' + sub.name.replace(/'/g,"\'") + '\',' + parentId + ',\'' + parentName.replace(/'/g,"\'") + '\')" ' +
         'style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface,white);border-radius:12px;border:1.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;color:var(--text);transition:border-color 0.15s" ' +
