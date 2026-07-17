@@ -2737,7 +2737,16 @@ fetch(previewUrl, { credentials: 'include' })
   .then(function(blob) {
     var blobUrl = URL.createObjectURL(blob);
     var wrap = document.getElementById('pdf-preview-wrap');
-    if (wrap) {
+    if (!wrap) return;
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      // Safari iOS affiche très mal les PDF en blob: dans une iframe → on ouvre en plein onglet à la place
+      wrap.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:white">' +
+        '<div style="font-size:48px">📄</div>' +
+        '<div style="text-align:center;padding:0 20px">Sur iPhone/iPad, ouvre ce PDF dans un nouvel onglet pour un meilleur affichage.</div>' +
+        '<button onclick="window.open(\'' + blobUrl + '\',\'_blank\')" style="padding:12px 28px;background:var(--teal);color:white;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer">Ouvrir le PDF</button>' +
+        '</div>';
+    } else {
       wrap.innerHTML = '<iframe src="' + blobUrl + '" style="width:100%;height:100%;border:none"></iframe>';
     }
   })
