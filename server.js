@@ -707,6 +707,30 @@ app.post('/api/demo-login', (req, res) => {
   db.tickets = (db.tickets || []).filter(t => t.studentId !== demoUser.id);
   demoUser.revisionProgress = {};
   demoUser.mutedThreads = [];
+  const todayStr = new Date().toISOString().split('T')[0];
+  const allSchemasDemo = [];
+  for (const seance of (db.seances || [])) {
+    for (const sc of (seance.schemas || [])) {
+      allSchemasDemo.push({ id: sc.id, titre: sc.titre, seanceTitre: seance.titre, seanceId: seance.id });
+    }
+  }
+  if (!db.dailySchema) db.dailySchema = {};
+  if (!db.weeklySummaries) db.weeklySummaries = {};
+  if (allSchemasDemo.length) {
+    const pick = allSchemasDemo[Math.floor(Math.random() * allSchemasDemo.length)];
+    db.dailySchema[demoUser.id] = { schema: pick, date: todayStr, done: false };
+    const shuffled = [...allSchemasDemo].sort(() => Math.random() - 0.5).slice(0, Math.min(3, allSchemasDemo.length));
+    db.weeklySummaries[demoUser.id] = {
+      weekKey: todayStr,
+      schemasRevised: shuffled.map((s, i) => ({
+        titre: s.titre,
+        seanceTitre: s.seanceTitre,
+        difficulty: ['facile', 'moyen', 'difficile'][i % 3],
+        lastReview: new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000).toISOString(),
+      })),
+      generatedAt: new Date().toISOString(),
+    };
+  }
   saveDB(db);
   req.session.userId = demoUser.id;
   req.session.save((err) => { if (err) console.log('[SESSION] Save error (demo):', err); });
