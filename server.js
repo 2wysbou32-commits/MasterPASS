@@ -376,6 +376,11 @@ app.use(express.static(publicDir));
 
 // ── Auth guards ───────────────────────────────────────────────────────────────
 function requireAuth(req, res, next) {
+  if (req.session.userId) {
+    const dbAuth = loadDB();
+    const userAuth = dbAuth.users.find(u => u.id === req.session.userId);
+    if (userAuth && userAuth.isDemo) return next(); // Plusieurs connexions simultanées autorisées en mode démo
+  }
   if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
   // Vérifier que c'est bien la session active (anti-partage de compte)
   const activeSessionId = getActiveSessions()[req.session.userId];
@@ -704,7 +709,7 @@ app.post('/api/demo-login', (req, res) => {
   demoUser.mutedThreads = [];
   saveDB(db);
   req.session.userId = demoUser.id;
-  req.session.save(() => setActiveSession(demoUser.id, req.sessionID));
+  req.session.save((err) => { if (err) console.log('[SESSION] Save error (demo):', err); });
   res.json({ id: demoUser.id, name: demoUser.name, login: demoUser.login, role: demoUser.role, email: '', registeredAt: demoUser.registeredAt, notifPrefs: demoUser.notifPrefs, mutedThreads: demoUser.mutedThreads, isDemo: true });
 });
 
@@ -1902,6 +1907,7 @@ app.post('/api/tickets', requireAuth, (req, res) => {
   const db = loadDB();
   if (!db.tickets) db.tickets = [];
   const user = db.users.find(u => u.id === req.session.userId);
+  if (user.isDemo) return res.status(403).json({ error: 'Fonctionnalité désactivée en mode démo' });
   const now = new Date().toISOString();
   const ticket = {
     id: db.nextId++,
@@ -1966,6 +1972,7 @@ app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
   const ticket = db.tickets.find(t => t.id === parseInt(req.params.id));
   if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
   const user = db.users.find(u => u.id === req.session.userId);
+  if (user.isDemo) return res.status(403).json({ error: 'Fonctionnalité désactivée en mode démo' });
   const isOwner = String(ticket.studentId) === String(req.session.userId);
   const isAdmin = user.role === 'admin' || user.role === 'subadmin';
   if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
