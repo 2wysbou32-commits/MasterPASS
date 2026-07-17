@@ -689,6 +689,9 @@ dbLog.connectionLogs = dbLog.connectionLogs.filter(l => (l.at || l.date) > seven
 app.post('/api/demo-login', (req, res) => {
   const db = loadDB();
   let demoUser = db.users.find(u => u.isDemo);
+  if (demoUser) {
+    demoUser.name = 'Démo'; // Toujours resynchroniser le nom au cas où il aurait été modifié dans le code
+  }
   if (!demoUser) {
     demoUser = {
       id: db.nextId++,
