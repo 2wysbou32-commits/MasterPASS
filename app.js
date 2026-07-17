@@ -1947,16 +1947,30 @@ function toggleDarkMode() {
 
 // Suppression du mode auto par intervalle — le mode sombre est maintenant par défaut
 
+function isCodeCopied(code) {
+  var copied = JSON.parse(localStorage.getItem('mp_copied_codes') || '[]');
+  return copied.includes(code);
+}
+
+function markCodeAsCopied(code) {
+  var copied = JSON.parse(localStorage.getItem('mp_copied_codes') || '[]');
+  if (!copied.includes(code)) { copied.push(code); localStorage.setItem('mp_copied_codes', JSON.stringify(copied)); }
+}
+
 function copyInviteCode(code, btn) {
+  if (isCodeCopied(code)) return;
   var msg = "Salut ! Tu es invité(e) à rejoindre MasterPASS, la plateforme de cours créée spécialement pour vous aider en PASS.\n\nVoici ton code d'invitation personnel (valable une seule fois) :\n\n" + code + "\n\nRends-toi sur https://masterpass-production.up.railway.app\nClique sur \"Créer mon compte avec un code d'invitation\" et entre ce code.\n\nC'est parti ! 🚀";
   navigator.clipboard.writeText(msg).then(function(){
     toast('Message copié ! 📋');
+    markCodeAsCopied(code);
     if (btn) {
-      var orig = btn.textContent;
-      btn.textContent = 'Copié !';
+      btn.textContent = 'Copié';
+      btn.disabled = true;
       btn.style.background = '#2E7D32';
       btn.style.color = 'white';
       btn.style.borderColor = '#2E7D32';
+      btn.style.cursor = 'default';
+      btn.style.opacity = '0.7';
     }
   }).catch(function(){ toast(msg, 'info'); });
 }
@@ -1986,7 +2000,7 @@ async function loadCodes(tab) {
       codesHtml += available.map(function(c) {
         return '<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;border-bottom:1px solid var(--border)">' +
           '<code style="flex:1;font-size:15px;font-weight:800;color:var(--teal-dark);letter-spacing:1px">' + c.code + '</code>' +
-          '<button data-code="' + c.code + '" onclick="copyInviteCode(this.dataset.code,this)" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-dark);cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif">Copier</button>' +
+          '<button data-code="' + c.code + '" onclick="copyInviteCode(this.dataset.code,this)" ' + (isCodeCopied(c.code) ? 'disabled ' : '') + 'style="padding:5px 12px;border-radius:7px;border:1.5px solid ' + (isCodeCopied(c.code) ? '#2E7D32' : 'var(--teal)') + ';background:' + (isCodeCopied(c.code) ? '#2E7D32' : 'transparent') + ';color:' + (isCodeCopied(c.code) ? 'white' : 'var(--teal-dark)') + ';cursor:' + (isCodeCopied(c.code) ? 'default' : 'pointer') + ';font-size:11px;font-weight:600;font-family:Inter,sans-serif;opacity:' + (isCodeCopied(c.code) ? '0.7' : '1') + '">' + (isCodeCopied(c.code) ? 'Copié' : 'Copier') + '</button>' +
           '<button data-code="' + c.code + '" onclick="deleteCode(this.dataset.code)" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">🗑</button>' +
           '</div>';
       }).join('');
