@@ -702,12 +702,26 @@ function renderSubfolders(subs, parentId, parentName) {
   if (!subs || !subs.length) return '';
   return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:24px;margin-bottom:16px">' +
     subs.map(function(sub) {
-      return '<div onclick="openSubfolder(' + sub.id + ',\'' + sub.name.replace(/'/g,"\'") + '\',' + parentId + ',\'' + parentName.replace(/'/g,"\'") + '\')" ' +
-        'style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface,white);border-radius:12px;border:1.5px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;color:var(--text);transition:border-color 0.15s" ' +
-        '>' +
+      var isAdminNow = currentUser && currentUser.role === 'admin';
+      return '<div style="display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--surface,white);border-radius:12px;border:1.5px solid var(--border);font-size:13px;font-weight:600;color:var(--text);transition:border-color 0.15s">' +
+        '<span onclick="openSubfolder(' + sub.id + ',\'' + sub.name.replace(/'/g,"\'") + '\',' + parentId + ',\'' + parentName.replace(/'/g,"\'") + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1">' +
         '<svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;color:var(--teal-dark)"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>' +
-        sub.name + '</div>';
+        sub.name + '</span>' +
+        (isAdminNow ? '<button class="icon-btn" onclick="event.stopPropagation();renameSubfolder(' + parentId + ',' + sub.id + ')" title="Renommer" style="font-size:12px">✏️</button>' : '') +
+        '</div>';
     }).join('') + '</div>';
+}
+
+async function renameSubfolder(parentId, subId) {
+  var name = await customPrompt('Nouveau nom du sous-dossier :');
+  if (!name || !name.trim()) return;
+  try {
+    await api('PATCH', '/folders/' + parentId + '/subfolders/' + subId, { name: name.trim() });
+    toast('Sous-dossier renommé ✅');
+    const subs = await loadSubfolders(parentId);
+    const subContainer = document.getElementById('subfolders-container');
+    if (subContainer) subContainer.innerHTML = renderSubfolders(subs, parentId, currentFolder.name);
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 async function openSubfolder(subId, subName, parentId, parentName) {
@@ -2158,6 +2172,7 @@ function renderFolders(folders){
       ondrop="dragFolderDrop(event,${f.id})"
       ondragend="dragFolderEnd(event)">
       ${isAdmin?`<div class="folder-actions">
+        <button class="icon-btn" onclick="event.stopPropagation();renameFolder(${f.id})" title="Renommer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
         <button class="icon-btn" onclick="event.stopPropagation();openMoveFolderModal(${f.id},'${f.name.replace(/'/g,'')}')" title="Déplacer" style="font-size:13px">📁→</button>
         <button class="icon-btn" onclick="event.stopPropagation();deleteFolder(${f.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></div>`:''}
       <div class="folder-card-inner">
