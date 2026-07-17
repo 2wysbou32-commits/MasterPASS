@@ -5724,6 +5724,7 @@ async function deleteThread(threadId) {
   if (!await customConfirm('Supprimer ce fil et toutes ses réponses ?')) return;
   try {
     await api('DELETE', '/threads/' + _discussionFileId + '/' + threadId);
+    _allThreads = _allThreads.filter(function(t) { return t.id !== threadId && t.threadId !== threadId; });
     await loadThreads();
   } catch(e) { toast(e.message, 'error'); }
 }
