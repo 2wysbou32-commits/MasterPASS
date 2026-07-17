@@ -668,7 +668,10 @@ function updateTopbar(){
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3v-3h2v3h3v2z"/></svg>
         Nouveau dossier</button>`;
     }else{
-      el.innerHTML=`<button class="btn-action" onclick="document.getElementById('file-input').click()">
+      const subBtnHtml = (currentSubfolder || isSubAdmin) ? '' : `<button class="btn-action" onclick="createSubfolder(currentFolder.id)" style="margin-right:8px">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3v-3h2v3h3v2z"/></svg>
+        Nouveau sous-dossier</button>`;
+      el.innerHTML=subBtnHtml+`<button class="btn-action" onclick="document.getElementById('file-input').click()">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
         Déposer un fichier</button>`;
     }
@@ -2253,6 +2256,19 @@ async function createFolder(){
   try{await api('POST','/folders',{name});$('folder-name-input').value='';closeModal('modal-folder');await loadFolders();loadStats();toast('Dossier créé avec succès');}
   catch(e){toast(e.message,'error');}finally{btn.disabled=false;btn.textContent='Créer le dossier';}
 }
+
+async function createSubfolder(parentId){
+  const name = await customPrompt('Nom du sous-dossier :');
+  if(!name || !name.trim()) return;
+  try{
+    await api('POST', '/folders/' + parentId + '/subfolders', { name: name.trim() });
+    toast('Sous-dossier créé avec succès');
+    const subs = await loadSubfolders(parentId);
+    const subContainer = document.getElementById('subfolders-container');
+    if (subContainer) subContainer.innerHTML = renderSubfolders(subs, parentId, currentFolder.name);
+  }catch(e){ toast(e.message,'error'); }
+}
+
 async function deleteFolder(id){
   if(!await customConfirm('Supprimer ce dossier et tous ses fichiers ?'))return;
   try{await api('DELETE','/folders/'+id);await loadFolders();loadStats();toast('Dossier supprimé');}
