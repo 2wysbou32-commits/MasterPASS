@@ -707,11 +707,20 @@ function renderSubfolders(subs, parentId, parentName) {
         '<span onclick="openSubfolder(' + sub.id + ',\'' + sub.name.replace(/'/g,"\'") + '\',' + parentId + ',\'' + parentName.replace(/'/g,"\'") + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1">' +
         '<svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;color:var(--teal-dark)"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>' +
         sub.name + '</span>' +
-        (isAdminNow ? '<button class="icon-btn" onclick="event.stopPropagation();renameSubfolder(' + parentId + ',' + sub.id + ')" title="Renommer" style="font-size:12px">✏️</button>' : '') +
+        (isAdminNow ? '<button class="icon-btn" onclick="event.stopPropagation();renameSubfolder(' + parentId + ',' + sub.id + ')" title="Renommer" style="font-size:12px">✏️</button><button class="icon-btn" onclick="event.stopPropagation();deleteSubfolder(' + parentId + ',' + sub.id + ')" title="Supprimer" style="font-size:12px">🗑️</button>' : '') +
         '</div>';
     }).join('') + '</div>';
 }
-
+async function deleteSubfolder(parentId, subId) {
+  if (!await customConfirm('Supprimer ce sous-dossier et tous ses fichiers ?')) return;
+  try {
+    await api('DELETE', '/folders/' + parentId + '/subfolders/' + subId);
+    toast('Sous-dossier supprimé ✅');
+    const subs = await loadSubfolders(parentId);
+    const subContainer = document.getElementById('subfolders-container');
+    if (subContainer) subContainer.innerHTML = renderSubfolders(subs, parentId, currentFolder.name);
+  } catch(e) { toast(e.message, 'error'); }
+}
 async function renameSubfolder(parentId, subId) {
   var name = await customPrompt('Nouveau nom du sous-dossier :');
   if (!name || !name.trim()) return;
