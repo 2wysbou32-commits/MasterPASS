@@ -184,6 +184,15 @@ async function doLogin(){
   finally{btn.disabled=false;btn.textContent='Se connecter';}
 }
 
+async function doDemoLogin(){
+  try{
+    const user=await api('POST','/demo-login',{});
+    currentUser=user;
+    $('auth-page').style.display='none';$('app').style.display='block';
+    setupApp();
+  }catch(e){ alert('Erreur mode démo: ' + (e.message||'')); }
+}
+
 // Vérifier la session toutes les 30s (détection double connexion)
 async function checkSession() {
   if (!currentUser) return;
