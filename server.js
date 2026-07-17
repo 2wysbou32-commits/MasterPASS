@@ -880,6 +880,18 @@ app.post('/api/folders', requireAdmin, (req, res) => {
   db.folders.push(folder); saveDB(db);
   res.json({ id: folder.id, name: folder.name, createdAt: folder.createdAt, fileCount: 0, totalSize: 0 });
 });
+
+app.patch('/api/folders/:id', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const folder = db.folders.find(f => f.id === parseInt(req.params.id));
+  if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
+  folder.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: folder.name });
+});
+
 app.delete('/api/folders/:id', requireAdmin, async (req, res) => {
   const db = loadDB();
   const folder = db.folders.find(f => f.id === parseInt(req.params.id));
@@ -1213,6 +1225,19 @@ app.get('/api/folders/:id/subfolders', requireAuth, (req, res) => {
     totalSize: (s.files || []).reduce((a, f) => a + f.size, 0),
   }));
   res.json(subs);
+});
+
+app.patch('/api/folders/:parentId/subfolders/:subId', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const sub = (parent.subfolders || []).find(s => s.id === parseInt(req.params.subId));
+  if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
+  sub.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: sub.name });
 });
 
 app.delete('/api/folders/:parentId/subfolders/:subId', requireAdmin, async (req, res) => {
