@@ -1904,18 +1904,18 @@ function toggleDarkMode() {
   if (label) label.textContent = newDark ? 'Mode clair' : 'Mode sombre';
 }
 
-// Mode sombre par défaut — respecte le choix manuel si existant
+// Mode clair par défaut — respecte le choix manuel si existant
 (function() {
   var saved = localStorage.getItem('mp_dark_mode');
-  if (saved === '0') {
-    document.documentElement.setAttribute('data-theme', '');
-  } else {
-    // Par défaut : toujours sombre (sauf si l'utilisateur a explicitement choisi le mode clair)
+  if (saved === '1') {
     document.documentElement.setAttribute('data-theme', 'dark');
     var icon = document.getElementById('dark-mode-icon');
     var label = document.getElementById('dark-mode-label');
     if (icon) icon.textContent = '☀️';
     if (label) label.textContent = 'Mode clair';
+  } else {
+    // Par défaut : toujours clair (sauf si l'utilisateur a explicitement choisi le mode sombre)
+    document.documentElement.setAttribute('data-theme', '');
   }
 })();
 
