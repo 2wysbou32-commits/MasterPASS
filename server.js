@@ -1188,7 +1188,7 @@ app.get('/api/revision/seances/:id/schemas/:schemaId', requireAuth, (req, res) =
   res.json({ id: schema.id, titre: schema.titre, reperes: schema.reperes });
 });
 // ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
-app.post('/api/folders/:id/subfolders', requireAdmin, (req, res) => {
+app.post('/api/folders/:id/subfolders', requireSuperAdminOnly, (req, res) => {
   const parentId = parseInt(req.params.id);
   const { name } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
