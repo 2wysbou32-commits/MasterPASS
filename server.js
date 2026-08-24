@@ -2104,6 +2104,150 @@ app.delete('/api/nodes/:path/files/:fileId', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── ROUTES FICHIER GÉNÉRIQUES (recherche récursive par ID) — ÉTAPE 1b ──────
+// Chaque fichier a un ID unique dans toute la base : ces routes le retrouvent
+// n'importe où dans l'arborescence, à n'importe quelle profondeur, sans avoir
+// besoin de connaître son chemin. Remplace à terme les routes preview/download/
+// stream/downloadable/rename/delete dupliquées par niveau (root vs subfolder).
+// ═══════════════════════════════════════════════════════════════════════════
+
+function findFileRecursive(db, fileId) {
+  const targetId = parseInt(fileId);
+  function search(node) {
+    if (!node) return null;
+    const f = (node.files || []).find(x => x.id === targetId);
+    if (f) return { file: f, container: node };
+    for (const sub of (node.subfolders || [])) {
+      const found = search(sub);
+      if (found) return found;
+    }
+    return null;
+  }
+  for (const folder of db.folders) {
+    const found = search(folder);
+    if (found) return found;
+  }
+  return null;
+}
+
+app.get('/api/files/:fileId/preview', requireAuth, async (req, res) => {
+  const db = loadDB();
+  const found = findFileRecursive(db, req.params.fileId);
+  if (!found) return res.status(404).json({ error: 'Fichier introuvable' });
+  const file = found.file;
+  file.views = (file.views || 0) + 1;
+  saveDB(db);
+  const reqUser = db.users.find(u => u.id === req.session.userId);
+  const isPDF = (file.name && file.name.toLowerCase().endsWith('.pdf')) || file.type === 'pdf';
+  if (isPDF && reqUser?.role !== 'admin' && reqUser?.role !== 'subadmin') {
+    const userName = reqUser?.login || reqUser?.name || 'Inconnu';
+    try {
+      let pdfBuffer;
+      if (r2Enabled && file.r2Key) pdfBuffer = await fetchFromR2ToBuffer(file.r2Key);
+      else if (file.filename) pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename));
+      if (pdfBuffer) {
+        const watermarked = await addWatermark(pdfBuffer, userName);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline');
+        return res.send(Buffer.from(watermarked));
+      }
+    } catch(e) { console.error('Watermark error (générique):', e.message); }
+  }
+  if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, true, req); return; }
+  else if (file.filename) {
+    const p = path.join(UPLOADS_DIR, file.filename);
+    if (!fs.existsSync(p)) return res.status(404).json({ error: 'Fichier manquant' });
+    return res.sendFile(p);
+  }
+  res.status(500).json({ error: 'Erreur stockage' });
+});
+
+app.get('/api/files/:fileId/download', requireAuth, async (req, res) => {
+  const db = loadDB();
+  const found = findFileRecursive(db, req.params.fileId);
+  if (!found) return res.status(404).json({ error: 'Fichier introuvable' });
+  const file = found.file;
+  const requestingUser = db.users.find(u => u.id === req.session.userId);
+  if (requestingUser?.role !== 'admin') {
+    if (file.type === 'video') return res.status(403).json({ error: 'Les vidéos ne peuvent pas être téléchargées' });
+    if (file.downloadable === false) return res.status(403).json({ error: "Téléchargement non autorisé par l'administrateur" });
+  }
+  const isPDF = (file.name && file.name.toLowerCase().endsWith('.pdf')) || file.type === 'pdf';
+  if (isPDF && requestingUser?.role !== 'admin' && requestingUser?.role !== 'subadmin') {
+    try {
+      let pdfBuffer;
+      if (r2Enabled && file.r2Key) pdfBuffer = await fetchFromR2ToBuffer(file.r2Key);
+      else if (file.filename) pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename));
+      if (pdfBuffer) {
+        const userName = requestingUser?.login || requestingUser?.name || 'Inconnu';
+        const watermarked = await addWatermark(pdfBuffer, userName);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${file.name}.pdf"`);
+        return res.send(Buffer.from(watermarked));
+      }
+    } catch(e) { console.error('Watermark download (générique):', e.message); }
+  }
+  if (r2Enabled && file.r2Key) { await proxyFileFromR2(file.r2Key, res, false, req); return; }
+  else if (file.filename) {
+    const p = path.join(UPLOADS_DIR, file.filename);
+    if (!fs.existsSync(p)) return res.status(404).json({ error: 'Fichier manquant' });
+    return res.download(p, file.name);
+  }
+  res.status(500).json({ error: 'Erreur de configuration stockage' });
+});
+
+app.get('/api/files/:fileId/stream', requireAuth, (req, res) => {
+  const db = loadDB();
+  const found = findFileRecursive(db, req.params.fileId);
+  if (!found || found.file.type !== 'video') return res.status(404).json({ error: 'Fichier introuvable' });
+  const file = found.file;
+  if (!r2Enabled || !file.r2Key) {
+    return res.json({ url: null, fallback: `/api/files/${req.params.fileId}/preview` });
+  }
+  try {
+    const signedUrl = getSignedVideoUrl(file.r2Key, false);
+    const legacyUrl = getSignedVideoUrl(file.r2Key, true);
+    res.json({ url: signedUrl, urlLegacy: legacyUrl });
+  } catch(e) {
+    res.status(500).json({ error: 'Erreur génération URL' });
+  }
+});
+
+app.patch('/api/files/:fileId/downloadable', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const found = findFileRecursive(db, req.params.fileId);
+  if (!found) return res.status(404).json({ error: 'Fichier introuvable' });
+  found.file.downloadable = !found.file.downloadable;
+  saveDB(db);
+  res.json({ id: found.file.id, downloadable: found.file.downloadable });
+});
+
+app.patch('/api/files/:fileId/rename', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const found = findFileRecursive(db, req.params.fileId);
+  if (!found) return res.status(404).json({ error: 'Fichier introuvable' });
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  found.file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: found.file.name });
+});
+
+app.delete('/api/files/:fileId', requireAdmin, async (req, res) => {
+  const db = loadDB();
+  const found = findFileRecursive(db, req.params.fileId);
+  if (!found) return res.status(404).json({ error: 'Fichier introuvable' });
+  const { file, container } = found;
+  if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
+  else if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) fs.unlinkSync(p); }
+  container.files = container.files.filter(f => f.id !== file.id);
+  if (db.threads) delete db.threads[String(file.id)];
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── CLEAR DOUBLE CONNECTION FLAG ─────────────────────────────────────────────
 app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => {
   const db = loadDB();
