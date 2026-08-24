@@ -4403,10 +4403,10 @@ async function openThreadInline(threadId) {
   document.getElementById('thread-detail-view2').style.display = 'block';
   const discControls = document.getElementById('disc-controls-bar'); if(discControls) discControls.style.display='none'; const discFilters = document.getElementById('disc-filters-bar'); if(discFilters) discFilters.style.display='none';
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='none';
+    updateMuteBtn2();
+  await loadThreadRepliesInline();
   const resolveBtn2 = document.getElementById('resolve-btn2');
   if (resolveBtn2) resolveBtn2.style.display = currentUser?.role === 'admin' ? 'inline-block' : 'none';
-  updateMuteBtn2();
-  await loadThreadRepliesInline();
 }
 function updateMuteBtn2() {
   const btn = document.getElementById('mute-btn2');
