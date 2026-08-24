@@ -842,12 +842,12 @@ app.patch('/api/users/:id/expires', requireSuperAdmin, (req, res) => {
 // ── FOLDERS ───────────────────────────
 app.get('/api/folders', requireAuth, (req, res) => {
   const db = loadDB();
-  res.json(db.folders.map(f => ({
+  res.json(db.folders.slice().sort((a,b) => a.name.localeCompare(b.name, 'fr', {sensitivity:'base'})).map(f => ({
     id: f.id, name: f.name, createdAt: f.createdAt,
     fileCount: (f.files||[]).length,
     totalSize: (f.files||[]).reduce((s,fi) => s+fi.size, 0),
     files: (f.files||[]).map(fi => ({ id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, views: fi.views||0, downloadable: fi.downloadable })),
-    subfolders: (f.subfolders||[]).map(s => ({
+    subfolders: (f.subfolders||[]).slice().sort((a,b) => a.name.localeCompare(b.name, 'fr', {sensitivity:'base'})).map(s => ({
       id: s.id, name: s.name,
       fileCount: (s.files||[]).length,
       files: (s.files||[]).map(fi => ({ id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, views: fi.views||0, downloadable: fi.downloadable }))
@@ -1960,7 +1960,7 @@ app.get('/api/nodes/:path', requireAuth, (req, res) => {
   res.json({
     id: node.id, name: node.name, createdAt: node.createdAt,
     files: (node.files || []).map(fi => ({ id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, views: fi.views || 0, downloadable: fi.downloadable, pending: fi.pending })),
-    subfolders: (node.subfolders || []).map(s => ({ id: s.id, name: s.name, fileCount: (s.files || []).length, subfolderCount: (s.subfolders || []).length })),
+    subfolders: (node.subfolders || []).slice().sort((a,b) => a.name.localeCompare(b.name, 'fr', {sensitivity:'base'})).map(s => ({ id: s.id, name: s.name, fileCount: (s.files || []).length, subfolderCount: (s.subfolders || []).length })),
   });
 });
 
