@@ -5534,7 +5534,11 @@ async function loadThreadReplies(silent) {
     const data = await api('GET', '/threads/' + _discussionFileId + '/' + _currentThreadId + '/replies');
     _currentThreadResolved = data.thread.resolved;
     _mentionables = (data.mentionables || []).filter(u => u.id !== currentUser?.id);
-    document.getElementById('thread-title-display').textContent = data.thread.title;
+        var fnameFile = _discussionFileName || '';
+    try { fnameFile = decodeURIComponent(fnameFile); } catch(e) {}
+    document.getElementById('thread-title-display').innerHTML = 
+      '<span style="font-size:12px;color:var(--teal-dark);font-weight:700;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">📄 ' + fnameFile + '</span>' +
+      '<span style="font-size:20px;font-weight:800;color:var(--text)">' + data.thread.title + '</span>';
     const resolveBtn = document.getElementById('resolve-btn');
     if (resolveBtn) {
       resolveBtn.textContent = data.thread.resolved ? '✓ Résolu' : '○ Marquer résolu';
