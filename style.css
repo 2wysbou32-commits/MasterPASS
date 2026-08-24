@@ -1375,7 +1375,7 @@ input[type="file"]{display:none;}
 .sidebar.collapsed .sidebar-bottom a { display: none !important; }
 .main-content { transition: margin-left 0.28s cubic-bezier(0.4,0,0.2,1); }
 .sidebar.collapsed ~ .main-content { margin-left: 64px; }
-.sidebar.collapsed ~ .main-content #reply-fixed-bar { left: 64px; }
+.sidebar.collapsed ~ .main-content #reply-fixed-bar { left: 64px !important; }
 @media (max-width: 768px) {
   .sidebar.collapsed ~ .main-content { margin-left: 0; }
 }
