@@ -2451,7 +2451,7 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
   </div>`;
 }
 
-let _currentSort = 'date-desc';
+let _currentSort = 'name-asc';
 
 function setSort(val) {
   _currentSort = val;
@@ -2462,8 +2462,8 @@ function sortFiles(files, sort) {
   var arr = files ? files.slice() : [];
   if (sort === 'date-desc') arr.sort(function(a,b){ return new Date(b.uploadedAt||0) - new Date(a.uploadedAt||0); });
   else if (sort === 'date-asc') arr.sort(function(a,b){ return new Date(a.uploadedAt||0) - new Date(b.uploadedAt||0); });
-  else if (sort === 'name-asc') arr.sort(function(a,b){ return a.name.localeCompare(b.name); });
-  else if (sort === 'name-desc') arr.sort(function(a,b){ return b.name.localeCompare(a.name); });
+  else if (sort === 'name-asc') arr.sort(function(a,b){ return a.name.localeCompare(b.name, 'fr', {sensitivity:'base', numeric:true}); });
+  else if (sort === 'name-desc') arr.sort(function(a,b){ return b.name.localeCompare(a.name, 'fr', {sensitivity:'base', numeric:true}); });
   else if (sort === 'size-desc') arr.sort(function(a,b){ return (b.size||0) - (a.size||0); });
   else if (sort === 'size-asc') arr.sort(function(a,b){ return (a.size||0) - (b.size||0); });
   return arr;
