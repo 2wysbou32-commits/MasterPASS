@@ -2104,6 +2104,39 @@ app.delete('/api/nodes/:path/files/:fileId', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Déplacer un dossier ou sous-dossier entier (avec tout son contenu) vers un autre parent, à n'importe quelle profondeur
+app.post('/api/nodes/:path/move', requireSuperAdminOnly, (req, res) => {
+  const { toPath } = req.body;
+  if (!toPath) return res.status(400).json({ error: 'Destination manquante' });
+  const db = loadDB();
+  const path = parsePath(req.params.path);
+  if (!path.length) return res.status(400).json({ error: 'Chemin invalide' });
+  const destNode = findNodeByPath(db, parsePath(toPath));
+  if (!destNode) return res.status(404).json({ error: 'Destination introuvable' });
+  const destPath = parsePath(toPath);
+  if (destPath.length >= path.length && path.every((id, i) => destPath[i] === id)) {
+    return res.status(400).json({ error: "Impossible de déplacer un dossier dans lui-même ou l'un de ses sous-dossiers" });
+  }
+  let node;
+  if (path.length === 1) {
+    const idx = db.folders.findIndex(f => f.id === path[0]);
+    if (idx === -1) return res.status(404).json({ error: 'Dossier introuvable' });
+    node = db.folders[idx];
+    db.folders.splice(idx, 1);
+  } else {
+    const parent = findNodeByPath(db, path.slice(0, -1));
+    if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+    const nodeId = path[path.length - 1];
+    const idx = (parent.subfolders || []).findIndex(s => s.id === nodeId);
+    if (idx === -1) return res.status(404).json({ error: 'Dossier introuvable' });
+    node = parent.subfolders[idx];
+    parent.subfolders.splice(idx, 1);
+  }
+  if (!destNode.subfolders) destNode.subfolders = [];
+  destNode.subfolders.push(node);
+  saveDB(db);
+  res.json({ ok: true });
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ── ROUTES FICHIER GÉNÉRIQUES (recherche récursive par ID) — ÉTAPE 1b ──────
