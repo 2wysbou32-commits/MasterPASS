@@ -2069,18 +2069,50 @@ async function exportCSV() {
 // ── UPLOAD SOUS-DOSSIER ───────────────────────────────────────────────────────
 async function uploadSubfolderFiles(files, subId, parentId) {
   if (!files || !files.length) return;
-  toast('Upload en cours...');
-  for (var i = 0; i < files.length; i++) {
-    var fd = new FormData();
-    fd.append('files', files[i]);
+  const prog=$('upload-progress'),bar=$('progress-bar'),label=$('progress-label');
+  if (prog) prog.style.display='block';
+  if (bar) bar.style.width='5%';
+  let uploaded=0;
+  for (const file of files) {
+    if (label) label.textContent=`Envoi de "${file.name}" (${formatSize(file.size)})...`;
     try {
-      await fetch('/api/folders/' + parentId + '/subfolders/' + subId + '/files', {
-        method: 'POST', body: fd, credentials: 'include'
-      });
-    } catch(e) { toast('Erreur: ' + e.message, 'error'); }
+      if (file.size > 40*1024*1024) {
+        // Gros fichier : upload direct navigateur -> R2
+        const presign = await api('POST', `/folders/${parentId}/subfolders/${subId}/presign`, {filename:file.name,contentType:file.type||'application/octet-stream',size:file.size});
+        await new Promise((resolve,reject)=>{
+          const xhr=new XMLHttpRequest();
+          xhr.open('PUT',presign.putUrl);
+          xhr.setRequestHeader('Content-Type',file.type||'application/octet-stream');
+          xhr.upload.onprogress=(e)=>{
+            if(e.lengthComputable && bar){
+              const pct=Math.round((e.loaded/e.total)*85)+5;
+              bar.style.width=pct+'%';
+              if (label) label.textContent=`"${file.name}" — ${formatSize(e.loaded)} / ${formatSize(e.total)}`;
+            }
+          };
+          xhr.onload=async()=>{
+            if(xhr.status>=200&&xhr.status<300){
+              try{ await api('POST',`/folders/${parentId}/subfolders/${subId}/files/${presign.fileId}/confirm`,{size:file.size}); }catch(e){ console.log('confirm err:',e.message); }
+              resolve();
+            }else{reject(new Error(`Erreur upload R2: HTTP ${xhr.status}. Vérifiez la config CORS du bucket.`));}
+          };
+          xhr.onerror=()=>reject(new Error('Erreur réseau (CORS bloqué ?). Configurez CORS sur votre bucket R2.'));
+          xhr.send(file);
+        });
+      } else {
+        // Petit fichier : upload via serveur
+        var fd = new FormData();
+        fd.append('files', file);
+        await api('POST', '/folders/' + parentId + '/subfolders/' + subId + '/files', fd);
+      }
+      uploaded++;
+      if (bar) bar.style.width=Math.round((uploaded/files.length)*100)+'%';
+    } catch(e) { toast(`Erreur "${file.name}": ${e.message}`, 'error'); }
   }
-  toast('Upload terminé ✅');
-  loadSubfolderFiles(parentId, subId);
+  if (bar) bar.style.width='100%';
+  await loadSubfolderFiles(parentId, subId);
+  if (uploaded>0) toast(`${uploaded} fichier${uploaded>1?'s':''} ajouté${uploaded>1?'s':''}`);
+  setTimeout(()=>{ if(prog) prog.style.display='none'; if(bar) bar.style.width='0%'; },600);
 }
 
 // ── DOSSIERS ──────────────────────────────────────────────────────────────────
