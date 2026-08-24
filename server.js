@@ -2499,48 +2499,17 @@ app.post('/api/folders/:parentId/subfolders/:subId/extract', requireAdmin, (req,
 
 // ── DÉPLACER UN FICHIER ──────────────────────────────────────────────────────
 app.post('/api/files/:fileId/move', requireAdmin, (req, res) => {
-  const { fromFolderId, fromSubId, toFolderId, toSubId } = req.body;
+  const { toPath } = req.body;
+  if (!toPath) return res.status(400).json({ error: 'Destination manquante' });
   const db = loadDB();
-  
-  // Find source file - search in root and subfolders
-  const fromFolder = db.folders.find(f => f.id === parseInt(fromFolderId));
-  if (!fromFolder) return res.status(404).json({ error: 'Dossier source introuvable' });
-  let sourceList, file;
-  if (fromSubId) {
-    const sub = (fromFolder.subfolders||[]).find(s => s.id === parseInt(fromSubId));
-    sourceList = sub?.files;
-  } else {
-    // Try root files first
-    sourceList = fromFolder.files;
-    // If file not found in root, search subfolders
-    const fileInRoot = (fromFolder.files||[]).find(f => f.id === parseInt(req.params.fileId));
-    if (!fileInRoot) {
-      for (const sub of (fromFolder.subfolders||[])) {
-        const f = (sub.files||[]).find(f => f.id === parseInt(req.params.fileId));
-        if (f) { sourceList = sub.files; break; }
-      }
-    }
-  }
-  if (!sourceList) return res.status(404).json({ error: 'Source introuvable' });
-  const fileIdx = sourceList.findIndex(f => f.id === parseInt(req.params.fileId));
-  if (fileIdx === -1) return res.status(404).json({ error: 'Fichier introuvable' });
-  file = sourceList[fileIdx];
-  
-  // Find destination
-  let destList;
-  if (toSubId) {
-    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
-    const sub = (folder?.subfolders||[]).find(s => s.id === parseInt(toSubId));
-    destList = sub?.files;
-  } else {
-    const folder = db.folders.find(f => f.id === parseInt(toFolderId));
-    destList = folder?.files;
-  }
-  if (!destList) return res.status(404).json({ error: 'Destination introuvable' });
-  
-  // Move
-  sourceList.splice(fileIdx, 1);
-  destList.push(file);
+  const found = findFileRecursive(db, req.params.fileId);
+  if (!found) return res.status(404).json({ error: 'Fichier introuvable' });
+  const destNode = findNodeByPath(db, parsePath(toPath));
+  if (!destNode) return res.status(404).json({ error: 'Destination introuvable' });
+  if (destNode === found.container) return res.status(400).json({ error: 'Le fichier est déjà dans ce dossier' });
+  found.container.files = (found.container.files || []).filter(f => f.id !== found.file.id);
+  if (!destNode.files) destNode.files = [];
+  destNode.files.push(found.file);
   saveDB(db);
   res.json({ ok: true });
 });
