@@ -3872,11 +3872,11 @@ let _fileModalData = null; // { fileId, currentName, folderId, subId }
 
 function openFileModal(e, fileId, currentName, folderId, subId) {
   e.stopPropagation();
-  _fileModalData = { fileId, currentName, folderId: String(folderId), subId: String(subId||'') };
+  const sourcePath = currentPath.length ? currentPath.map(function(p){return p.id;}).join(',') : String(folderId);
+  _fileModalData = { fileId, currentName, sourcePath };
   document.getElementById('file-modal-title').textContent = '✏️ ' + currentName;
   document.getElementById('rename-input').value = currentName;
-  // Build destination list
-  buildMoveDestinations(folderId, subId);
+  buildMoveDestinations();
   // Show modal
   const modal = document.getElementById('file-actions-modal');
   modal.style.display = 'flex';
@@ -3907,97 +3907,15 @@ async function doRenameFile() {
   } catch(err) { toast(err.message, 'error'); }
 }
 
-async function buildMoveDestinations(currentFolderId, currentSubId) {
+async function buildMoveDestinations() {
   const container = document.getElementById('move-destinations');
   container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0">Chargement...</div>';
   try {
     const folders = await api('GET', '/folders');
     container.innerHTML = '';
-
     folders.forEach(function(folder) {
-      const isCurrent = String(folder.id) === String(currentFolderId) && !currentSubId;
-      const hasSubs = folder.subfolders && folder.subfolders.length > 0;
-
-      // Dossier racine
-      const row = document.createElement('div');
-      row.style.cssText = 'margin-bottom:4px';
-
-      const folderBtn = document.createElement('div');
-      folderBtn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;border:1.5px solid ' + (isCurrent ? 'var(--teal)' : 'var(--border)') + ';background:' + (isCurrent ? 'rgba(0,151,167,0.06)' : 'var(--bg)') + ';cursor:pointer;font-size:13px;color:var(--text);user-select:none';
-
-      const arrow = document.createElement('span');
-      arrow.textContent = hasSubs ? '▶' : ' ';
-      arrow.style.cssText = 'font-size:10px;color:var(--text3);width:14px;flex-shrink:0;transition:transform 0.2s';
-
-      const folderIcon = document.createElement('span');
-      folderIcon.textContent = '📁';
-      folderIcon.style.cssText = 'flex-shrink:0';
-
-      const folderName = document.createElement('span');
-      folderName.textContent = folder.name;
-      folderName.style.cssText = 'flex:1';
-
-      if (isCurrent) {
-        const badge = document.createElement('small');
-        badge.textContent = '📍 actuel';
-        badge.style.cssText = 'color:var(--text3);font-size:10px';
-        folderBtn.appendChild(arrow);
-        folderBtn.appendChild(folderIcon);
-        folderBtn.appendChild(folderName);
-        folderBtn.appendChild(badge);
-      } else {
-        folderBtn.appendChild(arrow);
-        folderBtn.appendChild(folderIcon);
-        folderBtn.appendChild(folderName);
-      }
-
-      // Sous-dossiers container (caché par défaut)
-      const subsContainer = document.createElement('div');
-      subsContainer.style.cssText = 'display:none;padding-left:20px;margin-top:4px';
-
-      // Clic sur le dossier : déplacer ici OU ouvrir/fermer les sous-dossiers
-      folderBtn.onclick = function() {
-        if (hasSubs) {
-          // Toggle sous-dossiers (toujours possible, même si c'est le dossier actuel)
-          const isOpen = subsContainer.style.display !== 'none';
-          subsContainer.style.display = isOpen ? 'none' : 'block';
-          arrow.style.transform = isOpen ? '' : 'rotate(90deg)';
-        } else if (!isCurrent) {
-          // Pas de sous-dossiers et ce n'est pas l'emplacement actuel → déplacer directement
-          doMoveFile(String(folder.id), '');
-        }
-      };
-
-      // Double-clic ou bouton "Déposer ici" si a des sous-dossiers
-      if (hasSubs && !isCurrent) {
-        const moveHereBtn = document.createElement('button');
-        moveHereBtn.textContent = '↳ Déposer dans ce dossier';
-        moveHereBtn.style.cssText = 'display:block;width:100%;padding:7px 14px;margin-top:4px;margin-bottom:4px;border-radius:8px;border:1.5px dashed var(--teal);background:rgba(0,151,167,0.04);color:var(--teal-dark);cursor:pointer;font-size:12px;font-weight:600;text-align:left;font-family:Inter,sans-serif';
-        var fId = folder.id;
-        moveHereBtn.onclick = function(e) { e.stopPropagation(); doMoveFile(String(fId), ''); };
-        subsContainer.appendChild(moveHereBtn);
-      }
-
-      // Sous-dossiers
-      (folder.subfolders || []).forEach(function(sub) {
-        const isCurrentSub = String(folder.id) === String(currentFolderId) && String(sub.id) === String(currentSubId);
-        const subBtn = document.createElement('div');
-        subBtn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;border:1.5px solid ' + (isCurrentSub ? 'var(--teal)' : 'var(--border)') + ';background:' + (isCurrentSub ? 'rgba(0,151,167,0.06)' : 'var(--surface,white)') + ';cursor:pointer;font-size:12px;color:var(--text2);margin-bottom:4px';
-        subBtn.innerHTML = '<span style="flex-shrink:0">📂</span><span style="flex:1">' + sub.name + '</span>' + (isCurrentSub ? '<small style="color:var(--text3);font-size:10px">📍 actuel</small>' : '');
-        if (!isCurrentSub) {
-          var fId2 = folder.id, sId2 = sub.id;
-          subBtn.onclick = function() { doMoveFile(String(fId2), String(sId2)); };
-          subBtn.onmouseover = function() { this.style.background = 'rgba(0,151,167,0.06)'; this.style.borderColor = 'var(--teal)'; };
-          subBtn.onmouseout = function() { this.style.background = 'var(--surface,white)'; this.style.borderColor = 'var(--border)'; };
-        }
-        subsContainer.appendChild(subBtn);
-      });
-
-      row.appendChild(folderBtn);
-      if (hasSubs) row.appendChild(subsContainer);
-      container.appendChild(row);
+      renderMoveNode(container, folder.id, folder.name, [folder.id], 0);
     });
-
     if (!container.children.length) {
       container.innerHTML = '<div style="color:var(--text3);font-size:13px">Aucun dossier disponible</div>';
     }
@@ -4006,18 +3924,90 @@ async function buildMoveDestinations(currentFolderId, currentSubId) {
   }
 }
 
+function renderMoveNode(parentEl, id, name, path, depth) {
+  const pathStr = path.join(',');
+  const isCurrent = _fileModalData && _fileModalData.sourcePath === pathStr;
 
-async function doMoveFile(toFolderId, toSubId) {
+  const row = document.createElement('div');
+  row.style.cssText = 'margin-bottom:4px';
+
+  const nodeBtn = document.createElement('div');
+  nodeBtn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:' + (depth===0?'10px 14px':'9px 14px') + ';border-radius:10px;border:1.5px solid ' + (isCurrent ? 'var(--teal)' : 'var(--border)') + ';background:' + (isCurrent ? 'rgba(0,151,167,0.06)' : (depth===0?'var(--bg)':'var(--surface,white)')) + ';cursor:pointer;font-size:' + (depth===0?'13px':'12px') + ';color:' + (depth===0?'var(--text)':'var(--text2)') + ';user-select:none';
+
+  const arrow = document.createElement('span');
+  arrow.textContent = '▶';
+  arrow.style.cssText = 'font-size:10px;color:var(--text3);width:14px;flex-shrink:0;transition:transform 0.2s';
+
+  const icon = document.createElement('span');
+  icon.textContent = depth===0 ? '📁' : '📂';
+  icon.style.cssText = 'flex-shrink:0';
+
+  const nameEl = document.createElement('span');
+  nameEl.textContent = name;
+  nameEl.style.cssText = 'flex:1';
+
+  nodeBtn.appendChild(arrow);
+  nodeBtn.appendChild(icon);
+  nodeBtn.appendChild(nameEl);
+  if (isCurrent) {
+    const badge = document.createElement('small');
+    badge.textContent = '📍 actuel';
+    badge.style.cssText = 'color:var(--text3);font-size:10px';
+    nodeBtn.appendChild(badge);
+  }
+
+  const childrenContainer = document.createElement('div');
+  childrenContainer.style.cssText = 'display:none;padding-left:20px;margin-top:4px';
+  let loaded = false;
+
+  async function ensureLoaded() {
+    if (loaded) return;
+    loaded = true;
+    childrenContainer.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0">Chargement...</div>';
+    try {
+      const node = await api('GET', '/nodes/' + pathStr);
+      childrenContainer.innerHTML = '';
+      if (!isCurrent) {
+        const moveHereBtn = document.createElement('button');
+        moveHereBtn.textContent = '↳ Déposer dans ce dossier';
+        moveHereBtn.style.cssText = 'display:block;width:100%;padding:7px 14px;margin-bottom:4px;border-radius:8px;border:1.5px dashed var(--teal);background:rgba(0,151,167,0.04);color:var(--teal-dark);cursor:pointer;font-size:12px;font-weight:600;text-align:left;font-family:Inter,sans-serif';
+        moveHereBtn.onclick = function(e) { e.stopPropagation(); doMoveFile(pathStr); };
+        childrenContainer.appendChild(moveHereBtn);
+      }
+      (node.subfolders || []).forEach(function(sub) {
+        renderMoveNode(childrenContainer, sub.id, sub.name, path.concat([sub.id]), depth + 1);
+      });
+    } catch(e) {
+      childrenContainer.innerHTML = '<div style="color:var(--danger);font-size:12px">Erreur: ' + e.message + '</div>';
+    }
+  }
+
+  nodeBtn.onclick = function() {
+    const isOpen = childrenContainer.style.display !== 'none';
+    if (isOpen) {
+      childrenContainer.style.display = 'none';
+      arrow.style.transform = '';
+    } else {
+      childrenContainer.style.display = 'block';
+      arrow.style.transform = 'rotate(90deg)';
+      ensureLoaded();
+    }
+  };
+
+  row.appendChild(nodeBtn);
+  row.appendChild(childrenContainer);
+  parentEl.appendChild(row);
+}
+
+
+async function doMoveFile(toPath) {
   if (!_fileModalData) return;
-  const { fileId, folderId, subId } = _fileModalData;
+  const { fileId } = _fileModalData;
   try {
-    await api('POST', '/files/' + fileId + '/move', {
-      fromFolderId: folderId, fromSubId: subId,
-      toFolderId, toSubId
-    });
+    await api('POST', '/files/' + fileId + '/move', { toPath });
     closeFileModal();
     toast('Fichier déplacé ✅');
-        await renderCurrentNode();
+    await renderCurrentNode();
   } catch(err) { toast(err.message, 'error'); }
 }
 
