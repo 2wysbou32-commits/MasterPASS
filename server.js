@@ -244,6 +244,7 @@ const PORT = process.env.PORT || 3000;
 // ── Paths ─────────────────────────────────────────────────────────────────────
 const DATA_DIR    = process.env.DATA_DIR || require('path').join(__dirname, 'data');
 const DATA_FILE   = require('path').join(DATA_DIR, 'db.json');
+const DEMO_MODE_ENABLED = false; // Passe à true pour réactiver le mode démo (bouton + connexion)
 const UPLOADS_DIR = require('path').join(DATA_DIR, 'uploads');
 if (!require('fs').existsSync(DATA_DIR)) require('fs').mkdirSync(DATA_DIR, { recursive: true });
 if (!require('fs').existsSync(UPLOADS_DIR)) require('fs').mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -687,6 +688,7 @@ dbLog.connectionLogs = dbLog.connectionLogs.filter(l => (l.at || l.date) > seven
 });
 
 app.post('/api/demo-login', (req, res) => {
+  if (!DEMO_MODE_ENABLED) return res.status(404).json({ error: 'Fonctionnalité indisponible' });
   const db = loadDB();
   let demoUser = db.users.find(u => u.isDemo);
   if (demoUser) {
