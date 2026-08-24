@@ -1899,6 +1899,211 @@ app.post('/api/folders/:folderId/files/:fileId/confirm', requireAdmin, (req, res
   res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
 });
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── ARBORESCENCE RÉCURSIVE (profondeur illimitée) — ÉTAPE 1 DU REFACTOR ─────
+// Un "chemin" (path) est une suite d'IDs séparés par des virgules dans l'URL,
+// ex: /api/nodes/12,45,78 = dossier 12 > sous-dossier 45 > sous-sous-dossier 78
+// Ces routes cohabitent avec les anciennes (/api/folders/...) sans les remplacer.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function parsePath(pathParam) {
+  return String(pathParam).split(',').map(n => parseInt(n)).filter(n => !isNaN(n));
+}
+
+function findNodeByPath(db, path) {
+  if (!path || !path.length) return null;
+  let node = db.folders.find(f => f.id === path[0]);
+  if (!node) return null;
+  for (let i = 1; i < path.length; i++) {
+    if (!node.subfolders) node.subfolders = [];
+    node = node.subfolders.find(s => s.id === path[i]);
+    if (!node) return null;
+  }
+  return node;
+}
+
+function buildPresignedPutUrl(r2Key, contentType) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const region = 'auto';
+  const date = new Date();
+  const amzDate = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateStamp = amzDate.slice(0, 8);
+  const expires = 7200;
+  const credential = `${R2_ACCESS_KEY_ID}/${dateStamp}/${region}/s3/aws4_request`;
+  const qs = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expires)],
+    ['X-Amz-SignedHeaders', 'content-type;host'],
+  ].sort((a, b) => a[0].localeCompare(b[0]));
+  const canonicalQS = qs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const encodedR2Path = `/${R2_BUCKET_NAME}/${encodeR2Key(r2Key)}`;
+  const canonicalRequest = [
+    'PUT', encodedR2Path, canonicalQS,
+    `content-type:${contentType}\nhost:${host}\n`,
+    'content-type;host', 'UNSIGNED-PAYLOAD',
+  ].join('\n');
+  const scope = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateStamp), region), 's3'), 'aws4_request');
+  const signature = hmac(signingKey, stringToSign, 'hex');
+  return `https://${host}${encodedR2Path}?${canonicalQS}&X-Amz-Signature=${signature}`;
+}
+
+// Lister le contenu d'un nœud (fichiers + sous-dossiers directs)
+app.get('/api/nodes/:path', requireAuth, (req, res) => {
+  const db = loadDB();
+  const node = findNodeByPath(db, parsePath(req.params.path));
+  if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
+  res.json({
+    id: node.id, name: node.name, createdAt: node.createdAt,
+    files: (node.files || []).map(fi => ({ id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, views: fi.views || 0, downloadable: fi.downloadable, pending: fi.pending })),
+    subfolders: (node.subfolders || []).map(s => ({ id: s.id, name: s.name, fileCount: (s.files || []).length, subfolderCount: (s.subfolders || []).length })),
+  });
+});
+
+// Créer un sous-dossier à n'importe quelle profondeur
+app.post('/api/nodes/:path/children', requireSuperAdminOnly, (req, res) => {
+  const db = loadDB();
+  const node = findNodeByPath(db, parsePath(req.params.path));
+  if (!node) return res.status(404).json({ error: 'Dossier parent introuvable' });
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
+  if (!node.subfolders) node.subfolders = [];
+  const sub = { id: db.nextId++, name: name.trim(), createdAt: new Date().toISOString().split('T')[0], files: [], subfolders: [] };
+  node.subfolders.push(sub);
+  saveDB(db);
+  res.json({ id: sub.id, name: sub.name, createdAt: sub.createdAt, fileCount: 0, subfolderCount: 0 });
+});
+
+// Renommer un nœud à n'importe quelle profondeur
+app.patch('/api/nodes/:path', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const node = findNodeByPath(db, parsePath(req.params.path));
+  if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  node.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: node.name });
+});
+
+// Supprimer un nœud à n'importe quelle profondeur (et ses fichiers sur R2, récursivement)
+app.delete('/api/nodes/:path', requireSuperAdminOnly, async (req, res) => {
+  const db = loadDB();
+  const path = parsePath(req.params.path);
+  if (path.length < 2) return res.status(400).json({ error: 'Impossible de supprimer un dossier racine via cette route' });
+  const parent = findNodeByPath(db, path.slice(0, -1));
+  if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
+  const targetId = path[path.length - 1];
+  const node = (parent.subfolders || []).find(s => s.id === targetId);
+  if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
+  async function deleteFilesRecursive(n) {
+    for (const file of (n.files || [])) {
+      if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
+      if (db.threads) delete db.threads[String(file.id)];
+    }
+    for (const sub of (n.subfolders || [])) await deleteFilesRecursive(sub);
+  }
+  await deleteFilesRecursive(node);
+  parent.subfolders = parent.subfolders.filter(s => s.id !== targetId);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// Upload petit(s) fichier(s) à n'importe quelle profondeur
+app.post('/api/nodes/:path/files', requireSuperAdminOnly, upload.array('files'), async (req, res) => {
+  const db = loadDB();
+  const node = findNodeByPath(db, parsePath(req.params.path));
+  if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
+  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
+  if (!node.files) node.files = [];
+  const added = [];
+  for (const file of req.files) {
+    const ext = path.extname(file.originalname).replace('.', '').toLowerCase();
+    const type = getFileType(ext);
+    const fileId = db.nextId++;
+    let record;
+    if (r2Enabled) {
+      const safeBase = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const r2Key = `files/${req.params.path.replace(/,/g, '-')}/${fileId}-${safeBase}`;
+      await uploadToR2(r2Key, file.buffer, file.mimetype);
+      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], r2Key, downloadable: true };
+    } else {
+      const filename = `${fileId}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      fs.writeFileSync(path.join(UPLOADS_DIR, filename), file.buffer);
+      record = { id: fileId, name: file.originalname, size: file.size, type, addedAt: new Date().toISOString().split('T')[0], filename, downloadable: true };
+    }
+    node.files.push(record);
+    added.push({ id: record.id, name: record.name, size: record.size, type: record.type, addedAt: record.addedAt });
+  }
+  saveDB(db);
+  res.json(added);
+});
+
+// Presign upload gros fichier à n'importe quelle profondeur
+app.post('/api/nodes/:path/presign', requireSuperAdminOnly, (req, res) => {
+  const db = loadDB();
+  const node = findNodeByPath(db, parsePath(req.params.path));
+  if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
+  const { filename, contentType, size } = req.body;
+  if (!filename || !contentType) return res.status(400).json({ error: 'Données manquantes' });
+  const fileId = db.nextId++;
+  const safeBase = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const r2Key = `files/${req.params.path.replace(/,/g, '-')}/${fileId}-${safeBase}`;
+  const putUrl = buildPresignedPutUrl(r2Key, contentType);
+  const ext = filename.split('.').pop().toLowerCase();
+  const type = getFileType(ext);
+  if (!node.files) node.files = [];
+  node.files.push({ id: fileId, name: filename, size: size || 0, type, addedAt: new Date().toISOString().split('T')[0], r2Key, downloadable: true, pending: true });
+  db.nextId = fileId + 1;
+  saveDB(db);
+  res.json({ putUrl, fileId, r2Key });
+});
+
+// Confirmer un upload R2 à n'importe quelle profondeur
+app.post('/api/nodes/:path/files/:fileId/confirm', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const node = findNodeByPath(db, parsePath(req.params.path));
+  if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (node.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  file.pending = false;
+  if (req.body.size) file.size = req.body.size;
+  saveDB(db);
+  res.json({ id: file.id, name: file.name, size: file.size, type: file.type, addedAt: file.addedAt });
+});
+
+// Renommer un fichier à n'importe quelle profondeur
+app.patch('/api/nodes/:path/files/:fileId/rename', requireAdmin, (req, res) => {
+  const db = loadDB();
+  const node = findNodeByPath(db, parsePath(req.params.path));
+  if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (node.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  file.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: file.name });
+});
+
+// Supprimer un fichier à n'importe quelle profondeur
+app.delete('/api/nodes/:path/files/:fileId', requireAdmin, async (req, res) => {
+  const db = loadDB();
+  const node = findNodeByPath(db, parsePath(req.params.path));
+  if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
+  const file = (node.files || []).find(f => f.id === parseInt(req.params.fileId));
+  if (!file) return res.status(404).json({ error: 'Fichier introuvable' });
+  if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
+  if (db.threads) delete db.threads[String(file.id)];
+  node.files = node.files.filter(f => f.id !== file.id);
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 // ── CLEAR DOUBLE CONNECTION FLAG ─────────────────────────────────────────────
 app.delete('/api/users/:id/double-connection', requireSuperAdmin, (req, res) => {
   const db = loadDB();
