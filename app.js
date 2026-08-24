@@ -667,8 +667,8 @@ function updateTopbar(){
       el.innerHTML=`<button class="btn-action primary-action" onclick="openModal('modal-folder')">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3v-3h2v3h3v2z"/></svg>
         Nouveau dossier</button>`;
-    }else{
-      const subBtnHtml = (currentSubfolder || isSubAdmin) ? '' : `<button class="btn-action" onclick="createSubfolder(currentFolder.id)" style="margin-right:8px">
+        }else{
+      const subBtnHtml = isSubAdmin ? '' : `<button class="btn-action" onclick="createSubfolder()" style="margin-right:8px">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px"><path d="M20 6h-8l-2-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3v-3h2v3h3v2z"/></svg>
         Nouveau sous-dossier</button>`;
       el.innerHTML=subBtnHtml+`<button class="btn-action" onclick="document.getElementById('file-input').click()">
@@ -698,60 +698,36 @@ async function loadStats(){
 
 
 // ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
-function renderSubfolders(subs, parentId, parentName) {
+function renderSubfolders(subs) {
   if (!subs || !subs.length) return '';
   return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:24px;margin-bottom:16px">' +
     subs.map(function(sub) {
       var isAdminNow = currentUser && currentUser.role === 'admin';
+      var subPath = currentPath.map(function(p){return p.id;}).concat([sub.id]).join(',');
       return '<div style="display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--surface,white);border-radius:12px;border:1.5px solid var(--border);font-size:13px;font-weight:600;color:var(--text);transition:border-color 0.15s">' +
-        '<span onclick="openSubfolder(' + sub.id + ',\'' + sub.name.replace(/'/g,"\'") + '\',' + parentId + ',\'' + parentName.replace(/'/g,"\'") + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1">' +
+        '<span onclick="openNode(' + sub.id + ',\'' + sub.name.replace(/'/g,"\\'") + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1">' +
         '<svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;color:var(--teal-dark)"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>' +
         sub.name + '</span>' +
-        (isAdminNow ? '<button class="icon-btn" onclick="event.stopPropagation();renameSubfolder(' + parentId + ',' + sub.id + ')" title="Renommer" style="font-size:12px">✏️</button><button class="icon-btn" onclick="event.stopPropagation();deleteSubfolder(' + parentId + ',' + sub.id + ')" title="Supprimer" style="font-size:12px">🗑️</button>' : '') +
+        (isAdminNow ? '<button class="icon-btn" onclick="event.stopPropagation();renameNode(\'' + subPath + '\')" title="Renommer" style="font-size:12px">✏️</button><button class="icon-btn" onclick="event.stopPropagation();deleteNode(\'' + subPath + '\')" title="Supprimer" style="font-size:12px">🗑️</button>' : '') +
         '</div>';
     }).join('') + '</div>';
 }
-async function deleteSubfolder(parentId, subId) {
+async function deleteNode(pathStr) {
   if (!await customConfirm('Supprimer ce sous-dossier et tous ses fichiers ?')) return;
   try {
-    await api('DELETE', '/folders/' + parentId + '/subfolders/' + subId);
+    await api('DELETE', '/nodes/' + pathStr);
     toast('Sous-dossier supprimé ✅');
-    const subs = await loadSubfolders(parentId);
-    const subContainer = document.getElementById('subfolders-container');
-    if (subContainer) subContainer.innerHTML = renderSubfolders(subs, parentId, currentFolder.name);
+    await renderCurrentNode();
   } catch(e) { toast(e.message, 'error'); }
 }
-async function renameSubfolder(parentId, subId) {
-  var name = await customPrompt('Nouveau nom du sous-dossier :');
+async function renameNode(pathStr) {
+  var name = await customPrompt('Nouveau nom :');
   if (!name || !name.trim()) return;
   try {
-    await api('PATCH', '/folders/' + parentId + '/subfolders/' + subId, { name: name.trim() });
-    toast('Sous-dossier renommé ✅');
-    const subs = await loadSubfolders(parentId);
-    const subContainer = document.getElementById('subfolders-container');
-    if (subContainer) subContainer.innerHTML = renderSubfolders(subs, parentId, currentFolder.name);
+    await api('PATCH', '/nodes/' + pathStr, { name: name.trim() });
+    toast('Renommé ✅');
+    await renderCurrentNode();
   } catch(e) { toast(e.message, 'error'); }
-}
-
-async function openSubfolder(subId, subName, parentId, parentName) {
-  currentSubfolder = { id: subId, name: subName, parentId: parentId };
-  currentFolder = { id: parentId, name: parentName };
-  const vf = $('view-files');
-  const vd = $('view-folders');
-  if(vd) vd.style.display = 'none';
-  if(vf) vf.style.display = 'block';
-  const wrap = document.getElementById('folder-page-title-wrap');
-if(wrap) wrap.style.display='flex';
-const ft = document.getElementById('folder-page-title');
-if(ft) ft.textContent = subName;
-const backBtn = document.getElementById('btn-back-folder');
-if(backBtn) backBtn.style.display='flex'; // bouton retour visible dans un sous-dossier
-  if($('student-banner')) $('student-banner').style.display = 'none';
-  if($('admin-stats')) $('admin-stats').style.display = 'none';
-  const subContainerOld = document.getElementById('subfolders-container');
-  if(subContainerOld) subContainerOld.innerHTML = '';
-  updateBreadcrumb(); updateTopbar();
-  await loadSubfolderFiles(parentId, subId);
 }
 
 let _filesLoadToken = 0;
@@ -2170,11 +2146,7 @@ async function postAnnouncement() {
 
 // ── TRI ───────────────────────────────────────────────────────────────────────
 function applySort() {
-  if (currentSubfolder) {
-    loadSubfolderFiles(currentFolder.id, currentSubfolder.id);
-  } else if (currentFolder) {
-    loadFiles();
-  }
+  renderCurrentNode();
 }
 
 function toggleSortMenu(e, btn) {
@@ -2248,6 +2220,7 @@ function renderFolders(folders){
 }
 
 function backToRoot(){
+  currentPath=[];
   currentFolder=null;
   $('view-folders').style.display='block';
   $('view-files').style.display='none';
@@ -2265,9 +2238,11 @@ if(wrap) wrap.style.display='none';
   updateBreadcrumb();loadFolders();updateTopbar();
 }
 function goBack() {
-  // Si on est dans un sous-dossier → retour au dossier parent
-  if (currentSubfolder) {
-    openFolder(currentFolder.id, currentFolder.name);
+  if (currentPath.length > 1) {
+    currentPath.pop();
+    currentFolder = { id: currentPath[0].id, name: currentPath[0].name };
+    currentSubfolder = currentPath.length > 1 ? currentPath[currentPath.length-1] : null;
+    renderCurrentNode();
   } else {
     backToRoot();
   }
@@ -2280,48 +2255,67 @@ async function loadSubfolders(folderId) {
   }
 }
 
+let currentPath = [];
+
 async function openFolder(id,name){
-  currentSubfolder = null;
+  currentPath = [{ id, name }];
   currentFolder={id,name};
+  currentSubfolder = null;
   saveNavState('lastFolder', { id, name });
   clearNavState('lastFileScroll');
+  await renderCurrentNode();
+}
+
+async function openNode(id, name) {
+  currentPath.push({ id: id, name: name });
+  currentFolder = { id: currentPath[0].id, name: currentPath[0].name };
+  currentSubfolder = { id: id, name: name };
+  await renderCurrentNode();
+}
+
+async function renderCurrentNode() {
+  if (!currentPath.length) return;
   $('view-folders').style.display='none';
   $('view-files').style.display='block';
-  // Mettre le nom du dossier dans la topbar
   $('topbar-title').textContent='';
-  // Afficher le titre en grand dans la page
   const folderTitle = document.getElementById('folder-page-title');
   const wrap = document.getElementById('folder-page-title-wrap');
-if(wrap){ wrap.style.display='flex'; }
-if(folderTitle){ folderTitle.textContent=name; }
-const backBtn = document.getElementById('btn-back-folder');
-if(backBtn) backBtn.style.display='flex';
-  // Masquer le banner étudiant et les stats
+  if(wrap){ wrap.style.display='flex'; }
+  const name = currentPath[currentPath.length-1].name;
+  if(folderTitle){ folderTitle.textContent=name; }
+  const backBtn = document.getElementById('btn-back-folder');
+  if(backBtn) backBtn.style.display='flex';
   if($('student-banner')) $('student-banner').style.display='none';
   if($('admin-stats')) $('admin-stats').style.display='none';
-  // Vider le container de sous-dossiers AVANT de charger les nouveaux
-  const subContainerOld = document.getElementById('subfolders-container');
-  if(subContainerOld) subContainerOld.innerHTML = '';
   updateBreadcrumb();updateTopbar();
-  // Load subfolders and files
-  const [subs] = await Promise.all([loadSubfolders(id), loadFiles()]);
-  // Inject subfolders above the file table
-  const subHtml = renderSubfolders(subs, id, name);
-  const container = $('view-files');
-  let subContainer = document.getElementById('subfolders-container');
-  if (!subContainer) {
-    subContainer = document.createElement('div');
-    subContainer.id = 'subfolders-container';
-    // Insert after folder-page-title
-    const wrap = document.getElementById('folder-page-title-wrap');
-    const insertAfter = wrap || document.getElementById('folder-page-title');
-    if(insertAfter && insertAfter.nextSibling) {
-      container.insertBefore(subContainer, insertAfter.nextSibling);
-    } else {
-      container.appendChild(subContainer);
+  const container = document.getElementById('files-list-body');
+  if(container) container.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-state-title">Chargement…</div></div>';
+  const myToken = ++_filesLoadToken;
+  const pathStr = currentPath.map(function(p){return p.id;}).join(',');
+  try {
+    const node = await api('GET', '/nodes/' + pathStr);
+    if (myToken !== _filesLoadToken) return;
+    const subHtml = renderSubfolders(node.subfolders);
+    const vfContainer = $('view-files');
+    let subContainer = document.getElementById('subfolders-container');
+    if (!subContainer) {
+      subContainer = document.createElement('div');
+      subContainer.id = 'subfolders-container';
+      const w = document.getElementById('folder-page-title-wrap');
+      const insertAfter = w || document.getElementById('folder-page-title');
+      if(insertAfter && insertAfter.nextSibling) { vfContainer.insertBefore(subContainer, insertAfter.nextSibling); }
+      else { vfContainer.appendChild(subContainer); }
     }
+    subContainer.innerHTML = subHtml;
+    renderFilesSorted(node.files || []);
+    const savedScroll = loadNavState('lastFileScroll');
+    if (savedScroll) {
+      setTimeout(() => { const el = document.getElementById('files-list-body'); if (el) el.scrollTop = savedScroll.top; }, 100);
+    }
+    clearNavState('lastFileScroll');
+  } catch(e) {
+    if(container) container.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-state-title">Erreur de chargement</div></div>';
   }
-  subContainer.innerHTML = subHtml;
 }
 
 async function createFolder(){
@@ -2331,15 +2325,15 @@ async function createFolder(){
   catch(e){toast(e.message,'error');}finally{btn.disabled=false;btn.textContent='Créer le dossier';}
 }
 
-async function createSubfolder(parentId){
-  const name = await customPrompt('Nom du sous-dossier :');
+async function createSubfolder(){
+  if (!currentPath.length) return;
+  var name = await customPrompt('Nom du sous-dossier :');
   if(!name || !name.trim()) return;
+  var pathStr = currentPath.map(function(p){return p.id;}).join(',');
   try{
-    await api('POST', '/folders/' + parentId + '/subfolders', { name: name.trim() });
+    await api('POST', '/nodes/' + pathStr + '/children', { name: name.trim() });
     toast('Sous-dossier créé avec succès');
-    const subs = await loadSubfolders(parentId);
-    const subContainer = document.getElementById('subfolders-container');
-    if (subContainer) subContainer.innerHTML = renderSubfolders(subs, parentId, currentFolder.name);
+    await renderCurrentNode();
   }catch(e){ toast(e.message,'error'); }
 }
 
@@ -2461,12 +2455,7 @@ let _currentSort = 'date-desc';
 
 function setSort(val) {
   _currentSort = val;
-  // Re-render current files with new sort
-  if (currentSubfolder) {
-    loadSubfolderFiles(currentFolder.id, currentSubfolder.id);
-  } else if (currentFolder) {
-    loadFiles();
-  }
+  renderCurrentNode();
 }
 
 function sortFiles(files, sort) {
@@ -2530,12 +2519,15 @@ function renderFiles(files){
     if(tbody) tbody.innerHTML='';
     return;
   }
+    const folderId = currentPath.length ? currentPath[0].id : '';
+  const subId = currentPath.length > 1 ? currentPath[currentPath.length-1].id : '';
   const html = files.map(f=>buildFileRow(
     f, isAdmin,
     `openPreviewById(this)" data-fileid="${f.id}" data-type="${f.type}`,
-    `/api/folders/${currentFolder.id}/files/${f.id}`,
+    `/api/files/${f.id}`,
     `toggleDownload(${f.id})`,
-    `deleteFile(${f.id})`
+    `deleteFile(${f.id})`,
+    folderId, subId
   )).join('');
   if(container) {
     container.innerHTML = html;
@@ -2562,11 +2554,7 @@ function renderFiles(files){
 
 function handleFileSelect(e){
   const files = Array.from(e.target.files);
-  if (currentSubfolder) {
-    uploadSubfolderFiles(files, currentSubfolder.id, currentSubfolder.parentId);
-  } else {
-    uploadFiles(files);
-  }
+  uploadFiles(files);
   e.target.value='';
 }
 function onDragOver(e){e.preventDefault();e.currentTarget.classList.add('dragover');}
@@ -2575,25 +2563,20 @@ function onDrop(e){
   e.preventDefault();
   e.currentTarget.classList.remove('dragover');
   const files = Array.from(e.dataTransfer.files);
-  if (currentSubfolder) {
-    uploadSubfolderFiles(files, currentSubfolder.id, currentSubfolder.parentId);
-  } else {
-    uploadFiles(files);
-  }
+  uploadFiles(files);
 }
-
 async function uploadFiles(files){
-  if(!currentFolder||!files.length)return;
+  if(!currentPath.length||!files.length)return;
   const prog=$('upload-progress'),bar=$('progress-bar'),label=$('progress-label');
   prog.style.display='block';
   bar.style.width='5%';
   let uploaded=0;
+  const pathStr = currentPath.map(function(p){return p.id;}).join(',');
   for(const file of files){
     label.textContent=`Envoi de "${file.name}" (${formatSize(file.size)})...`;
     try{
       if(file.size > 40*1024*1024){
-        // Gros fichier : upload direct navigateur -> R2
-        const presign=await api('POST',`/folders/${currentFolder.id}/presign`,{filename:file.name,contentType:file.type||'application/octet-stream',size:file.size});
+        const presign=await api('POST',`/nodes/${pathStr}/presign`,{filename:file.name,contentType:file.type||'application/octet-stream',size:file.size});
         await new Promise((resolve,reject)=>{
           const xhr=new XMLHttpRequest();
           xhr.open('PUT',presign.putUrl);
@@ -2607,7 +2590,7 @@ async function uploadFiles(files){
           };
           xhr.onload=async()=>{
             if(xhr.status>=200&&xhr.status<300){
-              try{ await api('POST',`/folders/${currentFolder.id}/files/${presign.fileId}/confirm`,{size:file.size}); }catch(e){ console.log('confirm err:',e.message); }
+              try{ await api('POST',`/nodes/${pathStr}/files/${presign.fileId}/confirm`,{size:file.size}); }catch(e){ console.log('confirm err:',e.message); }
               resolve();
             }else{reject(new Error(`Erreur upload R2: HTTP ${xhr.status}. Vérifiez la config CORS du bucket.`));}
           };
@@ -2615,17 +2598,16 @@ async function uploadFiles(files){
           xhr.send(file);
         });
       }else{
-        // Petit fichier : upload via serveur
         const form=new FormData();
         form.append('files',file);
-        await api('POST',`/folders/${currentFolder.id}/files`,form);
+        await api('POST',`/nodes/${pathStr}/files`,form);
       }
       uploaded++;
       bar.style.width=Math.round((uploaded/files.length)*100)+'%';
     }catch(e){toast(`Erreur "${file.name}": ${e.message}`,'error');}
   }
   bar.style.width='100%';
-  await loadFiles();loadStats();
+  await renderCurrentNode();loadStats();
   if(uploaded>0)toast(`${uploaded} fichier${uploaded>1?'s':''} ajouté${uploaded>1?'s':''}`);
   setTimeout(()=>{prog.style.display='none';bar.style.width='0%';},600);
 }
@@ -2701,24 +2683,18 @@ async function deleteSelectedFiles() {
   if (!await customConfirm(`Supprimer ${checked.length} fichier(s) ?`)) return;
   for (const cb of checked) {
     const id = cb.getAttribute('data-id');
-    const card = cb.closest('.file-row');
-    const subId = card ? card.getAttribute('data-subfolder') : '';
     try {
-      if (subId) {
-        await api('DELETE', `/folders/${currentFolder.id}/subfolders/${subId}/files/${id}`);
-      } else {
-        await api('DELETE', `/folders/${currentFolder.id}/files/${id}`);
-      }
+      await api('DELETE', `/files/${id}`);
     } catch(e) { console.error(e); }
   }
   exitFileSelectionMode();
-  await loadFiles();
+  await renderCurrentNode();
   loadStats();
   toast('Fichiers supprimés');
 }
 async function deleteFile(id){
  if(!await customConfirm('Supprimer ce fichier ?'))return;
-  try{await api('DELETE',`/folders/${currentFolder.id}/files/${id}`);await loadFiles();loadStats();toast('Fichier supprimé');}
+  try{await api('DELETE',`/files/${id}`);await renderCurrentNode();loadStats();toast('Fichier supprimé');}
   catch(e){toast(e.message,'error');}
 }
 
@@ -2730,11 +2706,25 @@ function openPreviewById(btn) {
   const type = btn.getAttribute('data-type');
   const file = currentFiles.find(f => f.id === fileId);
   const filename = file ? file.name : 'Fichier';
-  if (!currentSubfolder) {
-    openPreview(fileId, filename, type);
-  } else {
-    openSubPreviewById(btn);
+  markAsRead(fileId);
+  const row = document.querySelector(`.file-row[data-file-id="${fileId}"]`);
+  if (row) {
+    row.classList.add('is-read');
+    const fileName = row.querySelector('.file-name');
+    if (fileName && !fileName.querySelector('.file-read-badge')) {
+      const badge = document.createElement('span');
+      badge.className = 'file-read-badge';
+      badge.textContent = '✓ Lu';
+      fileName.appendChild(badge);
+    }
   }
+  const allRows = document.querySelectorAll('.file-row[data-file-id]');
+  const allFiles = [...allRows].map(r => ({ id: parseInt(r.getAttribute('data-file-id')) }));
+  updateFolderProgress(allFiles);
+  const previewUrl = `/api/files/${fileId}/preview`;
+  const downloadUrl = `/api/files/${fileId}/download`;
+  const streamUrl = `/api/files/${fileId}/stream`;
+  openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl);
 }
 
 function openSubPreviewById(btn) {
@@ -2862,10 +2852,9 @@ function closePreview() {
 document.addEventListener('keydown', e => { if(e.key === 'Escape') closePreview(); });
 
 async function toggleDownload(fileId){
-  if(!currentFolder)return;
   try{
-    const result = await api('PATCH',`/folders/${currentFolder.id}/files/${fileId}/downloadable`);
-    await loadFiles();
+    const result = await api('PATCH',`/files/${fileId}/downloadable`);
+    await renderCurrentNode();
     toast(result.downloadable ? 'Téléchargement autorisé ✅' : 'Téléchargement bloqué 🔒');
   }catch(e){toast(e.message,'error');}
 }
@@ -2962,12 +2951,25 @@ async function deleteUser(id){
 
 function updateBreadcrumb(){
   const bc=$('breadcrumb');
-  if(!currentFolder){bc.innerHTML=`<span class="breadcrumb-item active"><svg style="width:13px;height:13px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>Tous les dossiers</span>`;return;}
-  if (!currentSubfolder) {
-    bc.innerHTML=`<span class="breadcrumb-item" onclick="backToRoot()"><svg style="width:13px;height:13px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>Tous les dossiers</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-item active">${currentFolder.name}</span>`;
-  } else {
-    bc.innerHTML=`<span class="breadcrumb-item" onclick="backToRoot()"><svg style="width:13px;height:13px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>Tous les dossiers</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-item" onclick="openFolder(currentFolder.id,currentFolder.name)">${currentFolder.name}</span><span class="breadcrumb-sep">›</span><span class="breadcrumb-item active">${currentSubfolder.name}</span>`;
-  }
+  const homeIcon = '<svg style="width:13px;height:13px;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>';
+  if(!currentPath.length){bc.innerHTML=`<span class="breadcrumb-item active">${homeIcon}Tous les dossiers</span>`;return;}
+  var html = `<span class="breadcrumb-item" onclick="backToRoot()">${homeIcon}Tous les dossiers</span><span class="breadcrumb-sep">›</span>`;
+  currentPath.forEach(function(p, i) {
+    var isLast = i === currentPath.length - 1;
+    if (isLast) {
+      html += `<span class="breadcrumb-item active">${p.name}</span>`;
+    } else {
+      var depth = i + 1;
+      html += `<span class="breadcrumb-item" onclick="goToPathDepth(${depth})">${p.name}</span><span class="breadcrumb-sep">›</span>`;
+    }
+  });
+  bc.innerHTML = html;
+}
+function goToPathDepth(depth) {
+  currentPath = currentPath.slice(0, depth);
+  currentFolder = { id: currentPath[0].id, name: currentPath[0].name };
+  currentSubfolder = currentPath.length > 1 ? currentPath[currentPath.length-1] : null;
+  renderCurrentNode();
 }
 function openModal(id){$(id).classList.add('open');}
 function closeModal(id){$(id).classList.remove('open');}
@@ -3890,24 +3892,18 @@ async function doRenameFile() {
   if (!_fileModalData) return;
   const newName = document.getElementById('rename-input').value.trim();
   if (!newName || newName === _fileModalData.currentName) { closeFileModal(); return; }
-  const { fileId, folderId, subId } = _fileModalData;
-  // Always use folder route (server searches subfolders too)
-  const route = '/folders/' + folderId + '/files/' + fileId + '/rename';
+  const { fileId } = _fileModalData;
   try {
-    await api('PATCH', route, { name: newName });
+    await api('PATCH', '/files/' + fileId + '/rename', { name: newName });
     closeFileModal();
     toast('Fichier renommé ✅');
-    // Update DOM directly without full reload
     const nameEl = document.querySelector('.file-row[data-file-id="' + fileId + '"] .file-name');
     if (nameEl) {
-      // Keep read badge if present
       const readBadge = nameEl.querySelector('.file-read-badge');
       nameEl.textContent = newName;
       if (readBadge) nameEl.appendChild(readBadge);
     }
-    // Also reload to ensure consistency
-    if (subId) setTimeout(() => loadSubfolderFiles(subId, folderId), 200);
-    else setTimeout(() => loadFiles(), 200);
+    setTimeout(() => renderCurrentNode(), 200);
   } catch(err) { toast(err.message, 'error'); }
 }
 
@@ -4021,8 +4017,7 @@ async function doMoveFile(toFolderId, toSubId) {
     });
     closeFileModal();
     toast('Fichier déplacé ✅');
-    if (subId) await loadSubfolderFiles(subId, folderId);
-    else await loadFiles();
+        await renderCurrentNode();
   } catch(err) { toast(err.message, 'error'); }
 }
 
