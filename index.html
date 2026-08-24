@@ -996,7 +996,7 @@
       <button onclick="cancelReply()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1;flex-shrink:0">×</button>
     </div>
 
-    <div style="position:fixed;bottom:0;left:260px;right:0;z-index:30;padding:12px 60px;background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid rgba(0,196,212,0.15)"><div style="background:var(--surface);backdrop-filter:blur(20px);border-radius:16px;border:1.5px solid rgba(0,196,212,0.2);overflow:hidden">
+        <div id="reply-fixed-bar" style="position:fixed;bottom:0;left:260px;right:0;z-index:30;padding:12px 60px;background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid rgba(0,196,212,0.15);transition:left 0.2s"><div style="background:var(--surface);backdrop-filter:blur(20px);border-radius:16px;border:1.5px solid rgba(0,196,212,0.2);overflow:hidden">
       <input type="file" id="reply-image-input" accept="image/*" style="display:none" onchange="uploadReplyImage(this,'reply-input-preview')">
 <div id="reply-input-preview" style="display:none;padding:8px 16px 0"><img id="reply-img-preview" style="max-height:120px;border-radius:8px;max-width:100%"></div>
 <textarea id="reply-input" placeholder="Ajoute une réponse..."
