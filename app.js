@@ -708,7 +708,7 @@ function renderSubfolders(subs) {
         '<span onclick="openNode(' + sub.id + ',\'' + sub.name.replace(/'/g,"\\'") + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1">' +
         '<svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;color:var(--teal-dark)"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>' +
         sub.name + '</span>' +
-        (isAdminNow ? '<button class="icon-btn" onclick="event.stopPropagation();renameNode(\'' + subPath + '\')" title="Renommer" style="font-size:12px">✏️</button><button class="icon-btn" onclick="event.stopPropagation();deleteNode(\'' + subPath + '\')" title="Supprimer" style="font-size:12px">🗑️</button>' : '') +
+                (isAdminNow ? '<button class="icon-btn" onclick="event.stopPropagation();renameNode(\'' + subPath + '\')" title="Renommer" style="font-size:12px">✏️</button><button class="icon-btn" onclick="event.stopPropagation();openMoveFolderModal(\'' + subPath + '\',\'' + sub.name.replace(/'/g,"\\'") + '\')" title="Déplacer" style="font-size:12px">📁→</button><button class="icon-btn" onclick="event.stopPropagation();deleteNode(\'' + subPath + '\')" title="Supprimer" style="font-size:12px">🗑️</button>' : '') +
         '</div>';
     }).join('') + '</div>';
 }
@@ -2204,7 +2204,7 @@ function renderFolders(folders){
       ondragend="dragFolderEnd(event)">
       ${isAdmin?`<div class="folder-actions">
         <button class="icon-btn" onclick="event.stopPropagation();renameFolder(${f.id})" title="Renommer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        <button class="icon-btn" onclick="event.stopPropagation();openMoveFolderModal(${f.id},'${f.name.replace(/'/g,'')}')" title="Déplacer" style="font-size:13px">📁→</button>
+                <button class="icon-btn" onclick="event.stopPropagation();openMoveFolderModal('${f.id}','${f.name.replace(/'/g,'')}')" title="Déplacer" style="font-size:13px">📁→</button>
         <button class="icon-btn" onclick="event.stopPropagation();deleteFolder(${f.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></div>`:''}
       <div class="folder-card-inner">
         <div class="folder-icon-wrap">
@@ -5051,45 +5051,115 @@ async function extractSubfolder(parentId, subId) {
 // ── DÉPLACER UN DOSSIER ──────────────────────────────────────────────────────
 let _moveFolderId = null;
 
-async function openMoveFolderModal(folderId, folderName) {
-  _moveFolderId = folderId;
+let _moveNodeSourcePath = null;
+
+function openMoveFolderModal(pathStr, folderName) {
+  _moveNodeSourcePath = String(pathStr);
   document.getElementById('move-folder-title').textContent = '📁 Déplacer "' + folderName + '"';
   const modal = document.getElementById('move-folder-modal');
   modal.style.display = 'flex';
-  // Load destinations
   const container = document.getElementById('move-folder-destinations');
   container.innerHTML = '<div style="color:var(--text3);font-size:13px">Chargement...</div>';
-  try {
-    const folders = await api('GET', '/folders');
+  api('GET', '/folders').then(function(folders) {
     container.innerHTML = '';
-    folders.filter(f => f.id !== folderId).forEach(function(f) {
-      const btn = document.createElement('button');
-      btn.style.cssText = 'display:flex;align-items:center;gap:10px;width:100%;padding:12px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);cursor:pointer;font-size:14px;font-family:Inter,sans-serif;color:var(--text);margin-bottom:6px';
-      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;color:var(--teal-dark);flex-shrink:0"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>' + f.name;
-      var fId = f.id;
-      btn.onmouseover = function() { this.style.background = 'rgba(0,151,167,0.06)'; this.style.borderColor = 'var(--teal)'; };
-      btn.onmouseout = function() { this.style.background = 'var(--bg)'; this.style.borderColor = 'var(--border)'; };
-      btn.onclick = function() { doMoveFolder(fId); };
-      container.appendChild(btn);
+    folders.forEach(function(folder) {
+      renderFolderMoveNode(container, folder.id, folder.name, [folder.id], 0);
     });
     if (!container.children.length) {
-      container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0">Aucun autre dossier disponible.</div>';
+      container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0">Aucun dossier disponible.</div>';
     }
-  } catch(e) { container.innerHTML = '<div style="color:var(--danger)">Erreur: ' + e.message + '</div>'; }
+  }).catch(function(e) { container.innerHTML = '<div style="color:var(--danger)">Erreur: ' + e.message + '</div>'; });
+}
+
+function renderFolderMoveNode(parentEl, id, name, path, depth) {
+  const pathStr = path.join(',');
+  const sourceSegs = (_moveNodeSourcePath || '').split(',');
+  const startsWithSource = sourceSegs.every(function(seg, i) { return String(path[i]) === seg; });
+  const disabled = startsWithSource && path.length >= sourceSegs.length;
+
+  const row = document.createElement('div');
+  row.style.cssText = 'margin-bottom:4px';
+
+  const nodeBtn = document.createElement('div');
+  nodeBtn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:' + (depth===0?'10px 14px':'9px 14px') + ';border-radius:10px;border:1.5px solid var(--border);background:' + (depth===0?'var(--bg)':'var(--surface,white)') + ';cursor:' + (disabled?'not-allowed':'pointer') + ';font-size:' + (depth===0?'13px':'12px') + ';color:' + (disabled ? 'var(--text3)' : (depth===0?'var(--text)':'var(--text2)')) + ';user-select:none;opacity:' + (disabled?'0.5':'1');
+
+  const arrow = document.createElement('span');
+  arrow.textContent = disabled ? ' ' : '▶';
+  arrow.style.cssText = 'font-size:10px;color:var(--text3);width:14px;flex-shrink:0;transition:transform 0.2s';
+
+  const icon = document.createElement('span');
+  icon.textContent = depth===0 ? '📁' : '📂';
+  icon.style.cssText = 'flex-shrink:0';
+
+  const nameEl = document.createElement('span');
+  nameEl.textContent = name;
+  nameEl.style.cssText = 'flex:1';
+
+  nodeBtn.appendChild(arrow);
+  nodeBtn.appendChild(icon);
+  nodeBtn.appendChild(nameEl);
+  if (disabled && path.length === sourceSegs.length) {
+    const badge = document.createElement('small');
+    badge.textContent = '📍 à déplacer';
+    badge.style.cssText = 'color:var(--text3);font-size:10px';
+    nodeBtn.appendChild(badge);
+  }
+
+  const childrenContainer = document.createElement('div');
+  childrenContainer.style.cssText = 'display:none;padding-left:20px;margin-top:4px';
+  let loaded = false;
+
+  async function ensureLoaded() {
+    if (loaded || disabled) return;
+    loaded = true;
+    childrenContainer.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0">Chargement...</div>';
+    try {
+      const node = await api('GET', '/nodes/' + pathStr);
+      childrenContainer.innerHTML = '';
+      const moveHereBtn = document.createElement('button');
+      moveHereBtn.textContent = '↳ Déposer dans ce dossier';
+      moveHereBtn.style.cssText = 'display:block;width:100%;padding:7px 14px;margin-bottom:4px;border-radius:8px;border:1.5px dashed var(--teal);background:rgba(0,151,167,0.04);color:var(--teal-dark);cursor:pointer;font-size:12px;font-weight:600;text-align:left;font-family:Inter,sans-serif';
+      moveHereBtn.onclick = function(e) { e.stopPropagation(); doMoveFolder(pathStr); };
+      childrenContainer.appendChild(moveHereBtn);
+      (node.subfolders || []).forEach(function(sub) {
+        renderFolderMoveNode(childrenContainer, sub.id, sub.name, path.concat([sub.id]), depth + 1);
+      });
+    } catch(e) {
+      childrenContainer.innerHTML = '<div style="color:var(--danger);font-size:12px">Erreur: ' + e.message + '</div>';
+    }
+  }
+
+  nodeBtn.onclick = function() {
+    if (disabled) return;
+    const isOpen = childrenContainer.style.display !== 'none';
+    if (isOpen) {
+      childrenContainer.style.display = 'none';
+      arrow.style.transform = '';
+    } else {
+      childrenContainer.style.display = 'block';
+      arrow.style.transform = 'rotate(90deg)';
+      ensureLoaded();
+    }
+  };
+
+  row.appendChild(nodeBtn);
+  row.appendChild(childrenContainer);
+  parentEl.appendChild(row);
 }
 
 function closeMoveFolder() {
   document.getElementById('move-folder-modal').style.display = 'none';
-  _moveFolderId = null;
+  _moveNodeSourcePath = null;
 }
 
-async function doMoveFolder(targetFolderId) {
-  if (!_moveFolderId) return;
+async function doMoveFolder(toPath) {
+  if (!_moveNodeSourcePath) return;
   try {
-    await api('POST', '/folders/' + _moveFolderId + '/move', { toFolderId: targetFolderId });
+    await api('POST', '/nodes/' + _moveNodeSourcePath + '/move', { toPath });
     closeMoveFolder();
     toast('Dossier déplacé ✅');
     await loadFolders();
+    if (currentPath.length) await renderCurrentNode();
   } catch(e) { toast(e.message, 'error'); }
 }
 
