@@ -2608,17 +2608,18 @@ app.get('/api/threads/all', requireAuth, (req, res) => {
   const threads = db.threads;
   if (!threads || typeof threads !== 'object') return res.json([]);
 
-  // Build flat file map
+    // Build flat file map (récursif, n'importe quelle profondeur)
   const fileMap = {};
+  function walkForFileMap(node, folderLabel) {
+    (node.files || []).forEach(f => {
+      fileMap[String(f.id)] = { name: f.name, folder: folderLabel };
+    });
+    (node.subfolders || []).forEach(sub => {
+      walkForFileMap(sub, folderLabel + ' / ' + sub.name);
+    });
+  }
   (db.folders||[]).forEach(folder => {
-    (folder.files||[]).forEach(f => {
-      fileMap[String(f.id)] = { name: f.name, folder: folder.name };
-    });
-    (folder.subfolders||[]).forEach(sub => {
-      (sub.files||[]).forEach(f => {
-        fileMap[String(f.id)] = { name: f.name, folder: folder.name + ' / ' + sub.name };
-      });
-    });
+    walkForFileMap(folder, folder.name);
   });
   
 // Nettoyage des fils orphelins (fichier supprimé sans que ses discussions le soient)
