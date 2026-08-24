@@ -3351,6 +3351,21 @@ async function openSupportTicket(id) {
   } catch(e) { alert('Erreur: ' + e.message); }
 }
 
+async function deleteTicket(context) {
+  if (!await customConfirm('Supprimer définitivement ce ticket et toute la conversation ?')) return;
+  try {
+    await api('DELETE', '/tickets/' + _currentTicketId);
+    if (context === 'support') {
+      $('support-detail-view').style.display = 'none';
+      loadSupportPanel();
+    } else {
+      $('messages-detail-view').style.display = 'none';
+      loadMessagesPanel();
+    }
+    toast('Ticket supprimé');
+  } catch(e) { alert('Erreur: ' + e.message); }
+}
+
 function backToSupportList() {
   $('support-detail-view').style.display = 'none';
   loadSupportPanel();
