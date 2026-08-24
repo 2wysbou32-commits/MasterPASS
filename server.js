@@ -2449,7 +2449,7 @@ app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
 });
 
 // Admin/Subadmin : fermer un ticket
-app.delete('/api/tickets/:id/messages/:messageId', requireAuth, (req, res) => {
+app.delete('/api/tickets/:id', requireAuth, (req, res) => {
   const db = loadDB();
   if (!db.tickets) db.tickets = [];
   const ticket = db.tickets.find(t => t.id === parseInt(req.params.id));
@@ -2458,12 +2458,7 @@ app.delete('/api/tickets/:id/messages/:messageId', requireAuth, (req, res) => {
   const isOwner = String(ticket.studentId) === String(req.session.userId);
   const isAdmin = user.role === 'admin' || user.role === 'subadmin';
   if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
-  const msg = ticket.messages.find(m => m.id === parseInt(req.params.messageId));
-  if (!msg) return res.status(404).json({ error: 'Message introuvable' });
-  if (String(msg.authorId) !== String(req.session.userId)) return res.status(403).json({ error: 'Tu ne peux supprimer que tes propres messages' });
-  if (ticket.messages.length === 1) return res.status(400).json({ error: 'Impossible de supprimer le seul message du ticket' });
-  ticket.messages = ticket.messages.filter(m => m.id !== msg.id);
-  ticket.updatedAt = new Date().toISOString();
+  db.tickets = db.tickets.filter(t => t.id !== ticket.id);
   saveDB(db);
   res.json({ ok: true });
 });
