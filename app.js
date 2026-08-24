@@ -3478,9 +3478,10 @@ function renderTicketThread(containerId, ticket, myUserId) {
         '</div>';
     }
     const textHtml = m.text ? escapeHtml(m.text) : '';
+    const deleteBtnHtml = isMine ? '<button onclick="deleteTicketMessage(' + ticket.id + ',' + m.id + ',\'' + containerId + '\')" title="Supprimer" style="background:none;border:none;cursor:pointer;color:inherit;opacity:0.6;font-size:11px;padding:0 2px">🗑️</button>' : '';
     return '<div style="display:flex;flex-direction:column;align-items:' + align + '">' +
       '<div style="max-width:75%;background:' + bg + ';color:' + color + ';border:' + border + ';border-radius:16px;padding:10px 14px;font-size:14px;white-space:pre-wrap;word-break:break-word">' + imageHtml + audioHtml + textHtml + '</div>' +
-      '<div style="font-size:11px;color:var(--text3);margin-top:2px;padding:0 4px">' + escapeHtml(m.authorName) + ' · ' + time + '</div>' +
+      '<div style="font-size:11px;color:var(--text3);margin-top:2px;padding:0 4px;display:flex;align-items:center;gap:6px' + (isMine ? ';justify-content:flex-end' : '') + '">' + escapeHtml(m.authorName) + ' · ' + time + deleteBtnHtml + '</div>' +
     '</div>';
   }).join('');
   container.scrollTop = container.scrollHeight;
@@ -3490,6 +3491,15 @@ function renderTicketThread(containerId, ticket, myUserId) {
       redrawWaveformProgress(canvas, 0);
     });
   }, 50);
+}
+
+async function deleteTicketMessage(ticketId, messageId, containerId) {
+  if (!await customConfirm('Supprimer ce message ?')) return;
+  try {
+    await api('DELETE', '/tickets/' + ticketId + '/messages/' + messageId);
+    const { ticket } = await api('GET', '/tickets/' + ticketId);
+    renderTicketThread(containerId, ticket, currentUser.id);
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 async function handleTicketImageSelect(input, context, previewId) {
