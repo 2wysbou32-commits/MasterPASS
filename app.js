@@ -700,16 +700,22 @@ async function loadStats(){
 // ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
 function renderSubfolders(subs) {
   if (!subs || !subs.length) return '';
-  return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:24px;margin-bottom:16px">' +
+  var isAdminNow = currentUser && currentUser.role === 'admin';
+  return '<div class="folders-grid" style="margin-top:24px;margin-bottom:16px">' +
     subs.map(function(sub) {
-      var isAdminNow = currentUser && currentUser.role === 'admin';
       var subPath = currentPath.map(function(p){return p.id;}).concat([sub.id]).join(',');
-      return '<div style="display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--surface,white);border-radius:12px;border:1.5px solid var(--border);font-size:13px;font-weight:600;color:var(--text);transition:border-color 0.15s">' +
-        '<span onclick="openNode(' + sub.id + ',\'' + sub.name.replace(/'/g,"\\'") + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1">' +
-        '<svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;color:var(--teal-dark)"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>' +
-        sub.name + '</span>' +
-                (isAdminNow ? '<button class="icon-btn" onclick="event.stopPropagation();renameNode(\'' + subPath + '\')" title="Renommer" style="font-size:12px">✏️</button><button class="icon-btn" onclick="event.stopPropagation();openMoveFolderModal(\'' + subPath + '\',\'' + sub.name.replace(/'/g,"\\'") + '\')" title="Déplacer" style="font-size:12px">📁→</button><button class="icon-btn" onclick="event.stopPropagation();deleteNode(\'' + subPath + '\')" title="Supprimer" style="font-size:12px">🗑️</button>' : '') +
-        '</div>';
+      return '<div class="folder-card" onclick="openNode(' + sub.id + ',\'' + sub.name.replace(/'/g,"\\'") + '\')">' +
+        (isAdminNow ? '<div class="folder-actions">' +
+          '<button class="icon-btn" onclick="event.stopPropagation();renameNode(\'' + subPath + '\')" title="Renommer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>' +
+          '<button class="icon-btn" onclick="event.stopPropagation();openMoveFolderModal(\'' + subPath + '\',\'' + sub.name.replace(/'/g,"\\'") + '\')" title="Déplacer" style="font-size:13px">📁→</button>' +
+          '<button class="icon-btn" onclick="event.stopPropagation();deleteNode(\'' + subPath + '\')" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>' +
+        '</div>' : '') +
+        '<div class="folder-card-inner">' +
+          '<div class="folder-icon-wrap"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>' +
+          '<div class="folder-name">' + sub.name + '</div>' +
+          '<div class="folder-meta"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></svg>' + (sub.fileCount||0) + ' fichier' + (sub.fileCount!==1?'s':'') + (sub.subfolderCount ? ' · ' + sub.subfolderCount + ' sous-dossier' + (sub.subfolderCount!==1?'s':'') : '') + '</div>' +
+        '</div>' +
+      '</div>';
     }).join('') + '</div>';
 }
 async function deleteNode(pathStr) {
