@@ -754,11 +754,15 @@ if(backBtn) backBtn.style.display='flex'; // bouton retour visible dans un sous-
   await loadSubfolderFiles(parentId, subId);
 }
 
+let _filesLoadToken = 0;
+
 async function loadSubfolderFiles(folderId, subId) {
   const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
   const container = $('files-container') || $('files-tbody')?.closest('.files-list');
+  const myToken = ++_filesLoadToken;
   try {
     const files = await api('GET', '/folders/' + folderId + '/subfolders/' + subId + '/files');
+    if (myToken !== _filesLoadToken) return; // Une navigation plus récente a eu lieu entre-temps, on ignore cette réponse périmée
     const dlBase = '/api/folders/' + folderId + '/subfolders/' + subId + '/files';
     const html = (files||[]).map(function(f) {
       return buildFileRow(f, isAdmin,
@@ -2316,7 +2320,10 @@ async function deleteFolder(id){
 async function loadFiles(){
   const container=document.getElementById('files-list-body');
   if(container) container.innerHTML='<div class="empty-state" style="padding:40px"><div class="empty-state-title">Chargement…</div></div>';
-  try{const files=await api('GET',`/folders/${currentFolder.id}/files`);renderFilesSorted(files);
+  const myToken = ++_filesLoadToken;
+  try{const files=await api('GET',`/folders/${currentFolder.id}/files`);
+    if (myToken !== _filesLoadToken) return; // Une navigation plus récente a eu lieu entre-temps, on ignore cette réponse périmée
+    renderFilesSorted(files);
     const savedScroll = loadNavState('lastFileScroll');
     if (savedScroll) {
       setTimeout(() => { const el = document.getElementById('files-list-body'); if (el) el.scrollTop = savedScroll.top; }, 100);
