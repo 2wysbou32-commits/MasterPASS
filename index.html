@@ -1202,8 +1202,9 @@
       </button>
       <div style="flex:1">
         <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;color:var(--text)" id="support-detail-subject"></div>
-        <div style="font-size:12px;color:var(--text3)" id="support-detail-status"></div>
+                <div style="font-size:12px;color:var(--text3)" id="support-detail-status"></div>
       </div>
+      <button onclick="deleteTicket('support')" title="Supprimer le ticket" style="padding:8px 12px;border-radius:10px;border:1.5px solid var(--danger);background:transparent;color:var(--danger);cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">🗑️</button>
     </div>
     <div id="support-thread" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px"></div>
     <div id="support-reply-image-preview" style="display:none;margin-bottom:10px"></div>
@@ -1251,7 +1252,8 @@
         <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;color:var(--text)" id="messages-detail-subject"></div>
         <div style="font-size:12px;color:var(--text3)" id="messages-detail-meta"></div>
       </div>
-      <button onclick="closeMessageTicket()" id="messages-close-btn" style="padding:8px 16px;border-radius:10px;border:1.5px solid #2E7D32;background:#2E7D32;color:white;cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">✓ Marquer résolu</button>
+            <button onclick="closeMessageTicket()" id="messages-close-btn" style="padding:8px 16px;border-radius:10px;border:1.5px solid #2E7D32;background:#2E7D32;color:white;cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">✓ Marquer résolu</button>
+      <button onclick="deleteTicket('messages')" title="Supprimer le ticket" style="padding:8px 12px;border-radius:10px;border:1.5px solid var(--danger);background:transparent;color:var(--danger);cursor:pointer;font-size:12px;font-weight:700;font-family:'Inter',sans-serif">🗑️</button>
     </div>
     <div id="messages-thread" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px"></div>
     <div id="messages-reply-image-preview" style="display:none;margin-bottom:10px"></div>
