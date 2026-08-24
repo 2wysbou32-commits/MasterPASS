@@ -2449,6 +2449,49 @@ app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
 });
 
 // Admin/Subadmin : fermer un ticket
+app.patch('/api/tickets/:id/messages/:messageId', requireAuth, (req, res) => {
+  const { text } = req.body;
+  if (!text?.trim()) return res.status(400).json({ error: 'Message vide' });
+  const db = loadDB();
+  if (!db.tickets) db.tickets = [];
+  const ticket = db.tickets.find(t => t.id === parseInt(req.params.id));
+  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const isOwner = String(ticket.studentId) === String(req.session.userId);
+  const isAdmin = user.role === 'admin' || user.role === 'subadmin';
+  if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
+  const msg = ticket.messages.find(m => m.id === parseInt(req.params.messageId));
+  if (!msg) return res.status(404).json({ error: 'Message introuvable' });
+  if (String(msg.authorId) !== String(req.session.userId)) return res.status(403).json({ error: 'Tu ne peux modifier que tes propres messages' });
+  msg.text = text.trim();
+  msg.editedAt = new Date().toISOString();
+  saveDB(db);
+  res.json({ ok: true, text: msg.text });
+});
+
+app.post('/api/tickets/:id/messages/:messageId/react', requireAuth, (req, res) => {
+  const { emoji } = req.body;
+  if (!emoji) return res.status(400).json({ error: 'Emoji manquant' });
+  const db = loadDB();
+  if (!db.tickets) db.tickets = [];
+  const ticket = db.tickets.find(t => t.id === parseInt(req.params.id));
+  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+  const user = db.users.find(u => u.id === req.session.userId);
+  const isOwner = String(ticket.studentId) === String(req.session.userId);
+  const isAdmin = user.role === 'admin' || user.role === 'subadmin';
+  if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
+  const msg = ticket.messages.find(m => m.id === parseInt(req.params.messageId));
+  if (!msg) return res.status(404).json({ error: 'Message introuvable' });
+  if (!msg.reactions) msg.reactions = {};
+  if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+  const uid = req.session.userId;
+  const idx = msg.reactions[emoji].indexOf(uid);
+  if (idx !== -1) msg.reactions[emoji].splice(idx, 1);
+  else msg.reactions[emoji].push(uid);
+  if (!msg.reactions[emoji].length) delete msg.reactions[emoji];
+  saveDB(db);
+  res.json({ reactions: msg.reactions });
+});
 app.delete('/api/tickets/:id', requireAuth, (req, res) => {
   const db = loadDB();
   if (!db.tickets) db.tickets = [];
