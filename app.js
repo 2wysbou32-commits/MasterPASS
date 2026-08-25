@@ -3492,11 +3492,8 @@ function renderTicketThread(containerId, ticket, myUserId) {
         '<div style="display:flex;justify-content:space-between;gap:6px;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
         '</div>';
     }
-    const textId = 'tk-text-' + containerId + '-' + m.id;
-    const textHtml = m.text ? '<span id="' + textId + '">' + escapeHtml(m.text) + (m.editedAt ? ' <span style="opacity:0.6;font-size:10px">(modifié)</span>' : '') + '</span>' : '';
-    const deleteBtnHtml = isMine ? '<button onclick="deleteTicketMessage(' + ticket.id + ',' + m.id + ',\'' + containerId + '\')" title="Supprimer" style="background:none;border:none;cursor:pointer;color:inherit;opacity:0.6;font-size:11px;padding:0 2px">🗑️</button>' : '';
-    const editBtnHtml = (isMine && m.text) ? '<button onclick="startEditTicketMessage(' + ticket.id + ',' + m.id + ',\'' + containerId + '\',\'' + textId + '\')" title="Modifier" style="background:none;border:none;cursor:pointer;color:inherit;opacity:0.6;font-size:11px;padding:0 2px">✏️</button>' : '';
-    const reactBtnHtml = '<button onclick="toggleTicketEmojiPicker(event,' + ticket.id + ',' + m.id + ',\'' + containerId + '\')" title="Réagir" style="background:none;border:none;cursor:pointer;color:inherit;opacity:0.6;font-size:11px;padding:0 2px">😀</button>';
+    _ticketMsgDataMap[m.id] = { ticketId: ticket.id, messageId: m.id, text: m.text || '', isOwn: isMine, containerId: containerId };
+    const textHtml = m.text ? escapeHtml(m.text) + (m.editedAt ? ' <span style="opacity:0.6;font-size:10px">(modifié)</span>' : '') : '';
     let reactHtml = '<div data-ticket-reactions-id="' + m.id + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;justify-content:' + (isMine?'flex-end':'flex-start') + '">';
     if (m.reactions && Object.keys(m.reactions).length) {
       Object.entries(m.reactions).forEach(function(entry) {
@@ -3508,9 +3505,9 @@ function renderTicketThread(containerId, ticket, myUserId) {
     }
     reactHtml += '</div>';
     return '<div style="display:flex;flex-direction:column;align-items:' + align + '">' +
-      '<div style="max-width:75%;background:' + bg + ';color:' + color + ';border:' + border + ';border-radius:16px;padding:10px 14px;font-size:14px;white-space:pre-wrap;word-break:break-word">' + imageHtml + audioHtml + textHtml + '</div>' +
+      '<div class="ticket-msg-bubble" data-mid="' + m.id + '" style="max-width:75%;background:' + bg + ';color:' + color + ';border:' + border + ';border-radius:16px;padding:10px 14px;font-size:14px;white-space:pre-wrap;word-break:break-word;cursor:pointer;user-select:none">' + imageHtml + audioHtml + textHtml + '</div>' +
       reactHtml +
-      '<div style="font-size:11px;color:var(--text3);margin-top:2px;padding:0 4px;display:flex;align-items:center;gap:6px' + (isMine ? ';justify-content:flex-end' : '') + '">' + escapeHtml(m.authorName) + ' · ' + time + reactBtnHtml + editBtnHtml + deleteBtnHtml + '</div>' +
+      '<div style="font-size:11px;color:var(--text3);margin-top:2px;padding:0 4px">' + escapeHtml(m.authorName) + ' · ' + time + '</div>' +
     '</div>';
   }).join('');
   container.scrollTop = container.scrollHeight;
@@ -3519,42 +3516,57 @@ function renderTicketThread(containerId, ticket, myUserId) {
       canvas.width = 120; canvas.height = 28;
       redrawWaveformProgress(canvas, 0);
     });
+    initTicketBubbleEvents(containerId);
   }, 50);
 }
 
-async function deleteTicketMessage(ticketId, messageId, containerId) {
-  if (!await customConfirm('Supprimer ce message ?')) return;
-  try {
-    await api('DELETE', '/tickets/' + ticketId + '/messages/' + messageId);
-    const { ticket } = await api('GET', '/tickets/' + ticketId);
-    renderTicketThread(containerId, ticket, currentUser.id);
-  } catch(e) { toast(e.message, 'error'); }
+let _ctxTicketMode = false;
+let _ctxTicketMessage = null;
+var _ticketMsgDataMap = {};
+let _ticketLongPressTimer = null;
+
+function initTicketBubbleEvents(containerId) {
+  var list = document.getElementById(containerId);
+  if (!list) return;
+  list.onmousedown = function(e) {
+    var bubble = e.target.closest('.ticket-msg-bubble');
+    if (!bubble) return;
+    var mid = parseInt(bubble.getAttribute('data-mid'));
+    var captured = { clientX: e.clientX, clientY: e.clientY };
+    _ticketLongPressTimer = setTimeout(function() { showTicketMsgContextMenu(captured, mid); }, 500);
+  };
+  list.onmouseup = function() { clearTimeout(_ticketLongPressTimer); };
+  list.onmouseleave = function() { clearTimeout(_ticketLongPressTimer); };
+  list.ontouchstart = function(e) {
+    var bubble = e.target.closest('.ticket-msg-bubble');
+    if (!bubble) return;
+    var mid = parseInt(bubble.getAttribute('data-mid'));
+    var captured = { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+    _ticketLongPressTimer = setTimeout(function() { if (navigator.vibrate) navigator.vibrate(50); showTicketMsgContextMenu(captured, mid); }, 500);
+  };
+  list.ontouchmove = function() { clearTimeout(_ticketLongPressTimer); };
+  list.ontouchend = function() { clearTimeout(_ticketLongPressTimer); };
 }
 
-function toggleTicketEmojiPicker(e, ticketId, messageId, containerId) {
-  e.stopPropagation();
-  document.querySelectorAll('.ticket-emoji-picker').forEach(function(el) { el.remove(); });
-  var emojis = ['👍','❤️','😂','😮','😢','🙏'];
-  var picker = document.createElement('div');
-  picker.className = 'ticket-emoji-picker';
-  picker.style.cssText = 'position:fixed;z-index:500;background:var(--surface,white);border:1.5px solid var(--border);border-radius:20px;padding:6px 10px;display:flex;gap:6px;box-shadow:0 8px 24px rgba(0,0,0,0.2)';
-  emojis.forEach(function(em) {
-    var btn = document.createElement('button');
-    btn.textContent = em;
-    btn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:18px;padding:2px';
-    btn.onclick = function(ev) { ev.stopPropagation(); picker.remove(); reactTicketMessage(ticketId, messageId, em, containerId); };
-    picker.appendChild(btn);
-  });
-  document.body.appendChild(picker);
-  var rect = e.target.getBoundingClientRect();
-  picker.style.top = (rect.top - 46) + 'px';
-  picker.style.left = Math.max(8, rect.left - 60) + 'px';
-  setTimeout(function() {
-    document.addEventListener('click', function closePicker() {
-      picker.remove();
-      document.removeEventListener('click', closePicker);
-    }, { once: true });
-  }, 0);
+function showTicketMsgContextMenu(e, messageId) {
+  var data = _ticketMsgDataMap[messageId];
+  if (!data) return;
+  _ctxTicketMode = true;
+  _ctxTicketMessage = data;
+  const menu = document.getElementById('msg-context-menu');
+  const replyEl = document.getElementById('ctx-reply');
+  if (replyEl) replyEl.style.display = 'none';
+  document.getElementById('ctx-edit').style.display = (data.isOwn && data.text) ? 'flex' : 'none';
+  document.getElementById('ctx-delete').style.display = data.isOwn ? 'flex' : 'none';
+  var clientX = e.clientX || window.innerWidth/2;
+  var clientY = e.clientY || window.innerHeight/2;
+  var x = Math.min(clientX, window.innerWidth - 8) - 100;
+  if (x < 8) x = 8;
+  var y = Math.min(clientY, window.innerHeight - 220);
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.style.display = 'block';
+  setTimeout(function() { document.addEventListener('click', closeMsgContextMenu, { once: true }); }, 300);
 }
 
 async function reactTicketMessage(ticketId, messageId, emoji, containerId) {
@@ -3564,39 +3576,9 @@ async function reactTicketMessage(ticketId, messageId, emoji, containerId) {
     renderTicketThread(containerId, ticket, currentUser.id);
   } catch(e) { toast(e.message, 'error'); }
 }
-
-function startEditTicketMessage(ticketId, messageId, containerId, textId) {
-  var span = document.getElementById(textId);
-  if (!span) return;
-  var currentText = span.textContent.replace(/\s*\(modifié\)\s*$/, '');
-  var wrapper = span.closest('div[style*="max-width:75%"]');
-  if (!wrapper) return;
-  var editBox = document.createElement('div');
-  editBox.style.cssText = 'display:flex;flex-direction:column;gap:6px;min-width:200px';
-  editBox.innerHTML = '<textarea style="width:100%;min-height:60px;padding:8px;border-radius:8px;border:1.5px solid var(--border);font-family:Inter,sans-serif;font-size:13px;color:var(--text);resize:vertical" id="edit-ta-' + messageId + '"></textarea>' +
-    '<div style="display:flex;gap:6px;justify-content:flex-end">' +
-    '<button onclick="cancelEditTicketMessage(' + ticketId + ',\'' + containerId + '\')" style="padding:5px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:inherit;cursor:pointer;font-size:12px">Annuler</button>' +
-    '<button onclick="saveEditTicketMessage(' + ticketId + ',' + messageId + ',\'' + containerId + '\')" style="padding:5px 12px;border-radius:8px;border:none;background:var(--teal-dark);color:white;cursor:pointer;font-size:12px;font-weight:700">Enregistrer</button>' +
-    '</div>';
-  wrapper.innerHTML = '';
-  wrapper.appendChild(editBox);
-  document.getElementById('edit-ta-' + messageId).value = currentText;
-  document.getElementById('edit-ta-' + messageId).focus();
-}
-
-function cancelEditTicketMessage(ticketId, containerId) {
-  api('GET', '/tickets/' + ticketId).then(function(res) {
-    renderTicketThread(containerId, res.ticket, currentUser.id);
-  });
-}
-
-async function saveEditTicketMessage(ticketId, messageId, containerId) {
-  var ta = document.getElementById('edit-ta-' + messageId);
-  if (!ta) return;
-  var newText = ta.value.trim();
-  if (!newText) return;
+async function reactTicketMessage(ticketId, messageId, emoji, containerId) {
   try {
-    await api('PATCH', '/tickets/' + ticketId + '/messages/' + messageId, { text: newText });
+    await api('POST', '/tickets/' + ticketId + '/messages/' + messageId + '/react', { emoji });
     const { ticket } = await api('GET', '/tickets/' + ticketId);
     renderTicketThread(containerId, ticket, currentUser.id);
   } catch(e) { toast(e.message, 'error'); }
@@ -3786,6 +3768,9 @@ var _repliesCache = []; // cache des replies pour le swipe
 var _menuJustOpened = false;
 
 function showMsgContextMenu(e, commentId) {
+  _ctxTicketMode = false;
+  const replyElReset = document.getElementById('ctx-reply');
+  if (replyElReset) replyElReset.style.display = 'flex';
   var comment = _commentDataMap[commentId];
   if (!comment) return;
   _ctxComment = comment;
@@ -3921,6 +3906,19 @@ function ctxReply() {
 
 async function ctxEdit() {
   closeMsgContextMenu();
+  if (_ctxTicketMode) {
+    const tdata = _ctxTicketMessage;
+    _ctxTicketMode = false;
+    if (!tdata) return;
+    const newTicketMsg = await customPrompt('Modifier le message :', tdata.text);
+    if (!newTicketMsg || newTicketMsg.trim() === tdata.text) return;
+    try {
+      await api('PATCH', '/tickets/' + tdata.ticketId + '/messages/' + tdata.messageId, { text: newTicketMsg.trim() });
+      const { ticket } = await api('GET', '/tickets/' + tdata.ticketId);
+      renderTicketThread(tdata.containerId, ticket, currentUser.id);
+    } catch(e) { toast(e.message, 'error'); }
+    return;
+  }
   if (!_ctxComment) return;
   const newMsg = await customPrompt('Modifier le message :', _ctxComment.message);
   if (!newMsg || newMsg.trim() === _ctxComment.message) return;
@@ -3936,6 +3934,18 @@ async function ctxEdit() {
 
 async function ctxDelete() {
   closeMsgContextMenu();
+  if (_ctxTicketMode) {
+    const tdata = _ctxTicketMessage;
+    _ctxTicketMode = false;
+    if (!tdata) return;
+    if (!await customConfirm('Supprimer ce message ?')) return;
+    try {
+      await api('DELETE', '/tickets/' + tdata.ticketId + '/messages/' + tdata.messageId);
+      const { ticket } = await api('GET', '/tickets/' + tdata.ticketId);
+      renderTicketThread(tdata.containerId, ticket, currentUser.id);
+    } catch(e) { toast(e.message, 'error'); }
+    return;
+  }
   if (!_ctxComment) return;
   if (!await customConfirm('Supprimer ce message ?')) return;
   const cid = _ctxComment.id;
@@ -3948,6 +3958,12 @@ async function ctxDelete() {
 let _reactionPause = false;
 async function reactMsg(emoji, commentId) {
   closeMsgContextMenu();
+  if (_ctxTicketMode) {
+    const tdata = _ctxTicketMessage;
+    _ctxTicketMode = false;
+    if (tdata) reactTicketMessage(tdata.ticketId, tdata.messageId, emoji, tdata.containerId);
+    return;
+  }
   var cid = commentId || (_ctxComment && _ctxComment.id);
   if (!cid || !_discussionFileId || !_currentThreadId) return;
   // Optimistic update
