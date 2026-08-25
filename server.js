@@ -2210,6 +2210,45 @@ app.patch('/api/nodes/:path', requireAdmin, (req, res) => {
   res.json({ ok: true, name: node.name });
 });
 
+async function deleteFolderTreeFiles(node, db) {
+  for (const file of (node.files || [])) {
+    if (r2Enabled && file.r2Key) await deleteFromR2(file.r2Key);
+    else if (file.filename) { const p = path.join(UPLOADS_DIR, file.filename); if (fs.existsSync(p)) fs.unlinkSync(p); }
+    if (db.threads) delete db.threads[String(file.id)];
+  }
+  for (const sub of (node.subfolders || [])) await deleteFolderTreeFiles(sub, db);
+}
+
+app.delete('/api/periods/:id', requireSuperAdminOnly, async (req, res) => {
+  const db = loadDB();
+  ensurePeriods(db);
+  const period = db.periods.find(p => p.id === parseInt(req.params.id));
+  if (!period) return res.status(404).json({ error: 'Période introuvable' });
+  if (period.isActive) return res.status(400).json({ error: "Impossible de supprimer la période active — active une autre période d'abord" });
+  if (db.periods.length <= 1) return res.status(400).json({ error: 'Impossible de supprimer la dernière période restante' });
+
+  const foldersToDelete = db.folders.filter(f => (f.periodId || null) === period.id);
+  for (const folder of foldersToDelete) {
+    await deleteFolderTreeFiles(folder, db);
+  }
+  db.folders = db.folders.filter(f => (f.periodId || null) !== period.id);
+
+  const dossiersToDelete = (db.dossiers || []).filter(d => (d.periodId || null) === period.id);
+  const dossierIds = new Set(dossiersToDelete.map(d => d.id));
+  for (const seance of (db.seances || []).filter(s => dossierIds.has(s.dossierId))) {
+    fo
+      r (const schema of (seance.schemas || [])) {
+      if (r2Enabled && schema.r2Key) await deleteFromR2(schema.r2Key);
+      else if (schema.filename) { const p = path.join(UPLOADS_DIR, schema.filename); if (fs.existsSync(p)) fs.unlinkSync(p); }
+    }
+  }
+  db.seances = (db.seances || []).filter(s => !dossierIds.has(s.dossierId));
+  db.dossiers = (db.dossiers || []).filter(d => (d.periodId || null) !== period.id);
+
+  db.periods = db.periods.filter(p => p.id !== period.id);
+  saveDB(db);
+  res.json({ ok: true });
+});
 // Supprimer un nœud à n'importe quelle profondeur (et ses fichiers sur R2, récursivement)
 app.delete('/api/nodes/:path', requireSuperAdminOnly, async (req, res) => {
   const db = loadDB();
