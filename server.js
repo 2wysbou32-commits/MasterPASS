@@ -3315,16 +3315,18 @@ app.post('/api/register', (req, res) => {
 // ── CLEAR DOUBLE CONNECTION FLAG ─────────────────────────────────────────────
 app.get('/api/stats', requireSuperAdmin, (req, res) => {
   const db = loadDB();
+  let totalFiles = 0;
+  let totalSize = 0;
+  function walkStats(node) {
+    (node.files || []).forEach(fi => { totalFiles++; totalSize += (fi.size || 0); });
+    (node.subfolders || []).forEach(sub => walkStats(sub));
+  }
+  (db.folders || []).forEach(f => walkStats(f));
   res.json({
     folders: db.folders.length,
-    files: db.folders.reduce((s,f) => s+(f.files||[]).length, 0),
+    files: totalFiles,
     students: db.users.filter(u => u.role==='student').length,
-    totalSize: db.folders.reduce((s,f) => {
-      const rootSize = (f.files||[]).reduce((ss,fi) => ss+fi.size, 0);
-      const subSize = (f.subfolders||[]).reduce((ss,sub) => ss+(sub.files||[]).reduce((sss,fi) => sss+fi.size, 0), 0);
-      return s + rootSize + subSize;
-    }, 0),
-    files: db.folders.reduce((s,f) => s+(f.files||[]).length+(f.subfolders||[]).reduce((ss,sub) => ss+(sub.files||[]).length, 0), 0),
+    totalSize: totalSize,
     storageMode: r2Enabled ? 'Cloudflare R2' : 'Local',
   });
 });
