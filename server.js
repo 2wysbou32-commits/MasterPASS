@@ -2890,21 +2890,28 @@ app.get('/api/threads/all', requireAuth, (req, res) => {
   const threads = db.threads;
   if (!threads || typeof threads !== 'object') return res.json([]);
 
-    // Build flat file map (récursif, n'importe quelle profondeur)
+  const activePeriod = ensurePeriods(db);
+  const user = db.users.find(u => u.id === req.session.userId);
+  const isAdmin = user && user.role === 'admin';
+  let targetPeriodId = activePeriod.id;
+  if (isAdmin && req.query.periodId) {
+    const requested = db.periods.find(p => p.id === parseInt(req.query.periodId));
+    if (requested) targetPeriodId = requested.id;
+  }
+
   const fileMap = {};
-  function walkForFileMap(node, folderLabel) {
+  function walkForFileMap(node, folderLabel, periodId) {
     (node.files || []).forEach(f => {
-      fileMap[String(f.id)] = { name: f.name, folder: folderLabel };
+      fileMap[String(f.id)] = { name: f.name, folder: folderLabel, periodId };
     });
     (node.subfolders || []).forEach(sub => {
-      walkForFileMap(sub, folderLabel + ' / ' + sub.name);
+      walkForFileMap(sub, folderLabel + ' / ' + sub.name, periodId);
     });
   }
   (db.folders||[]).forEach(folder => {
-    walkForFileMap(folder, folder.name);
+    walkForFileMap(folder, folder.name, folder.periodId || activePeriod.id);
   });
-  
-// Nettoyage des fils orphelins (fichier supprimé sans que ses discussions le soient)
+
   let cleaned = false;
   Object.keys(threads).forEach(fileId => {
     if (!fileMap[String(fileId)]) {
@@ -2916,9 +2923,10 @@ app.get('/api/threads/all', requireAuth, (req, res) => {
   const result = [];
   const keys = Object.keys(threads);
   keys.forEach(fileId => {
+    const info = fileMap[String(fileId)];
+    if (!info || info.periodId !== targetPeriodId) return;
     const fileThreads = threads[fileId];
     if (!Array.isArray(fileThreads) || !fileThreads.length) return;
-    const info = fileMap[String(fileId)] || { name: 'Fichier #' + fileId, folder: '' };
     fileThreads.forEach(t => {
       if (!t || !t.id) return;
       result.push({
