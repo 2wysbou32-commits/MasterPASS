@@ -325,14 +325,14 @@ function deleteActiveSession(userId) {
 const resetTokens = {};
 
 function generateToken() {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+  return crypto.randomBytes(32).toString('hex');
 }
 
 // ── Codes d'invitation ────────────────────────────────────────────────────────
 function generateInviteCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < 12; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 12; i++) code += chars[crypto.randomInt(0, chars.length)];
   return code;
 }
 
@@ -1285,7 +1285,8 @@ app.post('/api/folders/:parentId/subfolders/:subId/files', requireSuperAdminOnly
   if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
   const sub = (parent.subfolders || []).find(s => s.id === parseInt(req.params.subId));
   if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
-  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier' });
+    if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier' });
+  for (const f of req.files) { if (!isAllowedUploadExt(f.originalname)) return res.status(400).json({ error: `Type de fichier non autorisé : ${f.originalname}` }); }
   const added = [];
   for (const file of req.files) {
     const ext = path.extname(file.originalname).replace('.', '').toLowerCase();
@@ -1537,7 +1538,8 @@ app.post('/api/folders/:id/files', requireSuperAdminOnly, upload.array('files'),
   const db = loadDB();
   const folder = db.folders.find(f => f.id === folderId);
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
-  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
+  i  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
+  for (const f of req.files) { if (!isAllowedUploadExt(f.originalname)) return res.status(400).json({ error: `Type de fichier non autorisé : ${f.originalname}` }); }
 
   const added = [];
   for (const file of req.files) {
@@ -1763,8 +1765,9 @@ app.post('/api/folders/:id/presign', requireSuperAdminOnly, (req, res) => {
   const folder = db.folders.find(f => f.id === folderId);
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
 
-  const { filename, contentType, size } = req.body;
+   const { filename, contentType, size } = req.body;
   if (!filename || !contentType) return res.status(400).json({ error: 'Données manquantes' });
+  if (!isAllowedUploadExt(filename)) return res.status(400).json({ error: `Type de fichier non autorisé : ${filename}` });
 
   const fileId = db.nextId++;
   const ext = filename.split('.').pop().toLowerCase();
@@ -1823,8 +1826,9 @@ app.post('/api/folders/:parentId/subfolders/:subId/presign', requireSuperAdminOn
   const sub = (parent.subfolders || []).find(s => s.id === subId);
   if (!sub) return res.status(404).json({ error: 'Sous-dossier introuvable' });
 
-  const { filename, contentType, size } = req.body;
+    const { filename, contentType, size } = req.body;
   if (!filename || !contentType) return res.status(400).json({ error: 'Données manquantes' });
+  if (!isAllowedUploadExt(filename)) return res.status(400).json({ error: `Type de fichier non autorisé : ${filename}` });
 
   const fileId    = db.nextId++;
   const safeBase  = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -2018,7 +2022,8 @@ app.post('/api/nodes/:path/files', requireSuperAdminOnly, upload.array('files'),
   const db = loadDB();
   const node = findNodeByPath(db, parsePath(req.params.path));
   if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
-  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
+    if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
+  for (const f of req.files) { if (!isAllowedUploadExt(f.originalname)) return res.status(400).json({ error: `Type de fichier non autorisé : ${f.originalname}` }); }
   if (!node.files) node.files = [];
   const added = [];
   for (const file of req.files) {
@@ -2048,8 +2053,9 @@ app.post('/api/nodes/:path/presign', requireSuperAdminOnly, (req, res) => {
   const db = loadDB();
   const node = findNodeByPath(db, parsePath(req.params.path));
   if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
-  const { filename, contentType, size } = req.body;
+    const { filename, contentType, size } = req.body;
   if (!filename || !contentType) return res.status(400).json({ error: 'Données manquantes' });
+  if (!isAllowedUploadExt(filename)) return res.status(400).json({ error: `Type de fichier non autorisé : ${filename}` });
   const fileId = db.nextId++;
   const safeBase = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
   const r2Key = `files/${req.params.path.replace(/,/g, '-')}/${fileId}-${safeBase}`;
@@ -3334,6 +3340,12 @@ function getFileType(ext) {
   if (['mp3','wav','m4a'].includes(ext)) return 'audio';
   if (['zip','rar','7z','tar'].includes(ext)) return 'zip';
   return 'other';
+}
+
+const ALLOWED_UPLOAD_EXTENSIONS = ['pdf','doc','docx','xls','xlsx','csv','ppt','pptx','jpg','jpeg','png','gif','webp','mp4','mov','avi','mkv','webm','m4v','mp3','wav','m4a','zip','rar','7z'];
+function isAllowedUploadExt(filename) {
+  const ext = (String(filename).split('.').pop() || '').toLowerCase();
+  return ALLOWED_UPLOAD_EXTENSIONS.includes(ext);
 }
 
 // Servir le service worker
