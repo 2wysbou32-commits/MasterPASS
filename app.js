@@ -4418,12 +4418,14 @@ async function goToThread(fileId, fileName, threadId) {
     document.getElementById('threads-list-view2').style.display = 'none';
     document.getElementById('thread-detail-view2').style.display = 'block';
     const tb = document.querySelector('.topbar'); if(tb) tb.style.display='none';
-    const aa = document.getElementById('thread-admin-actions2');
+        const aa = document.getElementById('thread-admin-actions2');
     if (aa) aa.style.display = currentUser?.role === 'admin' ? 'block' : 'none';
     await new Promise(r => requestAnimationFrame(r));
     await new Promise(r => requestAnimationFrame(r));
     await new Promise(r => setTimeout(r, 100));
     await loadThreadRepliesInline();
+    const resolveBtn2 = document.getElementById('resolve-btn2');
+    if (resolveBtn2) resolveBtn2.style.display = currentUser?.role === 'admin' ? 'inline-block' : 'none';
   } else {
     // Show threads list
     document.getElementById('threads-list-view2').style.display = 'block';
