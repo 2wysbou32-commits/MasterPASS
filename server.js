@@ -930,11 +930,12 @@ app.post('/api/revision/dossiers', requireSuperAdmin, (req, res) => {
 app.delete('/api/revision/dossiers/:id', requireSuperAdmin, (req, res) => {
   const db = loadDB();
   if (!db.dossiers) db.dossiers = [];
-  db.dossiers = db.dossiers.filter(d => d.id !== parseInt(req.params.id));
+  const dossierId = parseInt(req.params.id);
+  db.dossiers = db.dossiers.filter(d => d.id !== dossierId);
+  if (db.seances) db.seances = db.seances.filter(s => s.dossierId !== dossierId);
   saveDB(db);
   res.json({ ok: true });
 });
-
 app.patch('/api/revision/dossiers/:id', requireSuperAdmin, (req, res) => {
   const { titre } = req.body;
   if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
@@ -1123,6 +1124,13 @@ app.get('/api/revision/due', requireAuth, (req, res) => {
   const db = loadDB();
   const user = db.users.find(u => u.id === req.session.userId);
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  // Nettoyage des séances orphelines (dossier parent supprimé sans cascade)
+  if (db.seances && db.dossiers) {
+    const dossierIds = new Set(db.dossiers.map(d => d.id));
+    const before = db.seances.length;
+    db.seances = db.seances.filter(s => dossierIds.has(s.dossierId));
+    if (db.seances.length !== before) saveDB(db);
+  }
   const progress = user.revisionProgress || {};
   const now = new Date();
   const due = [];
