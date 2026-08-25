@@ -492,10 +492,139 @@ async function deleteFromR2(key) {
         },
       }, (res) => { res.on('data', ()=>{}); res.on('end', resolve); });
       req.on('error', reject);
-      req.end();
+            req.end();
     });
   } catch(e) { console.error('R2 delete error:', e.message); }
 }
+
+// Copie un objet R2 vers une nouvelle clé, sans re-télécharger le fichier (copie côté serveur R2)
+function buildCopyAuthHeader(destKey, sourceKey, date, region) {
+  const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const datetime = date.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  const dateShort = datetime.slice(0, 8);
+  const scope = `${dateShort}/${region}/s3/aws4_request`;
+  const canonicalPath = `/${R2_BUCKET_NAME}/${encodeR2Key(destKey)}`;
+  const copySource = `/${R2_BUCKET_NAME}/${encodeR2Key(sourceKey)}`;
+  const bodyHash = hashSHA256('');
+  const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${bodyHash}\nx-amz-copy-source:${copySource}\nx-amz-date:${datetime}\n`;
+  const signedHeaders = 'host;x-amz-content-sha256;x-amz-copy-source;x-amz-date';
+  const canonicalRequest = ['PUT', canonicalPath, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
+  const stringToSign = ['AWS4-HMAC-SHA256', datetime, scope, hashSHA256(canonicalRequest)].join('\n');
+  const signingKey = hmac(hmac(hmac(hmac('AWS4' + R2_SECRET_KEY, dateShort), region), 's3'), 'aws4_request');
+  const signature = hmac(signingKey, stringToSign, 'hex');
+  return {
+    authorization: `AWS4-HMAC-SHA256 Credential=${R2_ACCESS_KEY_ID}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+    datetime, host, canonicalPath, copySource,
+  };
+}
+
+async function copyR2Object(sourceKey, destKey) {
+  const date = new Date();
+  const { authorization, datetime, host, canonicalPath, copySource } = buildCopyAuthHeader(destKey, sourceKey, date, 'auto');
+  const bodyHash = hashSHA256('');
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: host,
+      port: 443,
+      path: canonicalPath,
+      method: 'PUT',
+      rejectUnauthorized: false,
+      secureProtocol: 'TLSv1_2_method',
+      headers: {
+        'x-amz-content-sha256': bodyHash,
+        'x-amz-date': datetime,
+        'x-amz-copy-source': copySource,
+        'Authorization': authorization,
+      },
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve();
+        else reject(new Error(`R2 copy failed: ${res.statusCode} ${data}`));
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+async function cloneFolderTree(node, db) {
+  const newId = db.nextId++;
+  const clonedFiles = [];
+  for (const file of (node.files || [])) {
+    const newFileId = db.nextId++;
+    let newFile = { ...file, id: newFileId };
+    if (r2Enabled && file.r2Key) {
+      const newR2Key = 'files/copy-' + newFileId + '-' + file.r2Key.split('/').pop();
+      try { await copyR2Object(file.r2Key, newR2Key); newFile.r2Key = newR2Key; }
+      catch(e) { console.error('[COPY] Erreur copie R2 pour', file.name, ':', e.message); }
+    } else if (file.filename) {
+      const newFilename = newFileId + '-' + file.filename.replace(/^\d+-/, '');
+      try {
+        fs.copyFileSync(path.join(UPLOADS_DIR, file.filename), path.join(UPLOADS_DIR, newFilename));
+        newFile.filename = newFilename;
+      } catch(e) { console.error('[COPY] Erreur copie fichier local pour', file.name, ':', e.message); }
+    }
+    clonedFiles.push(newFile);
+  }
+  const clonedSubfolders = [];
+  for (const sub of (node.subfolders || [])) {
+    clonedSubfolders.push(await cloneFolderTree(sub, db));
+  }
+  return { ...node, id: newId, files: clonedFiles, subfolders: clonedSubfolders };
+}
+
+app.post('/api/periods/:id/copy', requireSuperAdminOnly, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom de la nouvelle période requis' });
+  const db = loadDB();
+  ensurePeriods(db);
+  const sourcePeriod = db.periods.find(p => p.id === parseInt(req.params.id));
+  if (!sourcePeriod) return res.status(404).json({ error: 'Période source introuvable' });
+
+  const newPeriod = { id: db.nextId++, name: name.trim(), isActive: false, createdAt: new Date().toISOString().split('T')[0] };
+  db.periods.push(newPeriod);
+
+  const sourceFolders = db.folders.filter(f => (f.periodId || sourcePeriod.id) === sourcePeriod.id);
+  for (const folder of sourceFolders) {
+    const cloned = await cloneFolderTree(folder, db);
+    cloned.periodId = newPeriod.id;
+    db.folders.push(cloned);
+  }
+
+  const sourceDossiers = (db.dossiers || []).filter(d => (d.periodId || sourcePeriod.id) === sourcePeriod.id);
+  const seances = db.seances || [];
+  for (const dossier of sourceDossiers) {
+    const newDossierId = db.nextId++;
+    db.dossiers.push({ ...dossier, id: newDossierId, periodId: newPeriod.id });
+    const relatedSeances = seances.filter(s => s.dossierId === dossier.id);
+    for (const seance of relatedSeances) {
+      const newSeanceId = db.nextId++;
+      const clonedSchemas = [];
+      for (const schema of (seance.schemas || [])) {
+        const newSchemaId = db.nextId++;
+        let newSchema = { ...schema, id: newSchemaId };
+        if (r2Enabled && schema.r2Key) {
+          const newR2Key = 'revision/copy-' + newSchemaId + '-' + schema.r2Key.split('/').pop();
+          try { await copyR2Object(schema.r2Key, newR2Key); newSchema.r2Key = newR2Key; }
+          catch(e) { console.error('[COPY] Erreur copie schéma R2:', e.message); }
+        } else if (schema.filename) {
+          const newFilename = newSchemaId + '-' + schema.filename.replace(/^\d+-/, '');
+          try {
+            fs.copyFileSync(path.join(UPLOADS_DIR, schema.filename), path.join(UPLOADS_DIR, newFilename));
+            newSchema.filename = newFilename;
+          } catch(e) { console.error('[COPY] Erreur copie schéma local:', e.message); }
+        }
+        clonedSchemas.push(newSchema);
+      }
+      db.seances.push({ ...seance, id: newSeanceId, dossierId: newDossierId, schemas: clonedSchemas });
+    }
+  }
+
+  saveDB(db);
+  res.json({ id: newPeriod.id, name: newPeriod.name, isActive: false, createdAt: newPeriod.createdAt });
+});
 
 // Construit les headers de signature pour une requête GET R2
 function buildR2GetHeaders(canonicalPath, host, region, amzDate, dateStamp, bodyHash) {
@@ -840,9 +969,69 @@ app.patch('/api/users/:id/expires', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 // ── FOLDERS ───────────────────────────
+function ensurePeriods(db) {
+  if (!db.periods) db.periods = [];
+  if (!db.periods.length) {
+    const defaultPeriod = { id: db.nextId++, name: 'Période actuelle', isActive: true, createdAt: new Date().toISOString().split('T')[0] };
+    db.periods.push(defaultPeriod);
+    (db.folders || []).forEach(f => { if (!f.periodId) f.periodId = defaultPeriod.id; });
+    (db.dossiers || []).forEach(d => { if (!d.periodId) d.periodId = defaultPeriod.id; });
+    saveDB(db);
+  }
+  return db.periods.find(p => p.isActive) || db.periods[0];
+}
+
+app.get('/api/periods', requireSuperAdminOnly, (req, res) => {
+  const db = loadDB();
+  ensurePeriods(db);
+  res.json(db.periods.map(p => ({ id: p.id, name: p.name, isActive: !!p.isActive, createdAt: p.createdAt })));
+});
+
+app.post('/api/periods', requireSuperAdminOnly, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
+  const db = loadDB();
+  ensurePeriods(db);
+  const period = { id: db.nextId++, name: name.trim(), isActive: false, createdAt: new Date().toISOString().split('T')[0] };
+  db.periods.push(period);
+  saveDB(db);
+  res.json({ id: period.id, name: period.name, isActive: false, createdAt: period.createdAt });
+});
+
+app.patch('/api/periods/:id', requireSuperAdminOnly, (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
+  const db = loadDB();
+  ensurePeriods(db);
+  const period = db.periods.find(p => p.id === parseInt(req.params.id));
+  if (!period) return res.status(404).json({ error: 'Période introuvable' });
+  period.name = name.trim();
+  saveDB(db);
+  res.json({ ok: true, name: period.name });
+});
+
+app.post('/api/periods/:id/activate', requireSuperAdminOnly, (req, res) => {
+  const db = loadDB();
+  ensurePeriods(db);
+  const period = db.periods.find(p => p.id === parseInt(req.params.id));
+  if (!period) return res.status(404).json({ error: 'Période introuvable' });
+  db.periods.forEach(p => { p.isActive = (p.id === period.id); });
+  saveDB(db);
+  res.json({ ok: true });
+});
+
 app.get('/api/folders', requireAuth, (req, res) => {
   const db = loadDB();
-  res.json(db.folders.slice().sort((a,b) => a.name.localeCompare(b.name, 'fr', {sensitivity:'base'})).map(f => ({
+  const activePeriod = ensurePeriods(db);
+  const user = db.users.find(u => u.id === req.session.userId);
+  const isAdmin = user && user.role === 'admin';
+  let targetPeriodId = activePeriod.id;
+  if (isAdmin && req.query.periodId) {
+    const requested = db.periods.find(p => p.id === parseInt(req.query.periodId));
+    if (requested) targetPeriodId = requested.id;
+  }
+  const filteredFolders = db.folders.filter(f => (f.periodId || activePeriod.id) === targetPeriodId);
+  res.json(filteredFolders.slice().sort((a,b) => a.name.localeCompare(b.name, 'fr', {sensitivity:'base'})).map(f => ({
     id: f.id, name: f.name, createdAt: f.createdAt,
     fileCount: (f.files||[]).length,
     totalSize: (f.files||[]).reduce((s,fi) => s+fi.size, 0),
@@ -878,10 +1067,12 @@ app.get('/api/search', requireAuth, (req, res) => {
 });
 
 app.post('/api/folders', requireAdmin, (req, res) => {
-  const { name } = req.body;
+  const { name, periodId } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
   const db = loadDB();
-  const folder = { id: db.nextId++, name: name.trim(), createdAt: new Date().toISOString().split('T')[0], files: [] };
+  const activePeriod = ensurePeriods(db);
+  const targetPeriodId = periodId ? parseInt(periodId) : activePeriod.id;
+  const folder = { id: db.nextId++, name: name.trim(), createdAt: new Date().toISOString().split('T')[0], files: [], periodId: targetPeriodId };
   db.folders.push(folder); saveDB(db);
   res.json({ id: folder.id, name: folder.name, createdAt: folder.createdAt, fileCount: 0, totalSize: 0 });
 });
@@ -911,22 +1102,34 @@ app.delete('/api/folders/:id', requireAdmin, async (req, res) => {
 // ── RÉVISION : DOSSIERS ──────────────────────────────────────────────────────
 app.get('/api/revision/dossiers', requireAuth, (req, res) => {
   const db = loadDB();
-  const dossiers = db.dossiers || [];
+  const activePeriod = ensurePeriods(db);
+  const user = db.users.find(u => u.id === req.session.userId);
+  const isAdmin = user && user.role === 'admin';
+  let targetPeriodId = activePeriod.id;
+  if (isAdmin && req.query.periodId) {
+    const requested = db.periods.find(p => p.id === parseInt(req.query.periodId));
+    if (requested) targetPeriodId = requested.id;
+  }
+  const dossiers = (db.dossiers || []).filter(d => (d.periodId || activePeriod.id) === targetPeriodId);
   const seances = db.seances || [];
   res.json(dossiers.map(d => ({
     id: d.id, titre: d.titre,
     seanceCount: seances.filter(s => s.dossierId === d.id).length
   })));
 });
+
 app.post('/api/revision/dossiers', requireSuperAdmin, (req, res) => {
-  const { titre } = req.body;
+  const { titre, periodId } = req.body;
   if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
   const db = loadDB();
+  const activePeriod = ensurePeriods(db);
   if (!db.dossiers) db.dossiers = [];
-  const dossier = { id: db.nextId++, titre: titre.trim(), createdAt: new Date().toISOString().split('T')[0] };
+  const targetPeriodId = periodId ? parseInt(periodId) : activePeriod.id;
+  const dossier = { id: db.nextId++, titre: titre.trim(), createdAt: new Date().toISOString().split('T')[0], periodId: targetPeriodId };
   db.dossiers.push(dossier); saveDB(db);
   res.json({ id: dossier.id, titre: dossier.titre, seanceCount: 0 });
 });
+
 app.delete('/api/revision/dossiers/:id', requireSuperAdmin, (req, res) => {
   const db = loadDB();
   if (!db.dossiers) db.dossiers = [];
