@@ -3560,13 +3560,17 @@ function showTicketMsgContextMenu(e, messageId) {
   document.getElementById('ctx-delete').style.display = data.isOwn ? 'flex' : 'none';
   var clientX = e.clientX || window.innerWidth/2;
   var clientY = e.clientY || window.innerHeight/2;
-  var x = Math.min(clientX, window.innerWidth - 8) - 100;
+  var x = Math.min(clientX, window.innerWidth - 8) - 395;
   if (x < 8) x = 8;
   var y = Math.min(clientY, window.innerHeight - 220);
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
   menu.style.display = 'block';
-  setTimeout(function() { document.addEventListener('click', closeMsgContextMenu, { once: true }); }, 300);
+  _menuJustOpened = true;
+  setTimeout(function() {
+    _menuJustOpened = false;
+    document.addEventListener('click', closeMsgContextMenu, { once: true });
+  }, 600);
 }
 
 async function reactTicketMessage(ticketId, messageId, emoji, containerId) {
