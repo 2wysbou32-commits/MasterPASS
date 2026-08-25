@@ -4663,7 +4663,7 @@ async function loadThreadRepliesInline(silent) {
           '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
           '</div>';
       } else {
-        msgHtml = '<span class="msg-text">' + (r.message||'').split('\n').join('<br>')
+                msgHtml = '<span class="msg-text">' + escapeHtml(r.message||'').split('\n').join('<br>')
           .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
           .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); }) + '</span>';
       }
@@ -5050,7 +5050,7 @@ function renderReplyHtml(r) {
       '<div style="display:flex;justify-content:space-between;font-size:10px;color:' + (isMine?'rgba(255,255,255,0.7)':'var(--text3)') + '"><span id="' + tId + '">0:00</span><span>🎤 ' + durStr + '</span></div>' +
       '</div>';
   } else {
-    msgHtml = '<span class="msg-text">' + (r.message||'').split('\n').join('<br>')
+        msgHtml = '<span class="msg-text">' + escapeHtml(r.message||'').split('\n').join('<br>')
       .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
       .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); }) + '</span>';
   }
@@ -5703,7 +5703,7 @@ async function loadThreadReplies(silent) {
                 '<div style="display:flex;justify-content:space-between;font-size:10px;color:'+(isMine?'rgba(255,255,255,0.7)':'var(--text3)')+'"><span id="'+tId+'">0:00</span><span>🎤 '+durStr+'</span></div>'+
               '</div>';
           })()
-        : '<span class="msg-text">' + r.message.split('\n').join('<br>')
+                : '<span class="msg-text">' + escapeHtml(r.message||'').split('\n').join('<br>')
             .replace(/@\[([^\]]+)\]/g, function(m, name) { return renderMention(name, isMine); })
             .replace(/(?<!\])\B@([\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*(?:\s+[\w\-éèêëàâùûüôîïçÀ-ÿ][^\s@<]*)?)/g, function(m, name) { return renderMention(name, isMine); }) + '</span>';
       var canDelete = currentUser?.role === 'admin' || isOwn;
