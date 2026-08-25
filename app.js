@@ -3576,13 +3576,6 @@ async function reactTicketMessage(ticketId, messageId, emoji, containerId) {
     renderTicketThread(containerId, ticket, currentUser.id);
   } catch(e) { toast(e.message, 'error'); }
 }
-async function reactTicketMessage(ticketId, messageId, emoji, containerId) {
-  try {
-    await api('POST', '/tickets/' + ticketId + '/messages/' + messageId + '/react', { emoji });
-    const { ticket } = await api('GET', '/tickets/' + ticketId);
-    renderTicketThread(containerId, ticket, currentUser.id);
-  } catch(e) { toast(e.message, 'error'); }
-}
 
 async function handleTicketImageSelect(input, context, previewId) {
   const file = input.files[0];
