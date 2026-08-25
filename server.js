@@ -1155,6 +1155,15 @@ app.get('/api/weekly-summary', requireAuth, (req, res) => {
 app.get('/api/daily-schema', requireAuth, (req, res) => {
   const db = loadDB();
   const entry = (db.dailySchema || {})[req.session.userId] || null;
+  if (entry && entry.schema) {
+    const seance = (db.seances || []).find(s => s.id === entry.schema.seanceId);
+    const stillExists = seance && (seance.schemas || []).some(sc => sc.id === entry.schema.id);
+    if (!stillExists) {
+      delete db.dailySchema[req.session.userId];
+      saveDB(db);
+      return res.json(null);
+    }
+  }
   res.json(entry);
 });
 
