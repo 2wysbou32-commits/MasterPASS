@@ -2236,8 +2236,7 @@ app.delete('/api/periods/:id', requireSuperAdminOnly, async (req, res) => {
   const dossiersToDelete = (db.dossiers || []).filter(d => (d.periodId || null) === period.id);
   const dossierIds = new Set(dossiersToDelete.map(d => d.id));
   for (const seance of (db.seances || []).filter(s => dossierIds.has(s.dossierId))) {
-    fo
-      r (const schema of (seance.schemas || [])) {
+    for (const schema of (seance.schemas || [])) {
       if (r2Enabled && schema.r2Key) await deleteFromR2(schema.r2Key);
       else if (schema.filename) { const p = path.join(UPLOADS_DIR, schema.filename); if (fs.existsSync(p)) fs.unlinkSync(p); }
     }
