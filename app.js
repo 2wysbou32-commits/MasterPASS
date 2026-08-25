@@ -2193,11 +2193,6 @@ async function loadFolders(){
   const periodQuery = _viewingPeriodId ? ('/folders?periodId=' + _viewingPeriodId) : '/folders';
   try{const folders=await api('GET',periodQuery);renderFolders(folders);}
   catch(e){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">Erreur de chargement</div></div>';}
-}async function loadFolders(){
-  const grid=$('folders-grid');
-  grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">Chargement…</div></div>';
-  try{const folders=await api('GET','/folders');renderFolders(folders);}
-  catch(e){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">Erreur de chargement</div></div>';}
 }
 
 function renderFolders(folders){
