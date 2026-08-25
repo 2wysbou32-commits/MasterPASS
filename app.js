@@ -2381,7 +2381,8 @@ function renderPeriodsList(periods) {
       '</div>' +
       (p.isActive ? '' : '<button onclick="activatePeriod(' + p.id + ')" title="Rendre active pour les étudiants" style="padding:6px 10px;border-radius:8px;border:1.5px solid #2E7D32;background:transparent;color:#2E7D32;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">✓ Activer</button>') +
       '<button onclick="renamePeriodPrompt(' + p.id + ',\'' + p.name.replace(/'/g,"\\'") + '\')" title="Renommer" style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:13px">✏️</button>' +
-      '<button onclick="copyPeriodPrompt(' + p.id + ',\'' + p.name.replace(/'/g,"\\'") + '\')" title="Dupliquer" style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:13px">📋</button>' +
+            '<button onclick="copyPeriodPrompt(' + p.id + ',\'' + p.name.replace(/'/g,"\\'") + '\')" title="Dupliquer" style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:13px">📋</button>' +
+      (p.isActive ? '' : '<button onclick="deletePeriodPrompt(' + p.id + ',\'' + p.name.replace(/'/g,"\\'") + '\')" title="Supprimer définitivement" style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--danger);background:transparent;color:var(--danger);cursor:pointer;font-size:13px">🗑️</button>') +
     '</div>';
   }).join('');
 }
@@ -2428,6 +2429,16 @@ async function copyPeriodPrompt(id, oldName) {
   try {
     await api('POST', '/periods/' + id + '/copy', { name: name.trim() });
     toast('Période dupliquée ✅');
+    openPeriodsModal();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deletePeriodPrompt(id, name) {
+  if (!await customConfirm('Supprimer définitivement la période "' + name + '" et TOUT son contenu (dossiers, fichiers, révision) ? Cette action est irréversible.')) return;
+  try {
+    await api('DELETE', '/periods/' + id);
+    toast('Période supprimée');
+    if (_viewingPeriodId === id) { _viewingPeriodId = null; await loadPeriodsPill(); backToRoot(); await loadFolders(); loadRevision(); }
     openPeriodsModal();
   } catch(e) { toast(e.message, 'error'); }
 }
