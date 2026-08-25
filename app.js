@@ -293,8 +293,10 @@ function setupApp() {
   }
   $('admin-stats').style.display='none';
   $('student-banner').style.display='none';
-  $('upload-zone-container').style.display=isAdmin?'block':'none';
+    $('upload-zone-container').style.display=isAdmin?'block':'none';
   $('storage-indicator').style.display=isAdmin?'block':'none';
+  const periodPill = document.getElementById('period-selector-pill');
+  if (periodPill) { periodPill.style.display = isAdmin ? 'flex' : 'none'; if (isAdmin) loadPeriodsPill(); }
   if(!isAnyAdmin)$('student-banner-title').textContent=`Bienvenue, ${currentUser.name.split(' ')[0]} !`;
   $('panel-settings').style.display = 'none';
   $('topbar-title').textContent = isSubAdmin ? 'Discussions' : 'Accueil';
@@ -952,8 +954,9 @@ async function loadRevision() {
   var list = document.getElementById('revision-list');
   if (!list) return;
   list.innerHTML = '<div class="dashboard-empty">Chargement...</div>';
-  try {
-    const dossiers = await api('GET', '/revision/dossiers');
+    try {
+    const revPeriodQuery = _viewingPeriodId ? ('/revision/dossiers?periodId=' + _viewingPeriodId) : '/revision/dossiers';
+    const dossiers = await api('GET', revPeriodQuery);
     _revisionDossiers = dossiers;
     var isAdmin = currentUser && currentUser.role === 'admin';
     var html = '';
@@ -1063,12 +1066,13 @@ async function creerDossier() {
   var titre = await customPrompt('Nom du dossier (ex: Anatomie, Pr Dupont, S1...)');
   if (!titre || !titre.trim()) return;
   try {
-    await api('POST', '/revision/dossiers', { titre: titre.trim() });
+    await api('POST', '/revision/dossiers', { titre: titre.trim(), periodId: _viewingPeriodId || undefined });
     loadRevision();
   } catch(e) {
     toast('Erreur lors de la création', 'error');
   }
 }
+
 function revActionButtons(id) {
   return '<div class="rev-actions" data-id="' + id + '" style="display:flex;gap:4px;flex-shrink:0">' +
     '<button class="rev-edit-btn" title="Renommer" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface,#fff);display:flex;align-items:center;justify-content:center;cursor:pointer">' +
@@ -2186,6 +2190,12 @@ function setSortMenu(s, label) {
 async function loadFolders(){
   const grid=$('folders-grid');
   grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">Chargement…</div></div>';
+  const periodQuery = _viewingPeriodId ? ('/folders?periodId=' + _viewingPeriodId) : '/folders';
+  try{const folders=await api('GET',periodQuery);renderFolders(folders);}
+  catch(e){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">Erreur de chargement</div></div>';}
+}async function loadFolders(){
+  const grid=$('folders-grid');
+  grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">Chargement…</div></div>';
   try{const folders=await api('GET','/folders');renderFolders(folders);}
   catch(e){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-title">Erreur de chargement</div></div>';}
 }
@@ -2326,8 +2336,112 @@ async function renderCurrentNode() {
 async function createFolder(){
   const name=$('folder-name-input').value.trim();if(!name)return;
   const btn=$('btn-create-folder');btn.disabled=true;btn.textContent='Création…';
-  try{await api('POST','/folders',{name});$('folder-name-input').value='';closeModal('modal-folder');await loadFolders();loadStats();toast('Dossier créé avec succès');}
+  try{await api('POST','/folders',{name, periodId: _viewingPeriodId || undefined});$('folder-name-input').value='';closeModal('modal-folder');await loadFolders();loadStats();toast('Dossier créé avec succès');}
   catch(e){toast(e.message,'error');}finally{btn.disabled=false;btn.textContent='Créer le dossier';}
+}
+
+let _viewingPeriodId = null;
+
+async function loadPeriodsPill() {
+  try {
+    const periods = await api('GET', '/periods');
+    const label = document.getElementById('period-selector-label');
+    if (!label) return;
+    const viewing = _viewingPeriodId ? periods.find(p => p.id === _viewingPeriodId) : periods.find(p => p.isActive);
+    if (viewing) {
+      label.textContent = viewing.name + (viewing.isActive ? '' : ' (aperçu)');
+    }
+  } catch(e) {}
+}
+
+async function openPeriodsModal() {
+  const modal = document.getElementById('periods-modal');
+  const list = document.getElementById('periods-list');
+  list.innerHTML = '<div style="color:var(--text3);font-size:13px">Chargement...</div>';
+  modal.style.display = 'flex';
+  try {
+    const periods = await api('GET', '/periods');
+    renderPeriodsList(periods);
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--danger);font-size:13px">Erreur: ' + e.message + '</div>';
+  }
+}
+
+function closePeriodsModal() {
+  document.getElementById('periods-modal').style.display = 'none';
+}
+
+function renderPeriodsList(periods) {
+  const list = document.getElementById('periods-list');
+  if (!periods.length) { list.innerHTML = '<div style="color:var(--text3);font-size:13px">Aucune période.</div>'; return; }
+  list.innerHTML = periods.map(function(p) {
+    const isViewing = _viewingPeriodId ? _viewingPeriodId === p.id : p.isActive;
+    return '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;border:1.5px solid ' + (isViewing ? 'var(--teal)' : 'var(--border)') + ';background:' + (isViewing ? 'rgba(0,151,167,0.06)' : 'var(--bg)') + '">' +
+      '<div style="flex:1;min-width:0;cursor:pointer" onclick="viewPeriod(' + p.id + ')">' +
+        '<div style="font-weight:700;font-size:14px;color:var(--text)">' + escapeHtml(p.name) + (p.isActive ? ' <span style="font-size:10px;font-weight:700;color:#2E7D32;background:rgba(46,125,50,0.1);padding:2px 8px;border-radius:10px;margin-left:4px">● Active</span>' : '') + '</div>' +
+        '<div style="font-size:11px;color:var(--text3)">Créée le ' + p.createdAt + '</div>' +
+      '</div>' +
+      (p.isActive ? '' : '<button onclick="activatePeriod(' + p.id + ')" title="Rendre active pour les étudiants" style="padding:6px 10px;border-radius:8px;border:1.5px solid #2E7D32;background:transparent;color:#2E7D32;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">✓ Activer</button>') +
+      '<button onclick="renamePeriodPrompt(' + p.id + ',\'' + p.name.replace(/'/g,"\\'") + '\')" title="Renommer" style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:13px">✏️</button>' +
+      '<button onclick="copyPeriodPrompt(' + p.id + ',\'' + p.name.replace(/'/g,"\\'") + '\')" title="Dupliquer" style="width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:transparent;cursor:pointer;font-size:13px">📋</button>' +
+    '</div>';
+  }).join('');
+}
+
+async function viewPeriod(id) {
+  _viewingPeriodId = id;
+  closePeriodsModal();
+  await loadPeriodsPill();
+  backToRoot();
+  await loadFolders();
+  loadRevision();
+  toast('Tu consultes maintenant cette période');
+}
+
+async function activatePeriod(id) {
+  if (!await customConfirm("Rendre cette période visible pour tous les étudiants ? (l'ancienne redevient un simple aperçu, rien n'est supprimé)")) return;
+  try {
+    await api('POST', '/periods/' + id + '/activate');
+    toast('Période activée ✅');
+    _viewingPeriodId = null;
+    await loadPeriodsPill();
+    openPeriodsModal();
+    backToRoot();
+    await loadFolders();
+    loadRevision();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function renamePeriodPrompt(id, oldName) {
+  const name = await customPrompt('Nouveau nom de la période :', oldName);
+  if (!name || !name.trim() || name.trim() === oldName) return;
+  try {
+    await api('PATCH', '/periods/' + id, { name: name.trim() });
+    toast('Période renommée ✅');
+    await loadPeriodsPill();
+    openPeriodsModal();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function copyPeriodPrompt(id, oldName) {
+  const name = await customPrompt('Nom de la nouvelle période (copie de "' + oldName + '") :', oldName + ' (copie)');
+  if (!name || !name.trim()) return;
+  toast('Copie en cours, ça peut prendre un moment selon la quantité de fichiers…');
+  try {
+    await api('POST', '/periods/' + id + '/copy', { name: name.trim() });
+    toast('Période dupliquée ✅');
+    openPeriodsModal();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function createPeriodPrompt() {
+  const name = await customPrompt('Nom de la nouvelle période (ex: "2025 S2") :');
+  if (!name || !name.trim()) return;
+  try {
+    await api('POST', '/periods', { name: name.trim() });
+    toast('Période créée ✅');
+    openPeriodsModal();
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 async function createSubfolder(){
