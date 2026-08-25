@@ -1538,7 +1538,7 @@ app.post('/api/folders/:id/files', requireSuperAdminOnly, upload.array('files'),
   const db = loadDB();
   const folder = db.folders.find(f => f.id === folderId);
   if (!folder) return res.status(404).json({ error: 'Dossier introuvable' });
-  i  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
+  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
   for (const f of req.files) { if (!isAllowedUploadExt(f.originalname)) return res.status(400).json({ error: `Type de fichier non autorisé : ${f.originalname}` }); }
 
   const added = [];
