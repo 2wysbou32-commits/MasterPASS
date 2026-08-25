@@ -321,7 +321,7 @@ function setupApp() {
   updateAnnouncementsBadge();
   updateTicketsBadge();
   // Load discussions center badge
-  api('GET', '/threads/all').then(function(threads) {
+    api('GET', threadsAllUrl()).then(function(threads) {
     _allThreads = threads;
     updateDiscCenterBadge();
   }).catch(function(){});
@@ -427,10 +427,10 @@ async function loadDashboard() {
   }
 
   // Chargement parallèle
-  const [foldersRes, annsRes, threadsRes] = await Promise.allSettled([
-    api('GET', '/folders'),
+    const [foldersRes, annsRes, threadsRes] = await Promise.allSettled([
+    api('GET', _viewingPeriodId ? ('/folders?periodId=' + _viewingPeriodId) : '/folders'),
     api('GET', '/announcements'),
-    api('GET', '/threads/all')
+    api('GET', threadsAllUrl())
   ]);
 
   // Nouveaux fichiers
@@ -2336,6 +2336,9 @@ async function createFolder(){
 }
 
 let _viewingPeriodId = null;
+function threadsAllUrl() {
+  return _viewingPeriodId ? ('/threads/all?periodId=' + _viewingPeriodId) : '/threads/all';
+}
 
 async function loadPeriodsPill() {
   try {
@@ -4263,7 +4266,7 @@ async function loadDiscussionsCenter() {
   const list = document.getElementById('disc-center-list');
   list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">Chargement...</div>';
   try {
-    _allThreads = await api('GET', '/threads/all');
+        _allThreads = await api('GET', threadsAllUrl());
     // One-time: initialize lastSeen for threads never seen before
     // Use their createdAt so only NEW replies after first load appear red
     _lastSeenComments = loadLastSeen();
@@ -4559,7 +4562,7 @@ function closeInlineDiscussion() {
   _discussionFileId = null;
   _currentThreadId = null;
   // Reload all threads from server to get fresh data, then update UI
-  api('GET', '/threads/all').then(function(threads) {
+    api('GET', threadsAllUrl()).then(function(threads) {
     _allThreads = threads;
     renderDiscCenter();
     updateDiscCenterBadge();
