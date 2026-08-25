@@ -551,9 +551,9 @@ async function copyR2Object(sourceKey, destKey) {
 
 async function cloneFolderTree(node, db) {
   const newId = db.nextId++;
-  const clonedFiles = [];
-  for (const file of (node.files || [])) {
-    const newFileId = db.nextId++;
+  // On attribue tous les nouveaux IDs d'abord (synchrone, sans risque), puis on lance toutes les copies en parallèle
+  const filesWithNewIds = (node.files || []).map(file => ({ file, newFileId: db.nextId++ }));
+  const clonedFiles = await Promise.all(filesWithNewIds.map(async ({ file, newFileId }) => {
     let newFile = { ...file, id: newFileId };
     if (r2Enabled && file.r2Key) {
       const newR2Key = 'files/copy-' + newFileId + '-' + file.r2Key.split('/').pop();
@@ -566,12 +566,9 @@ async function cloneFolderTree(node, db) {
         newFile.filename = newFilename;
       } catch(e) { console.error('[COPY] Erreur copie fichier local pour', file.name, ':', e.message); }
     }
-    clonedFiles.push(newFile);
-  }
-  const clonedSubfolders = [];
-  for (const sub of (node.subfolders || [])) {
-    clonedSubfolders.push(await cloneFolderTree(sub, db));
-  }
+    return newFile;
+  }));
+  const clonedSubfolders = await Promise.all((node.subfolders || []).map(sub => cloneFolderTree(sub, db)));
   return { ...node, id: newId, files: clonedFiles, subfolders: clonedSubfolders };
 }
 
@@ -598,12 +595,11 @@ app.post('/api/periods/:id/copy', requireSuperAdminOnly, async (req, res) => {
   for (const dossier of sourceDossiers) {
     const newDossierId = db.nextId++;
     db.dossiers.push({ ...dossier, id: newDossierId, periodId: newPeriod.id });
-    const relatedSeances = seances.filter(s => s.dossierId === dossier.id);
+        const relatedSeances = seances.filter(s => s.dossierId === dossier.id);
     for (const seance of relatedSeances) {
       const newSeanceId = db.nextId++;
-      const clonedSchemas = [];
-      for (const schema of (seance.schemas || [])) {
-        const newSchemaId = db.nextId++;
+      const schemasWithNewIds = (seance.schemas || []).map(schema => ({ schema, newSchemaId: db.nextId++ }));
+      const clonedSchemas = await Promise.all(schemasWithNewIds.map(async ({ schema, newSchemaId }) => {
         let newSchema = { ...schema, id: newSchemaId };
         if (r2Enabled && schema.r2Key) {
           const newR2Key = 'revision/copy-' + newSchemaId + '-' + schema.r2Key.split('/').pop();
@@ -616,8 +612,8 @@ app.post('/api/periods/:id/copy', requireSuperAdminOnly, async (req, res) => {
             newSchema.filename = newFilename;
           } catch(e) { console.error('[COPY] Erreur copie schéma local:', e.message); }
         }
-        clonedSchemas.push(newSchema);
-      }
+        return newSchema;
+      }));
       db.seances.push({ ...seance, id: newSeanceId, dossierId: newDossierId, schemas: clonedSchemas });
     }
   }
