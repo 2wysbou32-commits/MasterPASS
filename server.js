@@ -146,9 +146,12 @@ async function runWeeklySummary() {
 async function assignDailySchema() {
   const db = loadDB();
   if (!db.dailySchema) db.dailySchema = {};
+  const activePeriod = ensurePeriods(db);
+  const periodDossierIds = new Set((db.dossiers || []).filter(d => (d.periodId || activePeriod.id) === activePeriod.id).map(d => d.id));
   const today = new Date().toISOString().split('T')[0];
   const allSchemas = [];
   for (const seance of (db.seances || [])) {
+    if (!periodDossierIds.has(seance.dossierId)) continue;
     for (const sc of (seance.schemas || [])) {
       allSchemas.push({ id: sc.id, titre: sc.titre, seanceTitre: seance.titre, seanceId: seance.id });
     }
@@ -1329,8 +1332,15 @@ app.post('/api/revision/seances/:id/schemas/:schemaId/note', requireAuth, (req, 
 // Liste des schémas à revoir aujourd'hui ou en retard
 app.get('/api/revision/due', requireAuth, (req, res) => {
   const db = loadDB();
+  const activePeriod = ensurePeriods(db);
   const user = db.users.find(u => u.id === req.session.userId);
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  const isAdmin = user.role === 'admin';
+  let targetPeriodId = activePeriod.id;
+  if (isAdmin && req.query.periodId) {
+    const requested = db.periods.find(p => p.id === parseInt(req.query.periodId));
+    if (requested) targetPeriodId = requested.id;
+  }
   // Nettoyage des séances orphelines (dossier parent supprimé sans cascade)
   if (db.seances && db.dossiers) {
     const dossierIds = new Set(db.dossiers.map(d => d.id));
@@ -1338,10 +1348,12 @@ app.get('/api/revision/due', requireAuth, (req, res) => {
     db.seances = db.seances.filter(s => dossierIds.has(s.dossierId));
     if (db.seances.length !== before) saveDB(db);
   }
+  const periodDossierIds = new Set((db.dossiers || []).filter(d => (d.periodId || activePeriod.id) === targetPeriodId).map(d => d.id));
   const progress = user.revisionProgress || {};
   const now = new Date();
   const due = [];
   for (const seance of (db.seances || [])) {
+    if (!periodDossierIds.has(seance.dossierId)) continue;
     for (const sc of (seance.schemas || [])) {
       const p = progress[sc.id];
       if (p && typeof p === 'object' && p.nextReview) {
