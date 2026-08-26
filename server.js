@@ -3459,7 +3459,9 @@ app.post('/api/announcements', requireAdmin, (req, res) => {
   if (!title?.trim() || !message?.trim()) return res.status(400).json({ error: 'Titre et message requis' });
   const db = loadDB();
   if (!db.announcements) db.announcements = [];
-    const { asTeam } = req.body;
+      const { asTeam, periodId } = req.body;
+  const activePeriod = ensurePeriods(db);
+  const targetPeriodId = periodId ? parseInt(periodId) : activePeriod.id;
   const ann = {
     id: db.nextId++,
     title: title.trim(),
@@ -3468,6 +3470,7 @@ app.post('/api/announcements', requireAdmin, (req, res) => {
     createdAt: new Date().toISOString(),
     createdBy: req.session.userId,
     asTeam: asTeam !== false,
+    periodId: targetPeriodId,
   };
   db.announcements.unshift(ann); // Plus récent en premier
   saveDB(db);
@@ -3493,11 +3496,21 @@ app.post('/api/announcements/:id/react', requireAuth, (req, res) => {
 });
 app.get('/api/announcements', requireAuth, (req, res) => {
   const db = loadDB();
-  const anns = (db.announcements || []).map(a => {
-    if (a.asTeam) return { ...a, authorName: 'MasterPASS', authorAvatar: null };
-    const author = db.users.find(u => u.id === a.createdBy);
-    return { ...a, authorName: author?.name || 'MasterPASS', authorAvatar: author?.avatar || null };
-  });
+  const activePeriod = ensurePeriods(db);
+  const user = db.users.find(u => u.id === req.session.userId);
+  const isAdmin = user && user.role === 'admin';
+  let targetPeriodId = activePeriod.id;
+  if (isAdmin && req.query.periodId) {
+    const requested = db.periods.find(p => p.id === parseInt(req.query.periodId));
+    if (requested) targetPeriodId = requested.id;
+  }
+  const anns = (db.announcements || [])
+    .filter(a => (a.periodId || activePeriod.id) === targetPeriodId)
+    .map(a => {
+      if (a.asTeam) return { ...a, authorName: 'MasterPASS', authorAvatar: null };
+      const author = db.users.find(u => u.id === a.createdBy);
+      return { ...a, authorName: author?.name || 'MasterPASS', authorAvatar: author?.avatar || null };
+    });
   res.json(anns);
 });
 
