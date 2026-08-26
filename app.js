@@ -1,3 +1,10 @@
+function togglePwVisibility(id, btn) {
+  const input = document.getElementById(id);
+  if (!input) return;
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+  else { input.type = 'password'; btn.textContent = '👁️'; }
+}
+
 function customConfirm(message) {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
