@@ -825,7 +825,8 @@ app.post('/api/login', (req, res) => {
 dbLog.connectionLogs = dbLog.connectionLogs.filter(l => (l.at || l.date) > sevenDaysAgo1);
   saveDB(dbLog);
   console.log('[SESSION] Session active enregistrée pour userId:', user.id);
-    res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null, registeredAt: user.registeredAt || '', notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true, revision: true }, mutedThreads: user.mutedThreads || [] });
+    const isContentManager = user.role === 'admin' || (user.role === 'subadmin' && user.login === TRUSTED_SUBADMIN_LOGIN);
+    res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null, isContentManager, registeredAt: user.registeredAt || '', notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true, revision: true }, mutedThreads: user.mutedThreads || [] });
 });
 
 app.post('/api/demo-login', (req, res) => {
@@ -893,7 +894,8 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', requireAuth, (req, res) => {
   const user = loadDB().users.find(u => u.id === req.session.userId);
   if (!user) return res.status(401).json({ error: 'Session invalide' });
-  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null, notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true, revision: true }, mutedThreads: user.mutedThreads || [] });
+    const isContentManager = user.role === 'admin' || (user.role === 'subadmin' && user.login === TRUSTED_SUBADMIN_LOGIN);
+  res.json({ id: user.id, name: user.name, login: user.login, role: user.role, email: user.email || '', avatar: user.avatar || null, isContentManager, notifPrefs: user.notifPrefs || { announcements: true, discussions: true, files: true, revision: true }, mutedThreads: user.mutedThreads || [] }); [] });
 });
 
 app.patch('/api/me/notif-prefs', requireAuth, (req, res) => {
