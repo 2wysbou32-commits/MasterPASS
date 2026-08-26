@@ -5606,8 +5606,8 @@ async function openDiscussion(fileId, fileName) {
   const viewFiles = document.getElementById('view-files');
   const panel = document.getElementById('discussion-panel');
   if (viewFiles) viewFiles.style.display = 'none';
-    panel.setAttribute('style', 'display:block');
-  const bc = document.getElementById('breadcrumb'); if(bc) bc.innerHTML = '';
+  panel.setAttribute('style', 'display:block');
+  const bc = document.getElementById('breadcrumb'); if(bc) bc.style.display='none';
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='none';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='none';
   const isMobile = window.innerWidth < 768;
@@ -5633,7 +5633,7 @@ function closeDiscussion() {
   stopDiscussionRefresh();
   const panel = document.getElementById('discussion-panel');
   panel.setAttribute('style', 'display:none');
-  const bc = document.getElementById('breadcrumb'); if(bc) { updateBreadcrumb && updateBreadcrumb(); }
+  const bc = document.getElementById('breadcrumb'); if(bc) { bc.style.display=''; updateBreadcrumb && updateBreadcrumb(); }
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='flex';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='block';
   const hdr = document.getElementById('threads-list-header');
