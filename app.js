@@ -4168,7 +4168,8 @@ async function buildMoveDestinations() {
   const container = document.getElementById('move-destinations');
   container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0">Chargement...</div>';
   try {
-    const folders = await api('GET', '/folders');
+    const folderQuery = _viewingPeriodId ? ('/folders?periodId=' + _viewingPeriodId) : '/folders';
+    const folders = await api('GET', folderQuery);
     container.innerHTML = '';
     folders.forEach(function(folder) {
       renderMoveNode(container, folder.id, folder.name, [folder.id], 0);
@@ -5317,9 +5318,10 @@ function openMoveFolderModal(pathStr, folderName) {
   document.getElementById('move-folder-title').textContent = '📁 Déplacer "' + folderName + '"';
   const modal = document.getElementById('move-folder-modal');
   modal.style.display = 'flex';
-  const container = document.getElementById('move-folder-destinations');
+    const container = document.getElementById('move-folder-destinations');
   container.innerHTML = '<div style="color:var(--text3);font-size:13px">Chargement...</div>';
-  api('GET', '/folders').then(function(folders) {
+  const folderQuery = _viewingPeriodId ? ('/folders?periodId=' + _viewingPeriodId) : '/folders';
+  api('GET', folderQuery).then(function(folders) {
     container.innerHTML = '';
     folders.forEach(function(folder) {
       renderFolderMoveNode(container, folder.id, folder.name, [folder.id], 0);
