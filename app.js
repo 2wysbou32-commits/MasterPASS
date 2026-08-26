@@ -286,7 +286,7 @@ function setupApp() {
   $('nav-security').style.display=isAdmin?'flex':'none';
   $('nav-settings').style.display='flex';
   $('nav-support').style.display=isAnyAdmin?'none':'flex';
-  $('nav-messages').style.display=isAnyAdmin?'flex':'none';
+    $('nav-messages').style.display=isAdmin?'flex':'none';
   const focusBtn = document.getElementById('focus-mode-btn');
   if(focusBtn) focusBtn.style.display = isAnyAdmin ? 'none' : 'flex';
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
