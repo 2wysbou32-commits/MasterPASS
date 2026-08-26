@@ -5606,8 +5606,8 @@ async function openDiscussion(fileId, fileName) {
   const viewFiles = document.getElementById('view-files');
   const panel = document.getElementById('discussion-panel');
   if (viewFiles) viewFiles.style.display = 'none';
-  panel.setAttribute('style', 'display:block');
-  const bc = document.getElementById('breadcrumb'); if(bc) bc.innerHTML = `<span style="font-size:13px;color:var(--teal);font-weight:600">💬 ${fileName}</span>`;
+    panel.setAttribute('style', 'display:block');
+  const bc = document.getElementById('breadcrumb'); if(bc) bc.innerHTML = '';
   const topbar = document.querySelector('.topbar'); if(topbar) topbar.style.display='none';
   const sb = document.getElementById('topbar-search'); if(sb) sb.style.display='none';
   const isMobile = window.innerWidth < 768;
