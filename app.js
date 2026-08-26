@@ -261,9 +261,9 @@ function setupApp() {
   if (sidebar && window.innerWidth > 768 && localStorage.getItem('sidebar_collapsed') === '1') {
     sidebar.classList.add('collapsed');
   }
-  const isAdmin    = currentUser.role === 'admin';
-  const isSubAdmin = currentUser.role === 'subadmin';
-  const isAnyAdmin = isAdmin || isSubAdmin;
+    const isAdmin    = currentUser.role === 'admin';
+  const isSubAdmin = currentUser.role === 'subadmin' && !currentUser.isContentManager;
+  const isAnyAdmin = currentUser.role === 'admin' || currentUser.role === 'subadmin';
   const initials=currentUser.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
   document.querySelectorAll('.panel').forEach(p=>{p.classList.remove('active');p.style.display='none';});
   if (isSubAdmin) {
