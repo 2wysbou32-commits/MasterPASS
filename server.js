@@ -2737,7 +2737,7 @@ app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
     const preview = (text && text.trim()) ? text.trim().slice(0, 80) : (audio ? '🎤 Message vocal' : (image ? '📷 Image' : ''));
     sendPushToUser(ticket.studentId, 'Réponse à ton ticket 🎫', preview, '/');
   } else {
-    const admins = db.users.filter(u => u.role === 'admin' || u.role === 'subadmin');
+        const admins = db.users.filter(u => u.role === 'admin');
     admins.forEach(a => sendPushToUser(a.id, 'Nouveau message — ticket', `${user.name} : ${preview}`, '/'));
   }
   res.json({ ticket });
