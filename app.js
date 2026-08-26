@@ -2348,7 +2348,7 @@ async function createFolder(){
   catch(e){toast(e.message,'error');}finally{btn.disabled=false;btn.textContent='Créer le dossier';}
 }
 
-let _viewingPeriodId = null;*
+let _viewingPeriodId = null;
 function announcementsUrl() {
   return _viewingPeriodId ? ('/announcements?periodId=' + _viewingPeriodId) : '/announcements';
 }
