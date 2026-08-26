@@ -1110,6 +1110,13 @@
               <label class="ann-type-btn" data-color="tip"><input type="radio" name="ann-color" value="tip"> 💡 Conseil</label>
             </div>
           </div>
+                    <div class="field-group" style="margin-bottom:16px">
+            <label class="field-label">Signature</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:13px"><input type="radio" name="ann-signature" value="team" checked> 👥 Au nom de l'équipe</label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:13px"><input type="radio" name="ann-signature" value="me"> 🙋 En mon nom</label>
+            </div>
+          </div>
           <div style="display:flex;gap:8px">
             <button class="btn-action primary-action" onclick="submitAnnouncement()" style="flex:1">Publier</button>
             <button class="btn-action" onclick="hideAnnForm()">Annuler</button>
