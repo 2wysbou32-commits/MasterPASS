@@ -2667,13 +2667,13 @@ app.post('/api/tickets', requireAuth, (req, res) => {
   db.tickets.push(ticket);
   saveDB(db);
   // Notifier tous les admins/subadmins
-  const admins = db.users.filter(u => u.role === 'admin' || u.role === 'subadmin');
-  admins.forEach(a => sendPushToUser(a.id, 'Nouveau ticket 🎫', `${user.name} : ${subject.trim()}`, '/'));
+      const admins = db.users.filter(u => u.role === 'admin');
+    admins.forEach(a => sendPushToUser(a.id, 'Nouveau message — ticket', `${user.name} : ${preview}`, '/'));
   res.json({ ticket });
 });
 
 // Admin/Subadmin : liste de TOUS les tickets
-app.get('/api/tickets', requireAdmin, (req, res) => {
+app.get('/api/tickets', requireSuperAdmin, (req, res) => {
   const db = loadDB();
   if (!db.tickets) db.tickets = [];
   const all = [...db.tickets].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
@@ -2688,7 +2688,7 @@ app.get('/api/tickets/:id', requireAuth, (req, res) => {
   if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
   const user = db.users.find(u => u.id === req.session.userId);
   const isOwner = String(ticket.studentId) === String(req.session.userId);
-  const isAdmin = user.role === 'admin' || user.role === 'subadmin';
+  const isAdmin = user.role === 'admin';
   if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
   // Marquer comme lu selon qui consulte
   if (isAdmin) ticket.unreadForAdmin = false; else ticket.unreadForStudent = false;
@@ -2707,7 +2707,7 @@ app.post('/api/tickets/:id/reply', requireAuth, (req, res) => {
   const user = db.users.find(u => u.id === req.session.userId);
   if (user.isDemo) return res.status(403).json({ error: 'Fonctionnalité désactivée en mode démo' });
   const isOwner = String(ticket.studentId) === String(req.session.userId);
-  const isAdmin = user.role === 'admin' || user.role === 'subadmin';
+  const isAdmin = user.role === 'admin';
   if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
   if (ticket.status === 'closed') return res.status(400).json({ error: 'Ce ticket est fermé' });
 
@@ -2753,7 +2753,7 @@ app.patch('/api/tickets/:id/messages/:messageId', requireAuth, (req, res) => {
   if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
   const user = db.users.find(u => u.id === req.session.userId);
   const isOwner = String(ticket.studentId) === String(req.session.userId);
-  const isAdmin = user.role === 'admin' || user.role === 'subadmin';
+  const isAdmin = user.role === 'admin';
   if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
   const msg = ticket.messages.find(m => m.id === parseInt(req.params.messageId));
   if (!msg) return res.status(404).json({ error: 'Message introuvable' });
@@ -2773,7 +2773,7 @@ app.post('/api/tickets/:id/messages/:messageId/react', requireAuth, (req, res) =
   if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
   const user = db.users.find(u => u.id === req.session.userId);
   const isOwner = String(ticket.studentId) === String(req.session.userId);
-  const isAdmin = user.role === 'admin' || user.role === 'subadmin';
+  const isAdmin = user.role === 'admin';
   if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
   const msg = ticket.messages.find(m => m.id === parseInt(req.params.messageId));
   if (!msg) return res.status(404).json({ error: 'Message introuvable' });
@@ -2794,13 +2794,13 @@ app.delete('/api/tickets/:id', requireAuth, (req, res) => {
   if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
   const user = db.users.find(u => u.id === req.session.userId);
   const isOwner = String(ticket.studentId) === String(req.session.userId);
-  const isAdmin = user.role === 'admin' || user.role === 'subadmin';
+  const isAdmin = user.role === 'admin';
   if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Accès refusé' });
   db.tickets = db.tickets.filter(t => t.id !== ticket.id);
   saveDB(db);
   res.json({ ok: true });
 });
-app.post('/api/tickets/:id/close', requireAdmin, (req, res) => {
+app.post('/api/tickets/:id/close', requireSuperAdmin, (req, res) => {
   const db = loadDB();
   if (!db.tickets) db.tickets = [];
   const ticket = db.tickets.find(t => t.id === parseInt(req.params.id));
