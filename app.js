@@ -870,10 +870,13 @@ function doSearchContextual(query) {
     return;
   }
 
-  // Par défaut : recherche fichiers
+    // Par défaut : recherche fichiers
   if (input) input.setAttribute('placeholder', 'Rechercher un fichier...');
-  doSearch(query);
+  clearTimeout(_searchDebounceTimer);
+  _searchDebounceTimer = setTimeout(function() { doSearch(query); }, 300);
 }
+let _searchDebounceTimer = null;
+let _searchToken = 0;
 async function doSearch(query) {
   var panel = document.getElementById('panel-search');
   if (!query || query.length < 2) {
@@ -893,9 +896,12 @@ async function doSearch(query) {
   var rt = document.getElementById('search-results-title');
   var rs = document.getElementById('search-results-sub');
   if (rt) rt.style.display = 'block';
-  if (rs) { rs.style.display = 'block'; rs.textContent = 'Recherche en cours...'; }
+    if (rs) { rs.style.display = 'block'; rs.textContent = 'Recherche en cours...'; }
+  const myToken = ++_searchToken;
   try {
-    var results = await api('GET', '/search?q=' + encodeURIComponent(query));
+    var periodQ = _viewingPeriodId ? ('&periodId=' + _viewingPeriodId) : '';
+    var results = await api('GET', '/search?q=' + encodeURIComponent(query) + periodQ);
+    if (myToken !== _searchToken) return;
     var list = document.getElementById('search-results-list');
     if (!list) return;
     if (!results.length) {
