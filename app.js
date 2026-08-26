@@ -436,7 +436,7 @@ async function loadDashboard() {
   // Chargement parallèle
     const [foldersRes, annsRes, threadsRes] = await Promise.allSettled([
     api('GET', _viewingPeriodId ? ('/folders?periodId=' + _viewingPeriodId) : '/folders'),
-    api('GET', '/announcements'),
+        api('GET', announcementsUrl()),
     api('GET', threadsAllUrl())
   ]);
 
@@ -2348,7 +2348,11 @@ async function createFolder(){
   catch(e){toast(e.message,'error');}finally{btn.disabled=false;btn.textContent='Créer le dossier';}
 }
 
-let _viewingPeriodId = null;
+let _viewingPeriodId = null;*
+function announcementsUrl() {
+  return _viewingPeriodId ? ('/announcements?periodId=' + _viewingPeriodId) : '/announcements';
+}
+
 function threadsAllUrl() {
   return _viewingPeriodId ? ('/threads/all?periodId=' + _viewingPeriodId) : '/threads/all';
 }
@@ -3256,7 +3260,7 @@ async function loadAnnouncements() {
   const list = $('announcements-list');
   list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chargement...</div>';
   try {
-    const anns = await api('GET', '/announcements');
+        const anns = await api('GET', announcementsUrl());
     if (!anns.length) {
       list.innerHTML = `<div class="search-no-results">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:40px;height:40px;opacity:0.2;margin-bottom:12px"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
@@ -3315,7 +3319,7 @@ async function submitAnnouncement() {
   const asTeam = (document.querySelector('input[name="ann-signature"]:checked')?.value || 'team') === 'team';
   if (!title || !message) { toast('Titre et message requis', 'error'); return; }
   try {
-    await api('POST', '/announcements', { title, message, color, asTeam });
+        await api('POST', '/announcements', { title, message, color, asTeam, periodId: _viewingPeriodId || undefined });
     hideAnnForm();
     await loadAnnouncements();
     toast('Annonce publiée ✅');
@@ -3384,7 +3388,7 @@ function markAnnouncementsSeen(ids) {
 
 async function updateAnnouncementsBadge() {
   try {
-    const anns = await api('GET', '/announcements');
+    c    const anns = await api('GET', announcementsUrl());
     const seen = getSeenAnnouncements();
     const unread = anns.filter(a => !seen.includes(a.id)).length;
     const badge = $('announcements-badge');
@@ -3782,7 +3786,7 @@ async function publishAnnouncement() {
   const color = document.querySelector('input[name="ann-color"]:checked')?.value || 'info';
   if (!title || !message) { toast('Titre et message requis', 'error'); return; }
   try {
-    await api('POST', '/announcements', { title, message, color });
+        await api('POST', '/announcements', { title, message, color, periodId: _viewingPeriodId || undefined });
     hideNewAnnouncementForm();
     await loadAnnouncements();
     toast('Annonce publiée ✅');
