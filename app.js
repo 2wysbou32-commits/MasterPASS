@@ -3388,7 +3388,7 @@ function markAnnouncementsSeen(ids) {
 
 async function updateAnnouncementsBadge() {
   try {
-    c    const anns = await api('GET', announcementsUrl());
+        const anns = await api('GET', announcementsUrl());
     const seen = getSeenAnnouncements();
     const unread = anns.filter(a => !seen.includes(a.id)).length;
     const badge = $('announcements-badge');
