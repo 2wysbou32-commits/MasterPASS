@@ -1044,20 +1044,28 @@ app.get('/api/search', requireAuth, (req, res) => {
   const q = (req.query.q || '').toLowerCase().trim();
   if (!q) return res.json([]);
   const db = loadDB();
+  const activePeriod = ensurePeriods(db);
+  const user = db.users.find(u => u.id === req.session.userId);
+  const isAdmin = user && user.role === 'admin';
+  let targetPeriodId = activePeriod.id;
+  if (isAdmin && req.query.periodId) {
+    const requested = db.periods.find(p => p.id === parseInt(req.query.periodId));
+    if (requested) targetPeriodId = requested.id;
+  }
   const results = [];
-  db.folders.forEach(f => {
-    (f.files || []).forEach(fi => {
+  function walkSearch(node, folderLabel, rootFolderId) {
+    (node.files || []).forEach(fi => {
       if (fi.name.toLowerCase().includes(q)) {
-        results.push({ file: { id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, downloadable: fi.downloadable }, folderName: f.name, folderId: f.id });
+        results.push({ file: { id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, downloadable: fi.downloadable }, folderName: folderLabel, folderId: rootFolderId });
       }
     });
-    (f.subfolders || []).forEach(s => {
-      (s.files || []).forEach(fi => {
-        if (fi.name.toLowerCase().includes(q)) {
-          results.push({ file: { id: fi.id, name: fi.name, type: fi.type, size: fi.size, addedAt: fi.addedAt, downloadable: fi.downloadable }, folderName: f.name + ' / ' + s.name, folderId: f.id, subId: s.id });
-        }
-      });
+    (node.subfolders || []).forEach(sub => {
+      walkSearch(sub, folderLabel + ' / ' + sub.name, rootFolderId);
     });
+  }
+  db.folders.forEach(f => {
+    if ((f.periodId || activePeriod.id) !== targetPeriodId) return;
+    walkSearch(f, f.name, f.id);
   });
   res.json(results);
 });
