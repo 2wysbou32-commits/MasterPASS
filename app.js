@@ -2209,7 +2209,7 @@ async function loadFolders(){
 }
 
 function renderFolders(folders){
-  const grid=$('folders-grid'),isAdmin=currentUser?.role==='admin';
+    const grid=$('folders-grid'),isAdmin=!!currentUser?.isContentManager;
   $('folder-count-sub').textContent=`${folders.length} dossier${folders.length!==1?'s':''}`;
   if(!folders.length){
     grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1">
@@ -2639,7 +2639,7 @@ function renderFilesSorted(files) {
 
 function renderFiles(files){
   currentFiles = files;
-  const isAdmin=currentUser?.role==='admin';
+    const isAdmin=!!currentUser?.isContentManager;
   const container = document.getElementById('files-list-body');
   if($('files-count-sub')) $('files-count-sub').textContent=`${files.length} fichier${files.length!==1?'s':''}`;
   $('files-count-tag').textContent=files.length;
@@ -2782,7 +2782,7 @@ function enterFileSelectionMode(firstId) {
     const cb = document.querySelector(`.file-select-cb[data-id="${firstId}"]`);
     if (cb) cb.checked = true;
   }
-  if (currentUser?.role === 'admin') document.getElementById('files-delete-selected-btn').style.display = 'block';
+    if (currentUser?.isContentManager) document.getElementById('files-delete-selected-btn').style.display = 'block';
   document.getElementById('files-cancel-selection-btn').style.display = 'block';
   onFileCheckboxChange();
 }
@@ -2797,7 +2797,7 @@ function exitFileSelectionMode() {
 
 function onFileCheckboxChange() {
   const checked = Array.from(document.querySelectorAll('.file-select-cb:checked'));
-  if (currentUser?.role === 'admin') {
+    if (currentUser?.isContentManager) {
     document.getElementById('files-delete-selected-btn').style.display = checked.length > 0 ? 'block' : 'none';
   }
   const canDownloadAny = checked.some(cb => cb.getAttribute('data-can-download') === 'true');
