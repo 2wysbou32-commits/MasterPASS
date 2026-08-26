@@ -666,8 +666,8 @@ if(name==='security'){ $('topbar-title').textContent='Sécurité & Accès'; load
 
 function updateTopbar(){
   const isAdmin=currentUser?.role==='admin';
-  const isSubAdmin=currentUser?.role==='subadmin';
-  const isAnyAdmin=isAdmin||isSubAdmin;
+    const isSubAdmin=currentUser?.role==='subadmin' && !currentUser?.isContentManager;
+  const isAnyAdmin=isAdmin||currentUser?.role==='subadmin';
   const panel=document.querySelector('.panel.active')?.id;
   const el=$('topbar-actions');el.innerHTML='';
   if(panel==='panel-files'&&isAnyAdmin){
