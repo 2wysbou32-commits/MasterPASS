@@ -436,6 +436,19 @@ function requireSuperAdminOnly(req, res, next) {
   next();
 }
 
+const TRUSTED_SUBADMIN_LOGIN = 'wyssame.boulhcen.mp';
+function requireContentManager(req, res, next) {
+  if (!req.session.userId) return res.status(401).json({ error: 'Non authentifié' });
+  const user = loadDB().users.find(u => u.id === req.session.userId);
+  if (!user) return res.status(403).json({ error: 'Accès refusé' });
+  const isMainAdmin = user.role === 'admin';
+  const isTrustedSubadmin = user.role === 'subadmin' && user.login === TRUSTED_SUBADMIN_LOGIN;
+  if (!isMainAdmin && !isTrustedSubadmin) {
+    return res.status(403).json({ error: 'Accès refusé' });
+  }
+  next();
+}
+
 // ── R2 helpers ────────────────────────────────────────────────────────────────
 async function uploadToR2(key, buffer, contentType) {
   const ct = contentType || 'application/octet-stream';
@@ -575,7 +588,7 @@ async function cloneFolderTree(node, db) {
   return { ...node, id: newId, files: clonedFiles, subfolders: clonedSubfolders };
 }
 
-app.post('/api/periods/:id/copy', requireSuperAdminOnly, async (req, res) => {
+app.post('/api/periods/:id/copy', requireContentManager, async (req, res) => {
   const { name } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nom de la nouvelle période requis' });
   const db = loadDB();
@@ -980,13 +993,13 @@ function ensurePeriods(db) {
   return db.periods.find(p => p.isActive) || db.periods[0];
 }
 
-app.get('/api/periods', requireSuperAdminOnly, (req, res) => {
+app.get('/api/periods', requireContentManager, (req, res) => {
   const db = loadDB();
   ensurePeriods(db);
   res.json(db.periods.map(p => ({ id: p.id, name: p.name, isActive: !!p.isActive, createdAt: p.createdAt })));
 });
 
-app.post('/api/periods', requireSuperAdminOnly, (req, res) => {
+app.post('/api/periods', requireContentManager, (req, res) => {
   const { name } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
   const db = loadDB();
@@ -997,7 +1010,7 @@ app.post('/api/periods', requireSuperAdminOnly, (req, res) => {
   res.json({ id: period.id, name: period.name, isActive: false, createdAt: period.createdAt });
 });
 
-app.patch('/api/periods/:id', requireSuperAdminOnly, (req, res) => {
+app.patch('/api/periods/:id', requireContentManager, (req, res) => {
   const { name } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nom invalide' });
   const db = loadDB();
@@ -1009,7 +1022,7 @@ app.patch('/api/periods/:id', requireSuperAdminOnly, (req, res) => {
   res.json({ ok: true, name: period.name });
 });
 
-app.post('/api/periods/:id/activate', requireSuperAdminOnly, (req, res) => {
+app.post('/api/periods/:id/activate', requireContentManager, (req, res) => {
   const db = loadDB();
   ensurePeriods(db);
   const period = db.periods.find(p => p.id === parseInt(req.params.id));
@@ -1125,7 +1138,7 @@ app.get('/api/revision/dossiers', requireAuth, (req, res) => {
   })));
 });
 
-app.post('/api/revision/dossiers', requireSuperAdmin, (req, res) => {
+app.post('/api/revision/dossiers', requireContentManager, (req, res) => {
   const { titre, periodId } = req.body;
   if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
   const db = loadDB();
@@ -1137,7 +1150,7 @@ app.post('/api/revision/dossiers', requireSuperAdmin, (req, res) => {
   res.json({ id: dossier.id, titre: dossier.titre, seanceCount: 0 });
 });
 
-app.delete('/api/revision/dossiers/:id', requireSuperAdmin, (req, res) => {
+app.delete('/api/revision/dossiers/:id', requireContentManager, (req, res) => {
   const db = loadDB();
   if (!db.dossiers) db.dossiers = [];
   const dossierId = parseInt(req.params.id);
@@ -1146,7 +1159,7 @@ app.delete('/api/revision/dossiers/:id', requireSuperAdmin, (req, res) => {
   saveDB(db);
   res.json({ ok: true });
 });
-app.patch('/api/revision/dossiers/:id', requireSuperAdmin, (req, res) => {
+app.patch('/api/revision/dossiers/:id', requireContentManager, (req, res) => {
   const { titre } = req.body;
   if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
   const db = loadDB();
@@ -1168,7 +1181,7 @@ app.get('/api/revision/seances', requireAuth, (req, res) => {
     schemaCount: (s.schemas||[]).length
   })));
 });
-app.post('/api/revision/seances', requireSuperAdmin, (req, res) => {
+app.post('/api/revision/seances', requireContentManager, (req, res) => {
   const { titre, dossierId } = req.body;
   if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
   if (!dossierId) return res.status(400).json({ error: 'Dossier requis' });
@@ -1178,7 +1191,7 @@ app.post('/api/revision/seances', requireSuperAdmin, (req, res) => {
   db.seances.push(seance); saveDB(db);
   res.json({ id: seance.id, titre: seance.titre, createdAt: seance.createdAt, schemaCount: 0 });
 });
-app.delete('/api/revision/seances/:id', requireSuperAdmin, (req, res) => {
+app.delete('/api/revision/seances/:id', requireContentManager, (req, res) => {
   const db = loadDB();
   if (!db.seances) db.seances = [];
   db.seances = db.seances.filter(s => s.id !== parseInt(req.params.id));
@@ -1186,7 +1199,7 @@ app.delete('/api/revision/seances/:id', requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-app.patch('/api/revision/seances/:id', requireSuperAdmin, (req, res) => {
+app.patch('/api/revision/seances/:id', requireContentManager, (req, res) => {
   const { titre } = req.body;
   if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
   const db = loadDB();
@@ -1214,7 +1227,7 @@ app.get('/api/revision/seances/:id/schemas', requireAuth, (req, res) => {
   }));
 });
 
-app.post('/api/revision/seances/:id/schemas', requireSuperAdmin, upload.single('image'), async (req, res) => {
+app.post('/api/revision/seances/:id/schemas', requireContentManager, upload.single('image'), async (req, res) => {
   const db = loadDB();
   const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
   if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
@@ -1247,7 +1260,7 @@ app.post('/api/revision/seances/:id/schemas', requireSuperAdmin, upload.single('
   res.json({ id: schema.id, titre: schema.titre });
 });
 
-app.patch('/api/revision/seances/:id/schemas/:schemaId', requireSuperAdmin, (req, res) => {
+app.patch('/api/revision/seances/:id/schemas/:schemaId', requireContentManager, (req, res) => {
   const { titre } = req.body;
   if (!titre?.trim()) return res.status(400).json({ error: 'Titre requis' });
   const db = loadDB();
@@ -1259,7 +1272,7 @@ app.patch('/api/revision/seances/:id/schemas/:schemaId', requireSuperAdmin, (req
   saveDB(db);
   res.json({ id: schema.id, titre: schema.titre });
 });
-app.delete('/api/revision/seances/:id/schemas/:schemaId', requireSuperAdmin, (req, res) => {
+app.delete('/api/revision/seances/:id/schemas/:schemaId', requireContentManager, (req, res) => {
   const db = loadDB();
   const seance = (db.seances||[]).find(s => s.id === parseInt(req.params.id));
   if (!seance) return res.status(404).json({ error: 'Séance introuvable' });
@@ -1441,7 +1454,7 @@ app.get('/api/revision/seances/:id/schemas/:schemaId', requireAuth, (req, res) =
   res.json({ id: schema.id, titre: schema.titre, reperes: schema.reperes });
 });
 // ── SOUS-DOSSIERS ─────────────────────────────────────────────────────────────
-app.post('/api/folders/:id/subfolders', requireSuperAdminOnly, (req, res) => {
+app.post('/api/folders/:id/subfolders', requireContentManager, (req, res) => {
   const parentId = parseInt(req.params.id);
   const { name } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' });
@@ -1515,7 +1528,7 @@ app.get('/api/folders/:parentId/subfolders/:subId/files', requireAuth, (req, res
     .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false, views: f.views || 0 })));
 });
 
-app.post('/api/folders/:parentId/subfolders/:subId/files', requireSuperAdminOnly, upload.array('files'), async (req, res) => {
+app.post('/api/folders/:parentId/subfolders/:subId/files', requireContentManager, upload.array('files'), async (req, res) => {
   const db = loadDB();
   const parent = db.folders.find(f => f.id === parseInt(req.params.parentId));
   if (!parent) return res.status(404).json({ error: 'Dossier introuvable' });
@@ -1769,7 +1782,7 @@ app.get('/api/folders/:id/files', requireAuth, (req, res) => {
     .map(f => ({ id: f.id, name: f.name, size: f.size, type: f.type, addedAt: f.addedAt, downloadable: f.downloadable !== false, views: f.views || 0 })));
 });
 
-app.post('/api/folders/:id/files', requireSuperAdminOnly, upload.array('files'), async (req, res) => {
+app.post('/api/folders/:id/files', requireContentManager, upload.array('files'), async (req, res) => {
   const folderId = parseInt(req.params.id);
   const db = loadDB();
   const folder = db.folders.find(f => f.id === folderId);
@@ -1995,7 +2008,7 @@ app.post('/api/users/change-password', requireAuth, (req, res) => {
 });
 
 // ── PRESIGN — upload direct navigateur → R2 ───────────────────────────────────
-app.post('/api/folders/:id/presign', requireSuperAdminOnly, (req, res) => {
+app.post('/api/folders/:id/presign', requireContentManager, (req, res) => {
   const folderId = parseInt(req.params.id);
   const db = loadDB();
   const folder = db.folders.find(f => f.id === folderId);
@@ -2053,7 +2066,7 @@ app.post('/api/folders/:id/presign', requireSuperAdminOnly, (req, res) => {
   res.json({ putUrl, fileId, r2Key });
 });
 
-app.post('/api/folders/:parentId/subfolders/:subId/presign', requireSuperAdminOnly, (req, res) => {
+app.post('/api/folders/:parentId/subfolders/:subId/presign', requireContentManager, (req, res) => {
   const parentId = parseInt(req.params.parentId);
   const subId    = parseInt(req.params.subId);
   const db       = loadDB();
@@ -2205,7 +2218,7 @@ app.get('/api/nodes/:path', requireAuth, (req, res) => {
 });
 
 // Créer un sous-dossier à n'importe quelle profondeur
-app.post('/api/nodes/:path/children', requireSuperAdminOnly, (req, res) => {
+app.post('/api/nodes/:path/children', requireContentManager, (req, res) => {
   const db = loadDB();
   const node = findNodeByPath(db, parsePath(req.params.path));
   if (!node) return res.status(404).json({ error: 'Dossier parent introuvable' });
@@ -2239,7 +2252,7 @@ async function deleteFolderTreeFiles(node, db) {
   for (const sub of (node.subfolders || [])) await deleteFolderTreeFiles(sub, db);
 }
 
-app.delete('/api/periods/:id', requireSuperAdminOnly, async (req, res) => {
+app.delete('/api/periods/:id', requireContentManager, async (req, res) => {
   const db = loadDB();
   ensurePeriods(db);
   const period = db.periods.find(p => p.id === parseInt(req.params.id));
@@ -2269,7 +2282,7 @@ app.delete('/api/periods/:id', requireSuperAdminOnly, async (req, res) => {
   res.json({ ok: true });
 });
 // Supprimer un nœud à n'importe quelle profondeur (et ses fichiers sur R2, récursivement)
-app.delete('/api/nodes/:path', requireSuperAdminOnly, async (req, res) => {
+app.delete('/api/nodes/:path', requireContentManager, async (req, res) => {
   const db = loadDB();
   const path = parsePath(req.params.path);
   if (path.length < 2) return res.status(400).json({ error: 'Impossible de supprimer un dossier racine via cette route' });
@@ -2292,7 +2305,7 @@ app.delete('/api/nodes/:path', requireSuperAdminOnly, async (req, res) => {
 });
 
 // Upload petit(s) fichier(s) à n'importe quelle profondeur
-app.post('/api/nodes/:path/files', requireSuperAdminOnly, upload.array('files'), async (req, res) => {
+app.post('/api/nodes/:path/files', requireContentManager, upload.array('files'), async (req, res) => {
   const db = loadDB();
   const node = findNodeByPath(db, parsePath(req.params.path));
   if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
@@ -2323,7 +2336,7 @@ app.post('/api/nodes/:path/files', requireSuperAdminOnly, upload.array('files'),
 });
 
 // Presign upload gros fichier à n'importe quelle profondeur
-app.post('/api/nodes/:path/presign', requireSuperAdminOnly, (req, res) => {
+app.post('/api/nodes/:path/presign', requireContentManager, (req, res) => {
   const db = loadDB();
   const node = findNodeByPath(db, parsePath(req.params.path));
   if (!node) return res.status(404).json({ error: 'Dossier introuvable' });
@@ -2385,7 +2398,7 @@ app.delete('/api/nodes/:path/files/:fileId', requireAdmin, async (req, res) => {
 });
 
 // Déplacer un dossier ou sous-dossier entier (avec tout son contenu) vers un autre parent, à n'importe quelle profondeur
-app.post('/api/nodes/:path/move', requireSuperAdminOnly, (req, res) => {
+app.post('/api/nodes/:path/move', requireContentManager, (req, res) => {
   const { toPath } = req.body;
   if (!toPath) return res.status(400).json({ error: 'Destination manquante' });
   const db = loadDB();
