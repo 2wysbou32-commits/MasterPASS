@@ -3459,12 +3459,15 @@ app.post('/api/announcements', requireAdmin, (req, res) => {
   if (!title?.trim() || !message?.trim()) return res.status(400).json({ error: 'Titre et message requis' });
   const db = loadDB();
   if (!db.announcements) db.announcements = [];
+    const { asTeam } = req.body;
   const ann = {
     id: db.nextId++,
     title: title.trim(),
     message: message.trim(),
     color: color || 'info',
     createdAt: new Date().toISOString(),
+    createdBy: req.session.userId,
+    asTeam: asTeam !== false,
   };
   db.announcements.unshift(ann); // Plus récent en premier
   saveDB(db);
@@ -3490,7 +3493,12 @@ app.post('/api/announcements/:id/react', requireAuth, (req, res) => {
 });
 app.get('/api/announcements', requireAuth, (req, res) => {
   const db = loadDB();
-  res.json(db.announcements || []);
+  const anns = (db.announcements || []).map(a => {
+    if (a.asTeam) return { ...a, authorName: 'MasterPASS', authorAvatar: null };
+    const author = db.users.find(u => u.id === a.createdBy);
+    return { ...a, authorName: author?.name || 'MasterPASS', authorAvatar: author?.avatar || null };
+  });
+  res.json(anns);
 });
 
 // Supprimer une annonce (admin)
