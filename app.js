@@ -3267,8 +3267,15 @@ async function loadAnnouncements() {
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'subadmin';
     const colors = { info:'ℹ️', success:'✅', urgent:'🚨', tip:'💡' };
     list.innerHTML = anns.map(a => `
-      <div class="ann-card ${a.color}" id="ann-${a.id}">
+            <div class="ann-card ${a.color}" id="ann-${a.id}">
         ${isAdmin ? `<button class="ann-delete-btn" onclick="deleteAnnouncement(${a.id})" title="Supprimer"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>` : ''}
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          ${a.authorAvatar
+            ? `<img src="${a.authorAvatar}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+            : `<div style="width:24px;height:24px;border-radius:50%;background:var(--teal-dark);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${a.authorAvatar===null&&a.authorName==='MasterPASS'?'👥':(a.authorName||'M').charAt(0).toUpperCase()}</div>`
+          }
+          <span style="font-size:12px;font-weight:600;color:var(--text2)">${a.authorName || 'MasterPASS'}</span>
+        </div>
         <div class="ann-card-title">${colors[a.color] || 'ℹ️'} ${a.title}</div>
         <div class="ann-card-message">${a.message}</div>
         <div class="ann-card-date">${new Date(a.createdAt).toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric'})}</div>
@@ -3302,9 +3309,10 @@ async function submitAnnouncement() {
   const title = ($('ann-title').value || '').trim();
   const message = ($('ann-message').value || '').trim();
   const color = document.querySelector('input[name="ann-color"]:checked')?.value || 'info';
+  const asTeam = (document.querySelector('input[name="ann-signature"]:checked')?.value || 'team') === 'team';
   if (!title || !message) { toast('Titre et message requis', 'error'); return; }
   try {
-    await api('POST', '/announcements', { title, message, color });
+    await api('POST', '/announcements', { title, message, color, asTeam });
     hideAnnForm();
     await loadAnnouncements();
     toast('Annonce publiée ✅');
