@@ -36,7 +36,10 @@
       </div>
       <div class="field-group">
         <label class="field-label">Mot de passe</label>
-        <input type="password" class="field-input" id="password-input" placeholder="••••••••" autocomplete="current-password">
+                <div style="position:relative">
+          <input type="password" class="field-input" id="password-input" placeholder="••••••••" autocomplete="current-password" style="padding-right:44px;width:100%;box-sizing:border-box">
+          <button type="button" onclick="togglePwVisibility('password-input',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:4px">👁️</button>
+        </div>
       </div>
       <div style="font-size:11.5px;color:#c62828;text-align:center;margin-top:8px;margin-bottom:4px;font-weight:600">🔒 Accès personnel — le partage de compte entraîne la suppression de l'accès.</div>
       <button class="btn-primary" id="login-btn" onclick="if(typeof doLogin==='function')doLogin()">Se connecter</button>
@@ -167,7 +170,10 @@
       </div>
       <div class="field-group">
         <label class="field-label">Mot de passe</label>
-        <input type="password" class="field-input" id="reg-password" placeholder="Minimum 6 caractères" autocomplete="new-password">
+                <div style="position:relative">
+          <input type="password" class="field-input" id="reg-password" placeholder="Minimum 6 caractères" autocomplete="new-password" style="padding-right:44px;width:100%;box-sizing:border-box">
+          <button type="button" onclick="togglePwVisibility('reg-password',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:4px">👁️</button>
+        </div>
       </div>
       <div style="display:flex;align-items:flex-start;gap:10px;margin:8px 0;padding:12px;background:rgba(0,151,167,0.06);border-radius:10px;border:1px solid rgba(0,151,167,0.15)">
         <input type="checkbox" id="reg-rgpd" style="margin-top:2px;width:16px;height:16px;accent-color:var(--teal-dark);flex-shrink:0">
@@ -189,11 +195,17 @@
       </div>
       <div class="field-group">
         <label class="field-label">Nouveau mot de passe</label>
-        <input type="password" class="field-input" id="reset-password-input" placeholder="Minimum 6 caractères">
+                <div style="position:relative">
+          <input type="password" class="field-input" id="reset-password-input" placeholder="Minimum 6 caractères" style="padding-right:44px;width:100%;box-sizing:border-box">
+          <button type="button" onclick="togglePwVisibility('reset-password-input',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:4px">👁️</button>
+        </div>
       </div>
       <div class="field-group">
         <label class="field-label">Confirmer</label>
-        <input type="password" class="field-input" id="reset-confirm-input" placeholder="Répète le mot de passe">
+                <div style="position:relative">
+          <input type="password" class="field-input" id="reset-confirm-input" placeholder="Répète le mot de passe" style="padding-right:44px;width:100%;box-sizing:border-box">
+          <button type="button" onclick="togglePwVisibility('reset-confirm-input',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:4px">👁️</button>
+        </div>
       </div>
       <div class="error-msg" id="reset-error">—</div>
       <div class="success-msg" id="reset-success"></div>
@@ -553,16 +565,25 @@
           <div class="settings-row">
               <div class="field-group" style="margin-bottom:0">
                 <label class="field-label">Mot de passe actuel</label>
-                <input type="password" class="field-input" id="settings-current-pw" placeholder="••••••••">
+                                <div style="position:relative">
+                  <input type="password" class="field-input" id="settings-current-pw" placeholder="••••••••" style="padding-right:44px;width:100%;box-sizing:border-box">
+                  <button type="button" onclick="togglePwVisibility('settings-current-pw',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:4px">👁️</button>
+                </div>
               </div>
               <div></div>
               <div class="field-group" style="margin-bottom:0">
                 <label class="field-label">Nouveau mot de passe</label>
-                <input type="password" class="field-input" id="settings-new-pw" placeholder="Minimum 6 caractères">
+                                <div style="position:relative">
+                  <input type="password" class="field-input" id="settings-new-pw" placeholder="Minimum 6 caractères" style="padding-right:44px;width:100%;box-sizing:border-box">
+                  <button type="button" onclick="togglePwVisibility('settings-new-pw',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:4px">👁️</button>
+                </div>
               </div>
               <div class="field-group" style="margin-bottom:0">
                 <label class="field-label">Confirmer</label>
-                <input type="password" class="field-input" id="settings-confirm-pw" placeholder="Répète le nouveau mot de passe">
+                                <div style="position:relative">
+                  <input type="password" class="field-input" id="settings-confirm-pw" placeholder="Répète le nouveau mot de passe" style="padding-right:44px;width:100%;box-sizing:border-box">
+                  <button type="button" onclick="togglePwVisibility('settings-confirm-pw',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:4px">👁️</button>
+                </div>
               </div>
             </div>
             <div class="error-msg" id="settings-pw-error" style="margin-top:16px">—</div>
@@ -1522,7 +1543,7 @@
     <div class="modal-sub">Créez un accès étudiant ou administrateur</div>
     <div class="field-group"><label class="field-label">Nom complet</label><input type="text" class="field-input" id="user-name-input" placeholder="Prénom Nom"></div>
     <div class="field-group"><label class="field-label">Identifiant de connexion</label><input type="text" class="field-input" id="user-login-input" placeholder="Ex : jean.dupont"></div>
-    <div class="field-group"><label class="field-label">Mot de passe</label><input type="password" class="field-input" id="user-password-input" placeholder="••••••••"></div>
+        <div class="field-group"><label class="field-label">Mot de passe</label><div style="position:relative"><input type="password" class="field-input" id="user-password-input" placeholder="••••••••" style="padding-right:44px;width:100%;box-sizing:border-box"><button type="button" onclick="togglePwVisibility('user-password-input',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:4px">👁️</button></div></div>
     <div class="field-group"><label class="field-label">Rôle</label><select class="field-input" id="user-role-input"><option value="student">Étudiant</option><option value="subadmin">Sous-administrateur</option><option value="admin">Administrateur principal</option></select></div>
     <div class="error-msg" id="user-error">—</div>
     <div class="modal-actions">
