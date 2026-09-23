@@ -1306,9 +1306,9 @@ async function ouvrirSchema(seanceId, schemaId) {
       '</div>' +
     '</div>';
     html += '<div id="rev-panel-1">' +
-      '<div id="rev-m1-stage" style="position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border)">' +
-        '<img src="' + imgUrl + '" style="display:block;width:100%;height:auto">' +
-      '</div>' +
+      '<div id="rev-m1-levels"></div>' +
+      '<div id="rev-m1-done" style="display:none"></div>' +
+      revStageHtml(1, imgUrl) +
       '<ul id="rev-m1-list" style="list-style:none;padding:0;margin:16px 0 0;display:grid;gap:8px"></ul>' +
       '<div style="margin-top:12px;display:flex;gap:8px">' +
         '<button class="btn-action" onclick="revM1SetAll(false)">Tout cacher</button>' +
@@ -1316,25 +1316,28 @@ async function ouvrirSchema(seanceId, schemaId) {
       '</div>' +
     '</div>';
     html += '<div id="rev-panel-2" style="display:none">' +
-      '<div id="rev-m2-stage" style="position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border)">' +
-        '<img src="' + imgUrl + '" style="display:block;width:100%;height:auto;filter:saturate(.85)">' +
-      '</div>' +
-      '<div id="rev-m2-tray" style="display:flex;flex-wrap:wrap;gap:9px;margin-top:16px"></div>' +
+      '<div id="rev-m2-levels"></div>' +
+      '<div id="rev-m2-done" style="display:none"></div>' +
+      revStageHtml(2, imgUrl, '', 'saturate(.85)') +
+      '<div id="rev-m2-hint" style="font-size:12px;color:var(--text2);margin-top:10px"></div>' +
+      '<div id="rev-m2-tray" style="display:flex;flex-wrap:wrap;gap:9px;margin-top:10px"></div>' +
       '<div id="rev-m2-score" style="margin-top:10px;font-size:12.5px;font-weight:700;color:var(--text2)"></div>' +
       '<button class="btn-action" onclick="revInitM2()" style="margin-top:10px">Recommencer</button>' +
     '</div>';
     html += '<div id="rev-panel-3" style="display:none">' +
+      '<div id="rev-m3-levels"></div>' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px">' +
         '<div id="rev-m3-question" style="font-size:14px"></div>' +
         '<div id="rev-m3-progress" style="font-size:12px;color:var(--text2);font-weight:700"></div>' +
       '</div>' +
-      '<div id="rev-m3-stage" style="position:relative;width:100%;border-radius:12px;overflow:hidden;border:1px solid var(--border);cursor:crosshair">' +
-        '<img src="' + imgUrl + '" style="display:block;width:100%;height:auto;filter:saturate(.85)">' +
-      '</div>' +
+      revStageHtml(3, imgUrl, 'cursor:crosshair', 'saturate(.85)') +
       '<div id="rev-m3-summary" style="display:none"></div>' +
       '<button class="btn-action" onclick="revInitM3()" style="margin-top:10px">Recommencer</button>' +
     '</div>';
     list.innerHTML = html;
+    revZoomIdx = 0;
+    revM2Selected = null;
+    revResetLevels();
     revInitM1();
     revInitM2();
     revInitM3();
@@ -1348,6 +1351,210 @@ var revTol = 9;
 var revDrag = null;
 var revM3Queue = [], revM3Idx = 0, revM3Score = 0, revM3Locked = false, revM3Attempts = 0;
 var revM3MaxAttempts = 3;
+
+// ===== Schémas chargés : zoom, densité, tolérance adaptative, bulles =====
+var revZoomLevels = [1, 1.5, 2, 3, 4];
+var revZoomIdx = 0;
+var revM2Selected = null;
+
+function revZoomBar() {
+  var b = 'padding:4px 12px;font-size:16px;line-height:1;min-width:36px';
+  return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">' +
+    '<button class="btn-action" onclick="revSetZoom(-1)" style="' + b + '" aria-label="Dézoomer">−</button>' +
+    '<span class="rev-zoom-label" style="min-width:44px;text-align:center;font-size:12px;font-weight:700;color:var(--text2)">100%</span>' +
+    '<button class="btn-action" onclick="revSetZoom(1)" style="' + b + '" aria-label="Zoomer">+</button>' +
+    '<span style="font-size:11px;color:var(--text3)">Zoome pour séparer les repères serrés</span>' +
+  '</div>';
+}
+function revStageHtml(n, imgUrl, extraWrapStyle, imgFilter) {
+  return revZoomBar() +
+    '<div id="rev-m' + n + '-wrap" style="position:relative;width:100%;overflow:hidden;border-radius:12px;border:1px solid var(--border);-webkit-overflow-scrolling:touch;' + (extraWrapStyle || '') + '">' +
+      '<div id="rev-m' + n + '-stage" style="position:relative;width:100%">' +
+        '<img src="' + imgUrl + '" draggable="false"' + (n === 1 ? ' onload="revApplyDensity()"' : '') + ' style="display:block;width:100%;max-width:none;height:auto;user-select:none;-webkit-user-select:none' + (imgFilter ? ';filter:' + imgFilter : '') + '">' +
+      '</div>' +
+    '</div>';
+}
+function revSetZoom(delta) {
+  revZoomIdx = Math.max(0, Math.min(revZoomLevels.length - 1, revZoomIdx + delta));
+  var z = revZoomLevels[revZoomIdx];
+  [1, 2, 3].forEach(function(n) {
+    var wrap = document.getElementById('rev-m' + n + '-wrap');
+    var stage = document.getElementById('rev-m' + n + '-stage');
+    if (!wrap || !stage) return;
+    // On garde le même centre visible après le zoom
+    var cx = wrap.scrollWidth ? (wrap.scrollLeft + wrap.clientWidth / 2) / wrap.scrollWidth : 0.5;
+    var cy = wrap.scrollHeight ? (wrap.scrollTop + wrap.clientHeight / 2) / wrap.scrollHeight : 0.5;
+    wrap.style.overflow = z > 1 ? 'auto' : 'hidden';
+    wrap.style.maxHeight = z > 1 ? '75vh' : 'none';
+    stage.style.width = (z * 100) + '%';
+    wrap.scrollLeft = cx * wrap.scrollWidth - wrap.clientWidth / 2;
+    wrap.scrollTop = cy * wrap.scrollHeight - wrap.clientHeight / 2;
+  });
+  document.querySelectorAll('.rev-zoom-label').forEach(function(el) { el.textContent = Math.round(z * 100) + '%'; });
+}
+function revScrollToPoint(wrap, stage, point) {
+  if (!wrap || !stage || revZoomLevels[revZoomIdx] <= 1) return;
+  wrap.scrollTo({
+    left: point.x / 100 * stage.offsetWidth - wrap.clientWidth / 2,
+    top: point.y / 100 * stage.offsetHeight - wrap.clientHeight / 2,
+    behavior: 'smooth'
+  });
+}
+// Distance en pixels entre deux points exprimés en % du stage (tient compte du ratio de l'image)
+function revDistPx(stage, x1, y1, x2, y2) {
+  var r = stage.getBoundingClientRect();
+  return Math.hypot((x1 - x2) * r.width / 100, (y1 - y2) * r.height / 100);
+}
+// Tolérance : revTol % de la largeur, mais jamais plus que la moitié de la distance
+// au repère voisin le plus proche (sinon un clic "juste" peut tomber sur le voisin)
+function revTolPx(stage, point) {
+  var r = stage.getBoundingClientRect();
+  var base = revTol / 100 * r.width;
+  var nn = Infinity;
+  revPoints.forEach(function(o) {
+    if (o.id === point.id) return;
+    var d = revDistPx(stage, point.x, point.y, o.x, o.y);
+    if (d < nn) nn = d;
+  });
+  return Math.max(10, Math.min(base, nn * 0.5));
+}
+// Le niveau affiché dans le mode n est "chargé" s'il contient des repères très proches
+function revIsDense(n) {
+  var pts = revLevelPoints(n || 1);
+  var img = document.querySelector('#rev-m1-stage img');
+  var ratio = (img && img.naturalWidth) ? img.naturalHeight / img.naturalWidth : 0.75;
+  for (var i = 0; i < pts.length; i++) {
+    for (var j = i + 1; j < pts.length; j++) {
+      var d = Math.hypot(pts[i].x - pts[j].x, (pts[i].y - pts[j].y) * ratio);
+      if (d < 7) return true; // moins de 7 % de la largeur entre deux repères
+    }
+  }
+  return false;
+}
+// Sans argument : les 3 modes (appelé quand l'image a fini de charger)
+function revApplyDensity(only) {
+  [1, 2, 3].forEach(function(n) {
+    if (only && n !== only) return;
+    var s = document.getElementById('rev-m' + n + '-stage');
+    if (!s) return;
+    var dense = revIsDense(n);
+    s.style.setProperty('--rev-pin', dense ? '20px' : '26px');
+    s.style.setProperty('--rev-fs', dense ? '10px' : '12px');
+  });
+}
+// Bulle unique par schéma : affiche le nom d'un repère sans recouvrir tous les autres
+function revShowBubble(stage, point, text) {
+  var b = stage.querySelector('[data-rev-bubble]');
+  if (!b) {
+    b = document.createElement('div');
+    b.setAttribute('data-rev-bubble', '1');
+    b.style.cssText = 'position:absolute;z-index:6;pointer-events:none;width:max-content;max-width:220px;white-space:normal;background:var(--surface,#fff);color:var(--text,#111);border:2px solid var(--success,#2E7D32);border-radius:10px;padding:6px 10px;font-size:12.5px;font-weight:700;line-height:1.3;box-shadow:0 6px 18px rgba(0,0,0,0.25)';
+    stage.appendChild(b);
+  }
+  var tx = point.x < 18 ? '-12px' : (point.x > 82 ? 'calc(-100% + 12px)' : '-50%');
+  var ty = point.y < 15
+    ? 'calc(var(--rev-pin,26px) / 2 + 8px)'
+    : 'calc(-100% - var(--rev-pin,26px) / 2 - 8px)';
+  b.style.left = point.x + '%';
+  b.style.top = point.y + '%';
+  b.style.transform = 'translate(' + tx + ',' + ty + ')';
+  b.textContent = text;
+  b.dataset.for = point.id;
+  b.style.display = 'block';
+  revFadeIn(b);
+}
+function revHideBubble(stage) {
+  var b = stage && stage.querySelector('[data-rev-bubble]');
+  if (b) { b.style.display = 'none'; b.dataset.for = ''; }
+}
+
+// ===== Niveaux : 8 étiquettes max par niveau, pour chaque mode =====
+var REV_LEVEL_SIZE = 8;
+var revLevels = [];                        // [[repères du niveau 1], [niveau 2], ...]
+var revLevel = { 1: 0, 2: 0, 3: 0 };       // niveau en cours dans chaque mode
+var revLevelDone = { 1: [], 2: [], 3: [] }; // niveaux terminés dans chaque mode
+var revM3Scores = {};                      // score du mode 3 pour chaque niveau
+
+function revBuildLevels(points) {
+  var n = Math.max(1, Math.ceil(points.length / REV_LEVEL_SIZE));
+  var levels = [];
+  for (var k = 0; k < n; k++) levels.push([]);
+  // Répartition en quinconce (1er repère → niv. 1, 2e → niv. 2, ...) :
+  // les niveaux ont la même taille et deux repères voisins sont rarement ensemble
+  points.forEach(function(p, i) { levels[i % n].push(p); });
+  return levels;
+}
+function revResetLevels() {
+  revLevels = revBuildLevels(revPoints);
+  revLevel = { 1: 0, 2: 0, 3: 0 };
+  revLevelDone = { 1: [], 2: [], 3: [] };
+  revM3Scores = {};
+}
+function revLevelPoints(n) {
+  return revLevels[revLevel[n]] || [];
+}
+function revModeDone(n) {
+  return revLevels.length > 0 && revLevelDone[n].length >= revLevels.length;
+}
+function revNextLevel(n) {
+  // Prochain niveau pas encore fait, en partant du niveau actuel (-1 si tout est fait)
+  for (var i = 1; i <= revLevels.length; i++) {
+    var k = (revLevel[n] + i) % revLevels.length;
+    if (revLevelDone[n].indexOf(k) === -1) return k;
+  }
+  return -1;
+}
+function revGoLevel(n, k) {
+  if (k < 0 || k >= revLevels.length) return;
+  revLevel[n] = k;
+  if (n === 1) revInitM1();
+  else if (n === 2) revInitM2();
+  else revInitM3();
+}
+function revRenderLevelBar(n) {
+  var bar = document.getElementById('rev-m' + n + '-levels');
+  var done = document.getElementById('rev-m' + n + '-done');
+  if (done) { done.style.display = 'none'; done.innerHTML = ''; }
+  if (!bar) return;
+  if (revLevels.length <= 1) { bar.innerHTML = ''; return; } // schéma de 8 étiquettes ou moins : pas de niveaux
+  var html = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">' +
+    '<span style="font-size:12px;font-weight:700;color:var(--text2);margin-right:2px">Niveau</span>';
+  revLevels.forEach(function(lvl, k) {
+    var cur = k === revLevel[n];
+    var ok = revLevelDone[n].indexOf(k) !== -1;
+    var border = cur ? 'var(--teal,#0097A7)' : (ok ? 'var(--success,#2E7D32)' : 'var(--border)');
+    var bg = cur ? 'var(--teal,#0097A7)' : (ok ? 'rgba(46,125,50,0.10)' : 'var(--surface,#fff)');
+    var color = cur ? '#fff' : (ok ? 'var(--success,#2E7D32)' : 'var(--text2)');
+    html += '<button onclick="revGoLevel(' + n + ',' + k + ')" style="cursor:pointer;min-width:38px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;border:1.5px solid ' + border + ';background:' + bg + ';color:' + color + '">' + (k + 1) + (ok ? ' ✓' : '') + '</button>';
+  });
+  html += '<span style="font-size:11px;color:var(--text3);margin-left:4px">' + revLevelPoints(n).length + ' étiquettes</span></div>';
+  bar.innerHTML = html;
+}
+function revShowLevelDone(n) {
+  var el = document.getElementById('rev-m' + n + '-done');
+  if (!el) return;
+  var next = revNextLevel(n);
+  var btnStyle = 'background:var(--teal,#0097A7);color:#fff;border:none';
+  var btn = next >= 0
+    ? '<button class="btn-action" onclick="revGoLevel(' + n + ',' + next + ')" style="' + btnStyle + '">Niveau ' + (next + 1) + ' →</button>'
+    : (n < 3 ? '<button class="btn-action" onclick="revShowTab(' + (n + 1) + ')" style="' + btnStyle + '">Mode suivant →</button>' : '');
+  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:rgba(46,125,50,0.08);border:1.5px solid rgba(46,125,50,0.3);border-radius:12px;padding:10px 12px;margin-bottom:10px">' +
+    '<span style="font-size:13px;font-weight:700;color:var(--success,#2E7D32)">' + (next >= 0 ? '✓ Niveau ' + (revLevel[n] + 1) + ' terminé' : '✓ Tous les niveaux sont faits') + '</span>' + btn +
+  '</div>';
+  el.style.display = 'block';
+  revFadeIn(el);
+  if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function revLevelCompleted(n) {
+  var first = revLevelDone[n].indexOf(revLevel[n]) === -1;
+  if (first) revLevelDone[n].push(revLevel[n]);
+  revRenderLevelBar(n);
+  // Mode 3 : c'est l'écran de score qui affiche le bouton "Niveau suivant"
+  if (revLevels.length > 1 && n !== 3) revShowLevelDone(n);
+  revUpdateBadges();
+  // Tous les niveaux du mode faits pour la 1re fois : on passe au mode suivant comme avant
+  if (first && revModeDone(n) && n < 3) setTimeout(function() { revShowTab(n + 1); }, 900);
+}
 
 function revShuffle(arr) {
   var a = arr.slice();
@@ -1368,32 +1575,14 @@ function revFadeIn(el) {
   });
 }
 function revUpdateBadges() {
-  var s1 = document.getElementById('rev-m1-stage');
-  var s2 = document.getElementById('rev-m2-stage');
-  var s3 = document.getElementById('rev-m3-summary');
-  var b1 = document.getElementById('rev-tab-1-badge');
-  var b2 = document.getElementById('rev-tab-2-badge');
-  var b3 = document.getElementById('rev-tab-3-badge');
-  if (s1 && b1) {
-    var pins = s1.querySelectorAll('[data-rev-pin]');
-    var revealed = s1.querySelectorAll('[data-rev-pin][data-revealed="true"]');
-    var done1 = pins.length && revealed.length === pins.length;
-    var wasHidden1 = b1.style.display === 'none';
-    b1.style.display = done1 ? 'flex' : 'none';
-    if (done1 && wasHidden1) setTimeout(() => revShowTab(2), 800);
-  }
-  if (s2 && b2) {
-    var hotspots = s2.querySelectorAll('[data-rev-hotspot]');
-    var filled = s2.querySelectorAll('[data-rev-hotspot][data-filled="true"]');
-    var done2 = hotspots.length && filled.length === hotspots.length;
-    var wasHidden2 = b2.style.display === 'none';
-    b2.style.display = done2 ? 'flex' : 'none';
-    if (done2 && wasHidden2) setTimeout(() => revShowTab(3), 800);
-  }
-  if (b3) {
-    b3.style.display = (s3 && s3.style.display === 'block') ? 'flex' : 'none';
-  }
-  var allDone = b1 && b2 && b3 && b1.style.display === 'flex' && b2.style.display === 'flex' && b3.style.display === 'flex';
+  // Un mode est validé (✓) quand tous ses niveaux sont terminés
+  var allDone = true;
+  [1, 2, 3].forEach(function(n) {
+    var b = document.getElementById('rev-tab-' + n + '-badge');
+    var done = revModeDone(n);
+    if (b) b.style.display = done ? 'flex' : 'none';
+    if (!done) allDone = false;
+  });
   if (allDone && !_revNotedThisSession) {
     _revNotedThisSession = true;
     setTimeout(revShowDifficultyPopup, 400);
@@ -1485,124 +1674,326 @@ function revShowTab(n) {
     }
   }
 }
+
 function revInitM1() {
   var stage = document.getElementById('rev-m1-stage');
   var list = document.getElementById('rev-m1-list');
   if (!stage || !list) return;
-  stage.querySelectorAll('[data-rev-pin]').forEach(function(p) { p.remove(); });
+  stage.querySelectorAll('[data-rev-pin],[data-rev-bubble]').forEach(function(p) { p.remove(); });
   list.innerHTML = '';
-  revPoints.forEach(function(p, i) {
+  revRenderLevelBar(1);
+  // Clic ailleurs sur le schéma = on ferme la bulle
+  stage.onclick = function(e) {
+    if (!e.target.closest('[data-rev-pin]')) revHideBubble(stage);
+  };
+  revLevelPoints(1).forEach(function(p) {
+    var i = revPoints.indexOf(p); // numéro global, identique d'un niveau à l'autre
     var pin = document.createElement('div');
     pin.setAttribute('data-rev-pin', p.id);
-    pin.style.cssText = 'position:absolute;min-width:26px;height:26px;transform:translate(-50%,-50%);border-radius:50%;background:var(--teal-dark,#006064);color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25);padding:0;white-space:nowrap;transition:background .15s ease,border-radius .15s ease,padding .15s ease';
+    pin.style.cssText = 'position:absolute;z-index:2;min-width:var(--rev-pin,26px);height:var(--rev-pin,26px);transform:translate(-50%,-50%);border-radius:50%;background:var(--teal-dark,#006064);color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:var(--rev-fs,12px);font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25);padding:0;white-space:nowrap;box-sizing:border-box;transition:background .15s ease,border-radius .15s ease,padding .15s ease';
     pin.style.left = p.x + '%';
     pin.style.top = p.y + '%';
     pin.textContent = (i + 1);
-    pin.addEventListener('click', function() { revM1Reveal(p.id, pin.dataset.revealed !== 'true'); });
+    pin.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      var revealed = pin.dataset.revealed === 'true';
+      if (!revIsDense(1)) { revM1Reveal(p.id, !revealed); return; }
+      // Mode "schéma chargé" : 1er clic = révèle + bulle, 2e clic = re-cache
+      if (!revealed) { revM1Reveal(p.id, true, true); return; }
+      var b = stage.querySelector('[data-rev-bubble]');
+      if (b && b.dataset.for === p.id && b.style.display !== 'none') revM1Reveal(p.id, false);
+      else revShowBubble(stage, p, p.label);
+    });
     stage.appendChild(pin);
     var row = document.createElement('li');
     row.setAttribute('data-rev-row', p.id);
     row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13.5px';
-    row.innerHTML = '<span style="width:22px;height:22px;border-radius:50%;background:var(--teal-dark,#006064);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + (i + 1) + '</span><span style="flex:1;font-weight:600;color:var(--text3)">? ? ? ? ? ?</span><button class="btn-action" style="font-size:11.5px;padding:5px 10px">Révéler</button>';
-    row.querySelector('button').addEventListener('click', function() { revM1Reveal(p.id, true); });
+    row.innerHTML = '<span title="Voir sur le schéma" style="cursor:pointer;width:22px;height:22px;border-radius:50%;background:var(--teal-dark,#006064);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + (i + 1) + '</span><span style="flex:1;font-weight:600;color:var(--text3);cursor:pointer">? ? ? ? ? ?</span><button class="btn-action" style="font-size:11.5px;padding:5px 10px">Révéler</button>';
+    row.querySelector('button').addEventListener('click', function() { revM1Reveal(p.id, true, true); });
+    row.querySelectorAll('span').forEach(function(s) {
+      s.addEventListener('click', function() { revM1Locate(p.id); });
+    });
     list.appendChild(row);
   });
+  revApplyDensity(1);
 }
-function revM1Reveal(id, show) {
+function revM1Reveal(id, show, withBubble) {
   var point = revPoints.find(function(p) { return p.id === id; });
   var pin = document.querySelector('[data-rev-pin="' + id + '"]');
   var row = document.querySelector('[data-rev-row="' + id + '"]');
-  if (!point || !pin || !row) return;
+  var stage = document.getElementById('rev-m1-stage');
+  if (!point || !pin || !row || !stage) return;
   var ans = row.querySelector('span:nth-child(2)');
   var btn = row.querySelector('button');
+  var idx = revPoints.findIndex(function(p) { return p.id === id; });
+  var dense = revIsDense(1);
   if (show) {
     pin.style.background = 'var(--success,#2E7D32)';
-    pin.style.borderRadius = '999px';
-    pin.style.padding = '4px 12px';
-    pin.style.height = 'auto';
-    pin.textContent = point.label;
     pin.dataset.revealed = 'true';
+    if (dense) {
+      // On garde un petit rond numéroté : le texte va dans la bulle + la liste
+      pin.style.borderRadius = '50%';
+      pin.style.padding = '0';
+      pin.style.height = 'var(--rev-pin,26px)';
+      pin.textContent = (idx + 1);
+      pin.title = point.label;
+      if (withBubble) revShowBubble(stage, point, point.label);
+    } else {
+      pin.style.borderRadius = '999px';
+      pin.style.padding = '4px 12px';
+      pin.style.height = 'auto';
+      pin.textContent = point.label;
+    }
     ans.textContent = point.label;
     ans.style.color = 'var(--success,#2E7D32)';
     btn.textContent = 'Cacher';
-    btn.onclick = function() { revM1Reveal(id, false); };
+    btn.onclick = function(ev) { ev.stopImmediatePropagation(); revM1Reveal(id, false); };
   } else {
     pin.style.background = 'var(--teal-dark,#006064)';
     pin.style.borderRadius = '50%';
     pin.style.padding = '0';
-    pin.style.height = '26px';
-    var idx = revPoints.findIndex(function(p) { return p.id === id; });
+    pin.style.height = 'var(--rev-pin,26px)';
     pin.textContent = (idx + 1);
+    pin.removeAttribute('title');
     pin.dataset.revealed = 'false';
+    var b = stage.querySelector('[data-rev-bubble]');
+    if (b && b.dataset.for === id) revHideBubble(stage);
     ans.textContent = '? ? ? ? ? ?';
     ans.style.color = 'var(--text3)';
     btn.textContent = 'Révéler';
-    btn.onclick = function() { revM1Reveal(id, true); };
+    btn.onclick = function(ev) { ev.stopImmediatePropagation(); revM1Reveal(id, true, true); };
   }
-  revUpdateBadges();
+  // Niveau terminé quand tous les repères du niveau sont révélés
+  if (show) {
+    var pins = stage.querySelectorAll('[data-rev-pin]');
+    var revealed = stage.querySelectorAll('[data-rev-pin][data-revealed="true"]');
+    if (pins.length && revealed.length === pins.length) revLevelCompleted(1);
+  }
 }
 function revM1SetAll(show) {
-  revPoints.forEach(function(p) { revM1Reveal(p.id, show); });
+  var stage = document.getElementById('rev-m1-stage');
+  if (stage) revHideBubble(stage);
+  revLevelPoints(1).forEach(function(p) { revM1Reveal(p.id, show, false); });
 }
+// Clic sur une ligne de la liste : on montre où est le repère sur le schéma
+function revM1Locate(id) {
+  var pin = document.querySelector('[data-rev-pin="' + id + '"]');
+  var stage = document.getElementById('rev-m1-stage');
+  var point = revPoints.find(function(p) { return p.id === id; });
+  if (!pin || !stage || !point) return;
+  revScrollToPoint(document.getElementById('rev-m1-wrap'), stage, point);
+  pin.style.zIndex = '4';
+  if (pin.animate) {
+    pin.animate([
+      { transform: 'translate(-50%,-50%) scale(1)' },
+      { transform: 'translate(-50%,-50%) scale(1.7)' },
+      { transform: 'translate(-50%,-50%) scale(1)' }
+    ], { duration: 650, iterations: 2 });
+  }
+  setTimeout(function() { pin.style.zIndex = '2'; }, 1300);
+  if (pin.dataset.revealed === 'true' && revIsDense(1)) revShowBubble(stage, point, point.label);
+}
+
 function revInitM2() {
   var stage = document.getElementById('rev-m2-stage');
   var tray = document.getElementById('rev-m2-tray');
   var scoreEl = document.getElementById('rev-m2-score');
   if (!stage || !tray || !scoreEl) return;
-  stage.querySelectorAll('[data-rev-hotspot]').forEach(function(h) { h.remove(); });
+  stage.querySelectorAll('[data-rev-hotspot],[data-rev-bubble],[data-rev-mark]').forEach(function(h) { h.remove(); });
   tray.innerHTML = '';
-  scoreEl.textContent = '0 / ' + revPoints.length + ' placés';
-  revPoints.forEach(function(p) {
+  revM2Selected = null;
+  revM2UpdateHint();
+  revRenderLevelBar(2);
+  var pts = revLevelPoints(2);
+  scoreEl.textContent = '0 / ' + pts.length + ' placés';
+  pts.forEach(function(p) {
     var h = document.createElement('div');
     h.setAttribute('data-rev-hotspot', p.id);
-    h.style.cssText = 'position:absolute;min-width:30px;height:30px;transform:translate(-50%,-50%);border-radius:50%;border:2.5px dashed var(--teal,#0097A7);background:rgba(255,255,255,0.5);white-space:nowrap;padding:0';
+    h.style.cssText = 'position:absolute;z-index:2;min-width:calc(var(--rev-pin,26px) + 4px);height:calc(var(--rev-pin,26px) + 4px);transform:translate(-50%,-50%);border-radius:50%;border:2.5px dashed var(--teal,#0097A7);background:rgba(255,255,255,0.5);white-space:nowrap;padding:0;box-sizing:border-box';
     h.style.left = p.x + '%';
     h.style.top = p.y + '%';
     stage.appendChild(h);
   });
-  revShuffle(revPoints).forEach(function(p) {
+  revShuffle(pts).forEach(function(p) {
     var chip = document.createElement('div');
     chip.setAttribute('data-rev-chip', p.id);
     chip.textContent = p.label;
-    chip.style.cssText = 'touch-action:none;cursor:grab;background:var(--surface,#fff);border:1.5px solid var(--teal,#0097A7);color:var(--teal-dark,#006064);font-size:12.5px;font-weight:700;padding:8px 13px;border-radius:999px';
+    chip.style.cssText = 'touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;background:var(--surface,#fff);border:1.5px solid var(--teal,#0097A7);color:var(--teal-dark,#006064);font-size:12.5px;font-weight:700;padding:8px 13px;border-radius:999px';
     chip.addEventListener('pointerdown', revM2DragStart);
     tray.appendChild(chip);
   });
+  stage.onclick = revM2StageClick;
+  revApplyDensity(2);
+}
+function revM2UpdateHint() {
+  var hint = document.getElementById('rev-m2-hint');
+  if (!hint) return;
+  var p = revM2Selected ? revPoints.find(function(x) { return x.id === revM2Selected; }) : null;
+  hint.innerHTML = p
+    ? '👉 Touche maintenant l\'emplacement de <b>' + p.label + '</b> sur le schéma'
+    : 'Glisse une étiquette sur le schéma, ou touche-la puis touche son emplacement.';
+}
+function revM2Select(id) {
+  revM2Selected = (id && revM2Selected !== id) ? id : null;
+  document.querySelectorAll('#rev-m2-tray [data-rev-chip]').forEach(function(c) {
+    var sel = c.dataset.revChip === revM2Selected;
+    c.style.background = sel ? 'var(--teal,#0097A7)' : 'var(--surface,#fff)';
+    c.style.color = sel ? '#fff' : 'var(--teal-dark,#006064)';
+    c.style.boxShadow = sel ? '0 0 0 3px rgba(0,151,167,0.25)' : '';
+  });
+  revM2UpdateHint();
+}
+function revM2StageClick(e) {
+  var stage = document.getElementById('rev-m2-stage');
+  if (!stage) return;
+  if (revM2Selected) {
+    var chip = document.querySelector('#rev-m2-tray [data-rev-chip="' + revM2Selected + '"]');
+    if (chip && revM2TryPlace(chip.dataset.revChip, e.clientX, e.clientY)) {
+      chip.style.display = 'none';
+      revM2Select(null);
+      revM2CheckLevel();
+    }
+    return;
+  }
+  var h = e.target.closest('[data-rev-hotspot][data-filled="true"]');
+  if (h) {
+    var p = revPoints.find(function(x) { return x.id === h.dataset.revHotspot; });
+    if (p) revShowBubble(stage, p, p.label);
+  } else {
+    revHideBubble(stage);
+  }
+}
+// Essaie de poser l'étiquette `id` au point écran (cx, cy). Renvoie true si c'est juste.
+function revM2TryPlace(id, cx, cy) {
+  var stage = document.getElementById('rev-m2-stage');
+  var sRect = stage.getBoundingClientRect();
+  var px = ((cx - sRect.left) / sRect.width) * 100;
+  var py = ((cy - sRect.top) / sRect.height) * 100;
+  var nearest = null, nearestPoint = null, nearestDist = Infinity;
+  stage.querySelectorAll('[data-rev-hotspot]').forEach(function(h) {
+    if (h.dataset.filled === 'true') return;
+    var pt = revPoints.find(function(x) { return x.id === h.dataset.revHotspot; });
+    if (!pt) return;
+    var d = revDistPx(stage, px, py, pt.x, pt.y);
+    if (d < nearestDist) { nearestDist = d; nearest = h; nearestPoint = pt; }
+  });
+  var inside = px >= 0 && px <= 100 && py >= 0 && py <= 100;
+  if (nearest && nearestDist <= revTolPx(stage, nearestPoint)) {
+    if (nearest.dataset.revHotspot === id) {
+      revM2Fill(nearest, nearestPoint.label);
+      var filledCount = stage.querySelectorAll('[data-filled="true"]').length;
+      document.getElementById('rev-m2-score').textContent = filledCount + ' / ' + revLevelPoints(2).length + ' placés';
+      return true;
+    }
+    nearest.style.borderColor = 'var(--danger,#E57373)';
+    nearest.style.background = 'rgba(229,115,115,0.18)';
+    setTimeout(function() {
+      if (nearest.dataset.filled === 'true') return;
+      nearest.style.borderColor = 'var(--teal,#0097A7)';
+      nearest.style.background = 'rgba(255,255,255,0.5)';
+    }, 450);
+  } else if (inside) {
+    // Posé dans le vide : petit ✕ temporaire pour que l'utilisateur voie qu'il a raté
+    var mark = document.createElement('div');
+    mark.setAttribute('data-rev-mark', 'miss');
+    mark.style.cssText = 'position:absolute;z-index:3;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:var(--danger,#E57373);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;pointer-events:none;transition:opacity .3s';
+    mark.style.left = px + '%';
+    mark.style.top = py + '%';
+    mark.textContent = '✕';
+    stage.appendChild(mark);
+    setTimeout(function() { mark.style.opacity = '0'; }, 500);
+    setTimeout(function() { mark.remove(); }, 850);
+  }
+  return false;
+}
+function revM2Fill(h, label) {
+  h.dataset.filled = 'true';
+  h.style.borderStyle = 'solid';
+  h.style.background = 'var(--success,#2E7D32)';
+  h.style.borderColor = 'var(--success,#2E7D32)';
+  h.style.color = '#fff';
+  h.style.display = 'flex';
+  h.style.alignItems = 'center';
+  h.style.justifyContent = 'center';
+  h.style.fontWeight = '800';
+  h.style.cursor = 'pointer';
+  if (revIsDense(2)) {
+    // Schéma chargé : on reste compact, le nom s'affiche en bulle au toucher
+    h.style.fontSize = 'var(--rev-fs,12px)';
+    h.textContent = '✓';
+    h.title = label;
+  } else {
+    h.style.borderRadius = '999px';
+    h.style.height = 'auto';
+    h.style.padding = '4px 12px';
+    h.style.fontSize = '12px';
+    h.textContent = label;
+  }
 }
 function revM2DragStart(e) {
+  if (e.button !== undefined && e.button !== 0) return;
   var chip = e.currentTarget;
-  var r = chip.getBoundingClientRect();
-  revDrag = { chip: chip, offX: e.clientX - r.left, offY: e.clientY - r.top, parent: chip.parentNode, next: chip.nextSibling, w: r.width };
-  document.body.appendChild(chip);
-  chip.style.position = 'fixed';
-  chip.style.zIndex = '9999';
-  chip.style.width = revDrag.w + 'px';
-  chip.style.cursor = 'grabbing';
-  chip.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)';
-  revM2DragMove(e);
+  // On ne démarre le vrai drag qu'après quelques pixels : un simple toucher = sélection
+  revDrag = { chip: chip, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, active: false };
   chip.setPointerCapture(e.pointerId);
   chip.addEventListener('pointermove', revM2DragMove);
   chip.addEventListener('pointerup', revM2DragEnd);
   chip.addEventListener('pointercancel', revM2DragEnd);
 }
+function revM2BeginDrag() {
+  var chip = revDrag.chip;
+  var r = chip.getBoundingClientRect();
+  revDrag.offX = revDrag.startX - r.left;
+  revDrag.offY = revDrag.startY - r.top;
+  revDrag.parent = chip.parentNode;
+  revDrag.next = chip.nextSibling;
+  revDrag.w = r.width;
+  revDrag.active = true;
+  revM2Select(null);
+  document.body.appendChild(chip);
+  try { chip.setPointerCapture(revDrag.pointerId); } catch (err) {}
+  chip.style.position = 'fixed';
+  chip.style.zIndex = '9999';
+  chip.style.width = revDrag.w + 'px';
+  chip.style.cursor = 'grabbing';
+  chip.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)';
+}
 function revM2DragMove(e) {
   if (!revDrag) return;
+  if (!revDrag.active) {
+    if (Math.hypot(e.clientX - revDrag.startX, e.clientY - revDrag.startY) < 6) return;
+    revM2BeginDrag();
+  }
   revDrag.chip.style.left = (e.clientX - revDrag.offX) + 'px';
   revDrag.chip.style.top = (e.clientY - revDrag.offY) + 'px';
   revM2AutoScroll(e);
 }
 function revM2AutoScroll(e) {
   if (!revDrag) return;
-  var margin = 80, speed = 14, dir = 0;
-  if (e.clientY < margin) { dir = -1; }
-  else if (e.clientY > window.innerHeight - margin) { dir = 1; }
-  revDrag.scrollDir = dir;
-  if (dir !== 0 && !revDrag.scrollTimer) {
+  var margin = 70, speed = 14;
+  var wy = 0, sx = 0, sy = 0;
+  if (e.clientY < margin) wy = -1;
+  else if (e.clientY > window.innerHeight - margin) wy = 1;
+  // Si le schéma est zoomé, on fait aussi défiler son cadre quand on approche des bords
+  var wrap = document.getElementById('rev-m2-wrap');
+  if (wrap && revZoomLevels[revZoomIdx] > 1) {
+    var r = wrap.getBoundingClientRect(), m = 40;
+    if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+      if (e.clientX < r.left + m) sx = -1; else if (e.clientX > r.right - m) sx = 1;
+      if (e.clientY < r.top + m) sy = -1; else if (e.clientY > r.bottom - m) sy = 1;
+    }
+  }
+  revDrag.scroll = { wy: wy, sx: sx, sy: sy };
+  var any = wy || sx || sy;
+  if (any && !revDrag.scrollTimer) {
     revDrag.scrollTimer = setInterval(function() {
-      if (!revDrag || !revDrag.scrollDir) return;
-      window.scrollBy(0, revDrag.scrollDir * speed);
+      if (!revDrag || !revDrag.scroll) return;
+      var s = revDrag.scroll;
+      if (s.wy) window.scrollBy(0, s.wy * speed);
+      var w = document.getElementById('rev-m2-wrap');
+      if (w && (s.sx || s.sy)) w.scrollBy(s.sx * speed, s.sy * speed);
     }, 16);
-  } else if (dir === 0 && revDrag.scrollTimer) {
+  } else if (!any && revDrag.scrollTimer) {
     clearInterval(revDrag.scrollTimer);
     revDrag.scrollTimer = null;
   }
@@ -1614,45 +2005,13 @@ function revM2DragEnd(e) {
   chip.removeEventListener('pointermove', revM2DragMove);
   chip.removeEventListener('pointerup', revM2DragEnd);
   chip.removeEventListener('pointercancel', revM2DragEnd);
-  var stage = document.getElementById('rev-m2-stage');
-  var sRect = stage.getBoundingClientRect();
-  var px = ((e.clientX - sRect.left) / sRect.width) * 100;
-  var py = ((e.clientY - sRect.top) / sRect.height) * 100;
-  var nearest = null, nearestDist = Infinity;
-  stage.querySelectorAll('[data-rev-hotspot]').forEach(function(h) {
-    if (h.dataset.filled === 'true') return;
-    var hx = parseFloat(h.style.left), hy = parseFloat(h.style.top);
-    var d = Math.hypot(px - hx, py - hy);
-    if (d < nearestDist) { nearestDist = d; nearest = h; }
-  });
-  var placed = false;
-  if (nearest && nearestDist <= revTol && nearest.dataset.revHotspot === chip.dataset.revChip) {
-    nearest.style.borderStyle = 'solid';
-    nearest.style.background = 'var(--success,#2E7D32)';
-    nearest.style.borderColor = 'var(--success,#2E7D32)';
-    nearest.style.color = '#fff';
-    nearest.style.display = 'flex';
-    nearest.style.alignItems = 'center';
-    nearest.style.justifyContent = 'center';
-    nearest.style.fontWeight = '800';
-    nearest.style.borderRadius = '999px';
-    nearest.style.height = 'auto';
-    nearest.style.padding = '4px 12px';
-    nearest.style.fontSize = '12px';
-    nearest.textContent = chip.textContent;
-    nearest.dataset.filled = 'true';
-    placed = true;
-    var scoreEl = document.getElementById('rev-m2-score');
-    var filledCount = document.querySelectorAll('#rev-m2-stage [data-filled="true"]').length;
-    scoreEl.textContent = filledCount + ' / ' + revPoints.length + ' placés';
-  } else if (nearest && nearestDist <= revTol) {
-    nearest.style.borderColor = 'var(--danger,#E57373)';
-    nearest.style.background = 'rgba(229,115,115,0.18)';
-    setTimeout(function() {
-      nearest.style.borderColor = 'var(--teal,#0097A7)';
-      nearest.style.background = 'rgba(255,255,255,0.5)';
-    }, 450);
+  if (!revDrag.active) {
+    // Simple toucher : on sélectionne l'étiquette (mode "toucher puis toucher")
+    revDrag = null;
+    if (e.type === 'pointerup') revM2Select(chip.dataset.revChip);
+    return;
   }
+  var placed = e.type === 'pointerup' && revM2TryPlace(chip.dataset.revChip, e.clientX, e.clientY);
   chip.style.position = '';
   chip.style.left = '';
   chip.style.top = '';
@@ -1663,16 +2022,26 @@ function revM2DragEnd(e) {
   revDrag.parent.insertBefore(chip, revDrag.next);
   if (placed) { chip.style.display = 'none'; }
   revDrag = null;
-  revUpdateBadges();
+  if (placed) revM2CheckLevel();
+}
+// Niveau terminé quand tous les emplacements du niveau sont remplis
+function revM2CheckLevel() {
+  var stage = document.getElementById('rev-m2-stage');
+  if (!stage) return;
+  var all = stage.querySelectorAll('[data-rev-hotspot]').length;
+  var filled = stage.querySelectorAll('[data-rev-hotspot][data-filled="true"]').length;
+  if (all && filled === all) revLevelCompleted(2);
 }
 function revInitM3() {
   var stage = document.getElementById('rev-m3-stage');
+  var wrap = document.getElementById('rev-m3-wrap');
   var summary = document.getElementById('rev-m3-summary');
   if (!stage || !summary) return;
-  stage.style.display = '';
+  if (wrap) wrap.style.display = '';
   stage.querySelectorAll('[data-rev-mark]').forEach(function(m) { m.remove(); });
   summary.style.display = 'none';
-  revM3Queue = revShuffle(revPoints);
+  revRenderLevelBar(3);
+  revM3Queue = revShuffle(revLevelPoints(3));
   revM3Idx = 0;
   revM3Score = 0;
   revM3Locked = false;
@@ -1704,14 +2073,16 @@ function revM3Click(e) {
   var px = ((e.clientX - r.left) / r.width) * 100;
   var py = ((e.clientY - r.top) / r.height) * 100;
   var target = revM3Queue[revM3Idx];
-  var dist = Math.hypot(px - target.x, py - target.y);
+  // Distance en pixels réels + tolérance adaptée aux voisins
+  var dist = revDistPx(stage, px, py, target.x, target.y);
+  var tol = revTolPx(stage, target);
   stage.querySelectorAll('[data-rev-mark="attempt"]').forEach(function(m) { m.remove(); });
   var mark = document.createElement('div');
   mark.setAttribute('data-rev-mark', 'attempt');
-  mark.style.cssText = 'position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;pointer-events:none';
+  mark.style.cssText = 'position:absolute;width:var(--rev-pin,26px);height:var(--rev-pin,26px);transform:translate(-50%,-50%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:var(--rev-fs,12px);color:#fff;pointer-events:none';
   mark.style.left = px + '%';
   mark.style.top = py + '%';
-  if (dist <= revTol) {
+  if (dist <= tol) {
     mark.style.background = 'var(--success,#2E7D32)';
     mark.textContent = '✓';
     stage.appendChild(mark);
@@ -1727,10 +2098,11 @@ function revM3Click(e) {
     if (revM3Attempts >= revM3MaxAttempts) {
       var tmark = document.createElement('div');
       tmark.setAttribute('data-rev-mark', 'target');
-      tmark.style.cssText = 'position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:var(--success,#2E7D32);opacity:.55;pointer-events:none';
+      tmark.style.cssText = 'position:absolute;width:var(--rev-pin,26px);height:var(--rev-pin,26px);transform:translate(-50%,-50%);border-radius:50%;background:var(--success,#2E7D32);opacity:.55;pointer-events:none';
       tmark.style.left = target.x + '%';
       tmark.style.top = target.y + '%';
       stage.appendChild(tmark);
+      revScrollToPoint(document.getElementById('rev-m3-wrap'), stage, target);
       revM3Locked = true;
       revM3ShowNextBtn();
     } else {
@@ -1745,12 +2117,24 @@ function revM3ShowNextBtn() {
   pEl.onclick = function() { revM3Idx++; revM3Render(); };
 }
 function revM3End() {
-  var stage = document.getElementById('rev-m3-stage');
+  var wrap = document.getElementById('rev-m3-wrap');
   var summary = document.getElementById('rev-m3-summary');
-  stage.style.display = 'none';
+  if (wrap) wrap.style.display = 'none';
+  revM3Scores[revLevel[3]] = revM3Score;
+  revLevelCompleted(3);
+  var multi = revLevels.length > 1;
+  var next = revNextLevel(3);
+  var html = '<div style="text-align:center;padding:30px 10px"><div style="font-size:34px;font-weight:800;color:var(--teal-dark,#006064)">' + revM3Score + ' / ' + revM3Queue.length + '</div><div style="color:var(--text2);font-size:13.5px;margin-top:6px">repères correctement localisés' + (multi ? ' (niveau ' + (revLevel[3] + 1) + ')' : '') + '</div>';
+  if (multi && next >= 0) {
+    html += '<button class="btn-action" onclick="revGoLevel(3,' + next + ')" style="margin-top:16px;background:var(--teal,#0097A7);color:#fff;border:none">Niveau ' + (next + 1) + ' →</button>';
+  } else if (multi) {
+    var total = 0;
+    Object.keys(revM3Scores).forEach(function(k) { total += revM3Scores[k]; });
+    html += '<div style="margin-top:14px;font-size:15px;font-weight:800;color:var(--text)">Total : ' + total + ' / ' + revPoints.length + '</div>';
+  }
+  html += '</div>';
+  summary.innerHTML = html;
   summary.style.display = 'block';
-  summary.innerHTML = '<div style="text-align:center;padding:30px 10px"><div style="font-size:34px;font-weight:800;color:var(--teal-dark,#006064)">' + revM3Score + ' / ' + revM3Queue.length + '</div><div style="color:var(--text2);font-size:13.5px;margin-top:6px">repères correctement localisés</div></div>';
-  revUpdateBadges();
 }
 
 function afficherFormulaireSchema(seanceId) {
