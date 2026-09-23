@@ -1658,4 +1658,12 @@ input[type="file"]{display:none;}
 body.focus-mode .sidebar {
   display: flex;
 }
+
+/* ===== Révision : sur ordinateur, étiquettes à droite du schéma (mode glisser-déposer) ===== */
+@media (min-width: 900px) {
+  #rev-m2-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 18px; align-items: start; }
+  #rev-m2-side { position: sticky; top: 16px; }
+  #rev-m2-side #rev-m2-hint { margin-top: 0 !important; }
+  #rev-m2-side #rev-m2-tray { flex-direction: column; align-items: flex-start; }
+}
 /* ── FIN STYLES ── */
