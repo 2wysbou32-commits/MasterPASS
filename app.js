@@ -1318,11 +1318,15 @@ async function ouvrirSchema(seanceId, schemaId) {
     html += '<div id="rev-panel-2" style="display:none">' +
       '<div id="rev-m2-levels"></div>' +
       '<div id="rev-m2-done" style="display:none"></div>' +
-      revStageHtml(2, imgUrl, '', 'saturate(.85)') +
-      '<div id="rev-m2-hint" style="font-size:12px;color:var(--text2);margin-top:10px"></div>' +
-      '<div id="rev-m2-tray" style="display:flex;flex-wrap:wrap;gap:9px;margin-top:10px"></div>' +
-      '<div id="rev-m2-score" style="margin-top:10px;font-size:12.5px;font-weight:700;color:var(--text2)"></div>' +
-      '<button class="btn-action" onclick="revInitM2()" style="margin-top:10px">Recommencer</button>' +
+      '<div id="rev-m2-layout">' +
+        '<div id="rev-m2-main">' + revStageHtml(2, imgUrl, '', 'saturate(.85)') + '</div>' +
+        '<div id="rev-m2-side">' +
+          '<div id="rev-m2-hint" style="font-size:12px;color:var(--text2);margin-top:10px"></div>' +
+          '<div id="rev-m2-tray" style="display:flex;flex-wrap:wrap;gap:9px;margin-top:10px"></div>' +
+          '<div id="rev-m2-score" style="margin-top:10px;font-size:12.5px;font-weight:700;color:var(--text2)"></div>' +
+          '<button class="btn-action" onclick="revInitM2()" style="margin-top:10px">Recommencer</button>' +
+        '</div>' +
+      '</div>' +
     '</div>';
     html += '<div id="rev-panel-3" style="display:none">' +
       '<div id="rev-m3-levels"></div>' +
@@ -1370,7 +1374,7 @@ function revStageHtml(n, imgUrl, extraWrapStyle, imgFilter) {
   return revZoomBar() +
     '<div id="rev-m' + n + '-wrap" style="position:relative;width:100%;overflow:hidden;border-radius:12px;border:1px solid var(--border);-webkit-overflow-scrolling:touch;' + (extraWrapStyle || '') + '">' +
       '<div id="rev-m' + n + '-stage" style="position:relative;width:100%">' +
-        '<img src="' + imgUrl + '" draggable="false"' + (n === 1 ? ' onload="revApplyDensity()"' : '') + ' style="display:block;width:100%;max-width:none;height:auto;user-select:none;-webkit-user-select:none' + (imgFilter ? ';filter:' + imgFilter : '') + '">' +
+        '<img src="' + imgUrl + '" draggable="false"' + (n === 1 ? ' onload="revApplyDensity();revSetZoom(0)"' : '') + ' style="display:block;width:100%;max-width:none;height:auto;user-select:none;-webkit-user-select:none' + (imgFilter ? ';filter:' + imgFilter : '') + '">' +
       '</div>' +
     '</div>';
 }
@@ -1387,11 +1391,23 @@ function revSetZoom(delta) {
     wrap.style.overflow = z > 1 ? 'auto' : 'hidden';
     wrap.style.maxHeight = z > 1 ? '75vh' : 'none';
     stage.style.width = (z * 100) + '%';
+    // Sur grand écran : le schéma ne dépasse pas 60 % de la hauteur de la fenêtre
+    var img = stage.querySelector('img');
+    var fit = (img && img.naturalWidth) ? Math.round(window.innerHeight * 0.6 * img.naturalWidth / img.naturalHeight) : 0;
+    stage.style.maxWidth = fit ? (z * fit) + 'px' : 'none';
+    wrap.style.maxWidth = (fit && z === 1) ? fit + 'px' : 'none';
+    wrap.style.marginLeft = wrap.style.marginRight = 'auto';
     wrap.scrollLeft = cx * wrap.scrollWidth - wrap.clientWidth / 2;
     wrap.scrollTop = cy * wrap.scrollHeight - wrap.clientHeight / 2;
   });
   document.querySelectorAll('.rev-zoom-label').forEach(function(el) { el.textContent = Math.round(z * 100) + '%'; });
 }
+
+// Si la fenêtre change de taille, on recalcule la taille du schéma
+window.addEventListener('resize', function() {
+  if (document.getElementById('rev-m1-stage')) revSetZoom(0);
+});
+
 function revScrollToPoint(wrap, stage, point) {
   if (!wrap || !stage || revZoomLevels[revZoomIdx] <= 1) return;
   wrap.scrollTo({
