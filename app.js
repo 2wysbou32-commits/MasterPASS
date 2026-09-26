@@ -2949,11 +2949,12 @@ function buildFileRow(f, isAdmin, previewFn, downloadBasePath, toggleFn, deleteF
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer</button>` : '';
 
   const fileIsRead = isFileRead(f.id, folderId, subId);
+  if (!_errataCountsLoaded) errataLoadCounts();
   return `<div class="file-row${fileIsRead ? ' is-read' : ''}" data-file-id="${f.id}" data-subfolder="${subId||''}" ${canPreview ? `onclick="${previewFn}" style="cursor:pointer"` : ''}>    <div class="file-left" style="display:flex;align-items:center;gap:10px">
       <input type="checkbox" class="file-select-cb" data-id="${f.id}" data-download-url="${downloadUrl}" data-can-download="${canDownload}" onclick="event.stopPropagation()" onchange="onFileCheckboxChange()" style="display:none;width:18px;height:18px;cursor:pointer;accent-color:var(--teal);flex-shrink:0">
       ${getFileTypeBadge(f.type)}
       <div class="file-info">
-        <div class="file-name" title="${f.name}">${f.name}${fileIsRead ? '<span class="file-read-badge">✓ Lu</span>' : ''}${(function(){ const added = f.addedAt ? new Date(f.addedAt) : null; const isNew = added && (Date.now() - added.getTime()) < 7 * 24 * 60 * 60 * 1000; return isNew ? '<span style="margin-left:6px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border-radius:6px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:0.5px;vertical-align:middle">NOUVEAU</span>' : ''; })()}</div>
+        <div class="file-name" title="${f.name}">${f.name}${fileIsRead ? '<span class="file-read-badge">✓ Lu</span>' : ''}${errataBadgeHtml(f.id)}${(function(){ const added = f.addedAt ? new Date(f.addedAt) : null; const isNew = added && (Date.now() - added.getTime()) < 7 * 24 * 60 * 60 * 1000; return isNew ? '<span style="margin-left:6px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));color:white;border-radius:6px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:0.5px;vertical-align:middle">NOUVEAU</span>' : ''; })()}</div>
         <div class="file-meta-row">
           ${isAdmin && f.views ? `<span class="file-meta-pill" style="color:var(--teal-dark);font-weight:600">👁 ${f.views} vue${f.views > 1 ? 's' : ''}</span><span class="file-meta-pill" style="color:var(--teal-light)">·</span>` : ''}
           <span class="file-meta-pill"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.07-.33.18-.65.18-1a2 2 0 0 0-4 0c0 .35.11.67.18 1H4v2h.18l2 9.91C6.37 18.79 7.2 19.5 8 19.5c.53 0 1-.39 1-.89V19h6v.61c0 .5.47.89 1 .89.8 0 1.63-.71 1.82-1.59L19.82 8H20V6zM12 2a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1z"/></svg>${formatSize(f.size)}</span>
@@ -3289,6 +3290,10 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
   var body = document.getElementById('preview-body');
   var fnEl = document.getElementById('preview-filename');
   if (!overlay || !body) return;
+  // L'aperçu est dans <main> : on fait passer <main> au-dessus de la barre latérale
+  // (sinon, sur ordi, la barre latérale cache le bord gauche du PDF)
+  var mainEl = overlay.closest('main');
+  if (mainEl) mainEl.style.zIndex = '200';
   var sidebar = document.getElementById('sidebar');
   if (sidebar && window.innerWidth > 768) {
     sidebar.classList.add('collapsed');
@@ -3299,9 +3304,15 @@ function openPreviewWithUrls(filename, type, previewUrl, downloadUrl, streamUrl)
   if (fnEl) fnEl.textContent = filename;
   var html = '';
   if (type === 'pdf') {
-    html = '<div style="width:100%;height:100%;position:relative" id="pdf-preview-wrap">' +
-  '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#111;color:white;font-size:13px" id="pdf-loading">Chargement du document...</div>' +
-  '</div>';
+    // Identifiant du fichier, lu dans l'URL (…/files/123/preview) pour charger ses corrections
+    var pdfFileId = (/\/files\/(\d+)\/preview/.exec(previewUrl) || [])[1] || null;
+    html = '<div style="width:100%;height:100%;display:flex;flex-direction:column" id="pdf-preview-wrap">' +
+      '<div id="pdf-errata"></div>' +
+      '<div id="pdf-frame" style="flex:1;min-height:0;position:relative">' +
+        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#111;color:white;font-size:13px" id="pdf-loading">Chargement du document...</div>' +
+      '</div>' +
+    '</div>';
+    if (pdfFileId) setTimeout(function() { errataLoad(pdfFileId); }, 0);
 // Fetch le PDF avec session puis créer un blob URL pour l'iframe
 fetch(previewUrl, { credentials: 'include' })
   .then(function(r) {
@@ -3310,7 +3321,7 @@ fetch(previewUrl, { credentials: 'include' })
   })
   .then(function(blob) {
     var blobUrl = URL.createObjectURL(blob);
-    var wrap = document.getElementById('pdf-preview-wrap');
+    var wrap = document.getElementById('pdf-frame');
     if (!wrap) return;
     var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     if (isIOS) {
@@ -3319,9 +3330,11 @@ fetch(previewUrl, { credentials: 'include' })
         '<div style="font-size:48px">📄</div>' +
         '<div style="text-align:center;padding:0 20px">Sur iPhone/iPad, ouvre ce PDF dans un nouvel onglet pour un meilleur affichage.</div>' +
         '<button onclick="window.open(\'' + blobUrl + '\',\'_blank\')" style="padding:12px 28px;background:var(--teal);color:white;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer">Ouvrir le PDF</button>' +
+        '<div id="pdf-ios-errata-note" style="display:none;text-align:center;padding:0 24px;font-size:12.5px;color:#FFD966">Les corrections sont aussi indiquées en bas des pages concernées dans le PDF.</div>' +
         '</div>';
+      errataRender();
     } else {
-      wrap.innerHTML = '<iframe src="' + blobUrl + '" style="width:100%;height:100%;border:none"></iframe>';
+      wrap.innerHTML = '<iframe src="' + blobUrl + '" style="position:absolute;inset:0;width:100%;height:100%;border:none"></iframe>';
     }
   })
   .catch(function(err) {
@@ -3383,6 +3396,8 @@ function closePreview() {
   var overlay = document.getElementById('preview-overlay');
   var body = document.getElementById('preview-body');
   if (overlay) overlay.classList.remove('open');
+  var mainEl = overlay && overlay.closest('main');
+  if (mainEl) mainEl.style.zIndex = '';
   if (body) {
     // Libérer les blob URLs pour éviter les fuites mémoire
     body.querySelectorAll('iframe[src^="blob:"]').forEach(function(el) {
@@ -3391,6 +3406,155 @@ function closePreview() {
     body.innerHTML = '';
   }
   document.body.style.overflow = '';
+}
+// ===== Corrections (errata) sur les PDF =====
+// Bandeau jaune au-dessus du PDF + badge "⚠ n corrections" dans les listes de fichiers.
+// Les admins (gestionnaires de contenu) peuvent ajouter, modifier et supprimer les corrections.
+var _errataCounts = {};
+var _errataCountsLoaded = false;
+var _errataCurrent = { fileId: null, list: [], open: true, formOpen: false, editing: null };
+
+function errataLoadCounts() {
+  _errataCountsLoaded = true;
+  api('GET', '/errata-counts')
+    .then(function(c) { _errataCounts = c || {}; errataRefreshBadges(); })
+    .catch(function() { _errataCountsLoaded = false; });
+}
+function errataBadgeHtml(fileId) {
+  var n = _errataCounts[String(fileId)] || 0;
+  if (!n) return '';
+  return '<span class="errata-badge" title="Ce cours contient des corrections" style="margin-left:6px;background:#FFF4CC;color:#8A5A00;border:1px solid #E8C667;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;white-space:nowrap">⚠ ' + n + ' correction' + (n > 1 ? 's' : '') + '</span>';
+}
+function errataRefreshBadges() {
+  document.querySelectorAll('.file-row[data-file-id]').forEach(function(row) {
+    var name = row.querySelector('.file-name');
+    if (!name) return;
+    var old = name.querySelector('.errata-badge');
+    if (old) old.remove();
+    var h = errataBadgeHtml(row.getAttribute('data-file-id'));
+    if (h) name.insertAdjacentHTML('beforeend', h);
+  });
+}
+function errataCanEdit() {
+  return !!(currentUser && currentUser.isContentManager);
+}
+function errataLoad(fileId) {
+  _errataCurrent = { fileId: String(fileId), list: [], open: true, formOpen: false, editing: null };
+  errataRender();
+  api('GET', '/errata/' + fileId).then(function(list) {
+    if (_errataCurrent.fileId !== String(fileId)) return;
+    _errataCurrent.list = list || [];
+    _errataCounts[String(fileId)] = _errataCurrent.list.length;
+    errataRefreshBadges();
+    errataRender();
+  }).catch(function() {});
+}
+function errataRender() {
+  var box = document.getElementById('pdf-errata');
+  if (!box) return;
+  var c = _errataCurrent, list = c.list, n = list.length, admin = errataCanEdit();
+  // Sur iPhone/iPad : rappel que les corrections sont aussi dans le PDF
+  // (seulement pour les étudiants : les admins reçoivent le PDF d'origine, sans filigrane ni corrections)
+  var note = document.getElementById('pdf-ios-errata-note');
+  var stamped = currentUser && currentUser.role !== 'admin' && currentUser.role !== 'subadmin';
+  if (note) note.style.display = (n && stamped) ? 'block' : 'none';
+  var html = '';
+  if (n) {
+    html += '<div style="background:#FFF4CC;color:#5C3D00;border-bottom:1px solid #E8C667;padding:10px 16px;font-size:13px;line-height:1.45">' +
+      '<div onclick="errataToggle()" style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;font-weight:700">' +
+        '<span>⚠️ ' + n + ' correction' + (n > 1 ? 's' : '') + ' sur ce cours</span>' +
+        '<span style="font-size:12px;font-weight:600;white-space:nowrap">' + (c.open ? 'Masquer ▲' : 'Afficher ▼') + '</span>' +
+      '</div>';
+    if (c.open) {
+      html += '<div style="margin-top:8px;display:grid;gap:6px;max-height:32vh;overflow:auto">';
+      list.forEach(function(e) {
+        html += '<div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;background:rgba(255,255,255,0.65);border-radius:8px;padding:8px 10px">' +
+          '<span style="flex-shrink:0;font-weight:800">' + (e.page ? 'Page ' + e.page : 'Général') + '</span>' +
+          '<span style="flex:1;min-width:160px;white-space:pre-wrap;word-break:break-word">' + escapeHtml(e.text) + '</span>' +
+          (admin
+            ? '<span style="flex-shrink:0;display:flex;gap:6px">' +
+                '<button onclick="errataEdit(' + e.id + ')" style="cursor:pointer;background:none;border:1px solid #C9A227;color:#5C3D00;border-radius:6px;padding:3px 8px;font-size:11.5px;font-weight:600">Modifier</button>' +
+                '<button onclick="errataDelete(' + e.id + ')" style="cursor:pointer;background:none;border:1px solid #D9534F;color:#B52B27;border-radius:6px;padding:3px 8px;font-size:11.5px;font-weight:600">Supprimer</button>' +
+              '</span>'
+            : '') +
+        '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  if (admin) {
+    html += '<div style="background:#0B1626;border-bottom:1px solid rgba(255,255,255,0.08);padding:8px 16px;font-size:13px;color:#fff">';
+    if (!c.formOpen) {
+      html += '<button onclick="errataOpenForm()" style="cursor:pointer;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:600">✏️ Ajouter une correction</button>';
+    } else {
+      var ed = c.editing ? list.find(function(e) { return e.id === c.editing; }) : null;
+      html += '<div style="display:grid;gap:8px;max-width:640px">' +
+        '<div style="font-weight:700">' + (ed ? 'Modifier la correction' : 'Nouvelle correction') + '</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+          '<label for="errata-page" style="font-size:12.5px;color:rgba(255,255,255,0.75)">Page</label>' +
+          '<input id="errata-page" type="number" min="1" inputmode="numeric" placeholder="ex : 12" value="' + (ed && ed.page ? ed.page : '') + '" style="width:90px;padding:7px 9px;border-radius:8px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);color:#fff;font-size:14px">' +
+          '<span style="font-size:11.5px;color:rgba(255,255,255,0.55)">Laisse vide pour une correction générale</span>' +
+        '</div>' +
+        '<textarea id="errata-text" rows="3" maxlength="1000" placeholder="ex : la formule du périmètre est 2πr et non πr²" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);color:#fff;font-size:14px;font-family:inherit;resize:vertical">' + (ed ? escapeHtml(ed.text) : '') + '</textarea>' +
+        (ed ? '' : '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:rgba(255,255,255,0.8);cursor:pointer"><input id="errata-notify" type="checkbox" checked style="accent-color:var(--teal)"> Prévenir les étudiants (notification)</label>') +
+        '<div style="display:flex;gap:8px">' +
+          '<button onclick="errataSave()" style="cursor:pointer;background:var(--teal,#0097A7);border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700">Enregistrer</button>' +
+          '<button onclick="errataCloseForm()" style="cursor:pointer;background:none;border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:8px;padding:7px 14px;font-size:13px">Annuler</button>' +
+        '</div>' +
+      '</div>';
+    }
+    html += '</div>';
+  }
+  box.innerHTML = html;
+}
+function errataToggle() {
+  _errataCurrent.open = !_errataCurrent.open;
+  errataRender();
+}
+function errataOpenForm() {
+  _errataCurrent.formOpen = true;
+  _errataCurrent.editing = null;
+  errataRender();
+  var t = document.getElementById('errata-text');
+  if (t) t.focus();
+}
+function errataCloseForm() {
+  _errataCurrent.formOpen = false;
+  _errataCurrent.editing = null;
+  errataRender();
+}
+function errataEdit(id) {
+  _errataCurrent.formOpen = true;
+  _errataCurrent.editing = id;
+  errataRender();
+  var t = document.getElementById('errata-text');
+  if (t) t.focus();
+}
+async function errataSave() {
+  var c = _errataCurrent;
+  var pageEl = document.getElementById('errata-page');
+  var textEl = document.getElementById('errata-text');
+  var notifyEl = document.getElementById('errata-notify');
+  var text = textEl ? textEl.value.trim() : '';
+  if (!text) { toast('Écris la correction avant d\'enregistrer', 'error'); return; }
+  var page = pageEl && pageEl.value ? parseInt(pageEl.value) : null;
+  var body = { page: page, text: text, notify: !!(notifyEl && notifyEl.checked) };
+  try {
+    if (c.editing) await api('PUT', '/errata/' + c.fileId + '/' + c.editing, body);
+    else await api('POST', '/errata/' + c.fileId, body);
+    toast(c.editing ? 'Correction modifiée' : 'Correction ajoutée');
+    errataLoad(c.fileId);
+  } catch (e) { toast(e.message, 'error'); }
+}
+async function errataDelete(id) {
+  var c = _errataCurrent;
+  if (!await customConfirm('Supprimer cette correction ?')) return;
+  try {
+    await api('DELETE', '/errata/' + c.fileId + '/' + id);
+    toast('Correction supprimée');
+    errataLoad(c.fileId);
+  } catch (e) { toast(e.message, 'error'); }
 }
 
 // Fermer avec Échap
