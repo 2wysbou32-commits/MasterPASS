@@ -1584,7 +1584,7 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/download', requi
       else if (file.filename) { pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename)); }
       if (pdfBuffer) {
         const userName = user?.login || user?.name || 'Inconnu';
-        const watermarked = await addWatermark(pdfBuffer, userName);
+        const watermarked = await addWatermark(pdfBuffer, userName, file.id);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${file.name}.pdf"`);
         return res.send(Buffer.from(watermarked));
@@ -1620,7 +1620,7 @@ async function fetchFromR2ToBuffer(key) {
   if (!buf) buf = await tryFetch(pathLegacy);
   return buf;
 }
-async function addWatermark(pdfBuffer, userName) {
+async function addWatermark(pdfBuffer, userName, fileId) {
   try {
     const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -1635,11 +1635,80 @@ async function addWatermark(pdfBuffer, userName) {
         opacity: 0.85,
       });
     }
+    // Corrections du cours : encadré jaune en bas des pages concernées.
+    // Try/catch séparé : si ça échoue, le filigrane est quand même appliqué.
+    if (fileId) {
+      try { await stampErrata(pdfDoc, fileId); }
+      catch (e) { console.error('Errata stamp error:', e.message); }
+    }
     return await pdfDoc.save();
   } catch(e) {
     console.error('Watermark error:', e.message);
     return pdfBuffer;
   }
+}
+
+// ── CORRECTIONS (ERRATA) INCRUSTÉES DANS LE PDF ─────────────────────────────
+// La police standard du PDF ne connaît pas tous les caractères (π, emojis…) :
+// on remplace ceux qu'elle ne sait pas écrire, sinon pdf-lib plante.
+function errataPdfSafe(font, text) {
+  const map = { 'π': ' pi ', '≤': '<=', '≥': '>=', '≠': '!=', '→': '->', '←': '<-', '×': 'x', '÷': '/', '√': 'racine ', '∞': 'infini', 'Δ': 'Delta', 'α': 'alpha', 'β': 'beta', 'γ': 'gamma', 'µ': 'µ', 'λ': 'lambda', 'σ': 'sigma', 'θ': 'theta', '’': "'", '‘': "'", '“': '"', '”': '"', '…': '...', '–': '-', '—': '-' };
+  return Array.from(String(text || '').replace(/[\r\n\t]+/g, ' ')).map(ch => {
+    try { font.encodeText(ch); return ch; }
+    catch (e) {
+      const alt = map[ch];
+      if (alt) { try { font.encodeText(alt); return alt; } catch (e2) {} }
+      const code = ch.codePointAt(0);
+      if (code > 0xFFFF || (code >= 0x2600 && code <= 0x27BF)) return ''; // emojis : on les retire
+      return '?';
+    }
+  }).join('').replace(/ {2,}/g, ' ').trim();
+}
+function errataPdfWrap(font, text, size, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  words.forEach(w => {
+    const test = line ? line + ' ' + w : w;
+    if (font.widthOfTextAtSize(test, size) <= maxWidth || !line) line = test;
+    else { lines.push(line); line = w; }
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+async function stampErrata(pdfDoc, fileId) {
+  const db = loadDB();
+  const list = (db.errata && db.errata[String(fileId)]) || [];
+  if (!list.length) return;
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const pages = pdfDoc.getPages();
+  // On regroupe par page (sans page ou page inexistante → page 1)
+  const byPage = {};
+  list.forEach(e => {
+    let p = parseInt(e.page) || 1;
+    if (p < 1 || p > pages.length) p = 1;
+    (byPage[p] = byPage[p] || []).push(e);
+  });
+  Object.keys(byPage).forEach(k => {
+    const page = pages[parseInt(k) - 1];
+    const { width } = page.getSize();
+    const size = 9, lh = 11.5, pad = 8, margin = 18;
+    const boxW = Math.min(width - 2 * margin, 460);
+    const lines = [];
+    byPage[k].forEach(e => {
+      const prefix = e.page ? '' : '(général) ';
+      errataPdfWrap(font, '• ' + prefix + errataPdfSafe(font, e.text), size, boxW - 2 * pad).forEach(l => lines.push(l));
+    });
+    const boxH = pad * 2 + 13 + lines.length * lh;
+    const x = (width - boxW) / 2;
+    const y = 32; // juste au-dessus du filigrane (y = 18)
+    page.drawRectangle({ x, y, width: boxW, height: boxH, color: rgb(1, 0.96, 0.8), borderColor: rgb(0.85, 0.6, 0.1), borderWidth: 1.2, opacity: 0.97 });
+    page.drawText(byPage[k].length > 1 ? 'CORRECTIONS' : 'CORRECTION', { x: x + pad, y: y + boxH - pad - 9, size: 9.5, font: bold, color: rgb(0.55, 0.3, 0) });
+    lines.forEach((l, i) => {
+      page.drawText(l, { x: x + pad, y: y + boxH - pad - 13 - (i + 1) * lh + 3, size, font, color: rgb(0.25, 0.15, 0) });
+    });
+  });
 }
 async function addImageWatermark(imageBuffer, userName) {
   try {
@@ -1685,7 +1754,7 @@ app.get('/api/folders/:parentId/subfolders/:subId/files/:fileId/preview', requir
         console.log('[WATERMARK] local file size:', pdfBuffer.length);
       }
       if (pdfBuffer) {
-        const watermarked = await addWatermark(pdfBuffer, userName);
+        const watermarked = await addWatermark(pdfBuffer, userName, file.id);
         console.log('[WATERMARK] watermarked size:', watermarked ? watermarked.length : 'NULL');
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline');
@@ -1848,7 +1917,7 @@ app.get('/api/folders/:folderId/files/:fileId/preview', requireAuth, async (req,
         pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename));
       }
       if (pdfBuffer) {
-        const watermarked = await addWatermark(pdfBuffer, userName);
+        const watermarked = await addWatermark(pdfBuffer, userName, file.id);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline');
         return res.send(Buffer.from(watermarked));
@@ -1886,7 +1955,7 @@ app.get('/api/folders/:folderId/files/:fileId/download', requireAuth, async (req
       else if (file.filename) { pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename)); }
       if (pdfBuffer) {
         const userName = requestingUser?.login || requestingUser?.name || 'Inconnu';
-        const watermarked = await addWatermark(pdfBuffer, userName);
+        const watermarked = await addWatermark(pdfBuffer, userName, file.id);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${file.name}.pdf"`);
         return res.send(Buffer.from(watermarked));
@@ -2476,7 +2545,7 @@ app.get('/api/files/:fileId/preview', requireAuth, async (req, res) => {
       if (r2Enabled && file.r2Key) pdfBuffer = await fetchFromR2ToBuffer(file.r2Key);
       else if (file.filename) pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename));
       if (pdfBuffer) {
-        const watermarked = await addWatermark(pdfBuffer, userName);
+        const watermarked = await addWatermark(pdfBuffer, userName, file.id);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline');
         return res.send(Buffer.from(watermarked));
@@ -2510,7 +2579,7 @@ app.get('/api/files/:fileId/download', requireAuth, async (req, res) => {
       else if (file.filename) pdfBuffer = fs.readFileSync(path.join(UPLOADS_DIR, file.filename));
       if (pdfBuffer) {
         const userName = requestingUser?.login || requestingUser?.name || 'Inconnu';
-        const watermarked = await addWatermark(pdfBuffer, userName);
+        const watermarked = await addWatermark(pdfBuffer, userName, file.id);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${file.name}.pdf"`);
         return res.send(Buffer.from(watermarked));
@@ -2950,7 +3019,80 @@ app.patch('/api/folders/reorder', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── FILS DE DISCUSSION (THREADS) ────────────────────────────────────────────
+// ── CORRECTIONS (ERRATA) SUR LES PDF ────────────────────────────────────────
+// Structure : db.errata = { fileId: [ { id, page, text, createdBy, createdAt, updatedAt } ] }
+
+// Nombre de corrections par fichier (pour les badges dans les listes)
+app.get('/api/errata-counts', requireAuth, (req, res) => {
+  const db = loadDB();
+  const counts = {};
+  Object.keys(db.errata || {}).forEach(fid => {
+    const n = (db.errata[fid] || []).length;
+    if (n) counts[fid] = n;
+  });
+  res.json(counts);
+});
+
+// Corrections d'un fichier, triées par page
+app.get('/api/errata/:fileId', requireAuth, (req, res) => {
+  const db = loadDB();
+  const list = ((db.errata || {})[String(parseInt(req.params.fileId))] || []).slice();
+  list.sort((a, b) => (a.page || 0) - (b.page || 0) || a.id - b.id);
+  res.json(list);
+});
+
+function errataReadBody(req) {
+  const text = String((req.body && req.body.text) || '').trim().substring(0, 1000);
+  let page = parseInt(req.body && req.body.page);
+  if (!(page >= 1)) page = null; // vide ou 0 = correction générale
+  return { text, page };
+}
+
+app.post('/api/errata/:fileId', requireContentManager, (req, res) => {
+  const db = loadDB();
+  const fileId = parseInt(req.params.fileId);
+  const found = findFileRecursive(db, fileId);
+  if (!found) return res.status(404).json({ error: 'Fichier introuvable' });
+  const { text, page } = errataReadBody(req);
+  if (!text) return res.status(400).json({ error: 'La correction est vide' });
+  if (!db.errata) db.errata = {};
+  if (!db.errata[String(fileId)]) db.errata[String(fileId)] = [];
+  const item = { id: Date.now(), page, text, createdBy: req.session.userId, createdAt: new Date().toISOString() };
+  db.errata[String(fileId)].push(item);
+  saveDB(db);
+  if (req.body && req.body.notify) {
+    sendPushToAll('📝 Correction — ' + found.file.name.substring(0, 40), (page ? 'Page ' + page + ' : ' : '') + text.substring(0, 80), '/', 'files').catch(() => {});
+  }
+  res.json(item);
+});
+
+app.put('/api/errata/:fileId/:id', requireContentManager, (req, res) => {
+  const db = loadDB();
+  const list = (db.errata || {})[String(parseInt(req.params.fileId))] || [];
+  const item = list.find(e => e.id === parseInt(req.params.id));
+  if (!item) return res.status(404).json({ error: 'Correction introuvable' });
+  const { text, page } = errataReadBody(req);
+  if (!text) return res.status(400).json({ error: 'La correction est vide' });
+  item.text = text;
+  item.page = page;
+  item.updatedAt = new Date().toISOString();
+  saveDB(db);
+  res.json(item);
+});
+
+app.delete('/api/errata/:fileId/:id', requireContentManager, (req, res) => {
+  const db = loadDB();
+  const key = String(parseInt(req.params.fileId));
+  const list = (db.errata || {})[key] || [];
+  const idx = list.findIndex(e => e.id === parseInt(req.params.id));
+  if (idx === -1) return res.status(404).json({ error: 'Correction introuvable' });
+  list.splice(idx, 1);
+  if (!list.length) delete db.errata[key];
+  saveDB(db);
+  res.json({ ok: true });
+});
+
+// ── FILS DE DISCUSSION (THREADS) ─────
 // Structure: db.threads = { fileId: [ { id, title, createdBy, createdAt, replies: [...] } ] }
 
 // GET all threads for a file
